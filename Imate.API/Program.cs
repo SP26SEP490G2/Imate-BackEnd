@@ -2,7 +2,6 @@ using Imate.API.Configurations;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Services;
 using Imate.API.Middleware;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -22,14 +21,15 @@ builder.Services.AddTransient<GlobalExceptionMiddleware>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
