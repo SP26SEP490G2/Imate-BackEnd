@@ -1,0 +1,46 @@
+## .NET
+
+# Build results
+bin/
+obj/
+out/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+*.lock.json
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Publish output
+publish/
+PublishProfiles/
+
+# EF Core Migrations -- comment this line if you want to track migrations
+# Migrations/
+
+# appsettings with secrets (keep appsettings.json but ignore environment-specific secrets)
+appsettings.Development.json
+appsettings.Production.json
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
