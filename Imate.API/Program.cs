@@ -15,6 +15,7 @@ builder.Services.ConfigureRepositoryManager();
 
 // Business layer services
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IMentorService, MentorService>();
 
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
