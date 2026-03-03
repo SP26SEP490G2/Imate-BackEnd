@@ -2,9 +2,8 @@ namespace Imate.API.Models.Enums
 {
     public enum LoginProvider
     {
-        Local,
+        EmailPassword,
         Google,
-        Facebook,
-        GitHub
+        FirebaseEmail
     }
 }

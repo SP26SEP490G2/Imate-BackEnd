@@ -2,6 +2,9 @@ using Imate.API.Configurations;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Services;
 using Imate.API.Middleware;
+using Imate.API.Infrastructure.Configurations;
+using Microsoft.Extensions.Configuration;
+using Peppo.API.Infrastructure.Configurations;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -16,6 +19,8 @@ builder.Services.ConfigureRepositoryManager();
 // Business layer services
 builder.Services.AddScoped<IAccountService, AccountService>();
 
+builder.Services.AddFirebaseAdmin();
+builder.Services.AddMyServices(builder.Configuration);
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 
