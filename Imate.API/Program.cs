@@ -18,6 +18,7 @@ builder.Services.ConfigureRepositoryManager();
 
 // Business layer services
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IMentorService, MentorService>();
 
 builder.Services.AddFirebaseAdmin();
 builder.Services.AddMyServices(builder.Configuration);
