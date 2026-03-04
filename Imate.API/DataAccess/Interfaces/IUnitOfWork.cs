@@ -11,6 +11,10 @@ namespace Imate.API.DataAccess.Interfaces
     {
         // Add specific methods here
     }
+    public interface IMentorRepository : IRepositoryBase<Mentor>
+    {
+        // Add specific methods here
+    }
 
 
     public interface IUnitOfWork

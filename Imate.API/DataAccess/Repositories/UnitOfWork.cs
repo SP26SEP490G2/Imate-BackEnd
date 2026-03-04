@@ -18,6 +18,13 @@ namespace Imate.API.DataAccess.Repositories
         {
         }
     }
+    public class MentorRepository : RepositoryBase<Mentor>, IMentorRepository
+    {
+        public MentorRepository(ImateDbContext repositoryContext)
+            : base(repositoryContext)
+        {
+        }
+    }
 
     public class UnitOfWork : IUnitOfWork
     {
@@ -26,6 +33,8 @@ namespace Imate.API.DataAccess.Repositories
         public IUserSubscriptionRepository UserSubscriptions { get; private set; }
         public IBookingRepository Bookings { get; }
         public IQuestionRepository Questions { get; private set; }
+        private IAccountRepository? _accountRepository;
+        private IMentorRepository? _mentorRepository;
 
         public UnitOfWork(ImateDbContext repositoryContext)
         {
@@ -42,6 +51,17 @@ namespace Imate.API.DataAccess.Repositories
                 return _accountRepository;
             }
         }
+        public IMentorRepository Mentor
+        {
+            get
+            {
+                if (_mentorRepository == null)
+                    _mentorRepository = new MentorRepository(_repositoryContext);
+
+                return _mentorRepository;
+            }
+        }
+
 
         public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();
         public Task SaveAsync() => _repositoryContext.SaveChangesAsync();
