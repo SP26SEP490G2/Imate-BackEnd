@@ -1,8 +1,10 @@
 ﻿using Imate.API.Models.Entities;
+using Imate.API.Presentation.RequestModels;
+using Imate.API.Presentation.ResponseModels;
 
 namespace Imate.API.DataAccess.Interfaces.QuestionBank
 {
-    public interface IQuestionRepository
+    public interface IQuestionRepository : IRepositoryBase<Question>
     {
         IQueryable<Question> GetAllSystemQuestionsForStaff();
         IQueryable<Question> GetAllContributedForStaffQuestions();
@@ -27,5 +29,9 @@ namespace Imate.API.DataAccess.Interfaces.QuestionBank
         Task<IEnumerable<Question>> GetLimitedPublicSystemQuestionBanksAsync();
         Task<IEnumerable<Question>> GetLimitedContributedQuestionsWithRelatedDataAsync();
         IQueryable<Question> GetMyContributedQuestions(int accountId);
+
+        //New
+        Task<IEnumerable<QuestionResponse.ListHotQuestion>> GetListHotQuestionsAsync();
+        Task<QuestionResponse.QuestionBankList> GetQuestionBankListAsync(QuestionRequest.GetQuestionBankList request);
     }
 }

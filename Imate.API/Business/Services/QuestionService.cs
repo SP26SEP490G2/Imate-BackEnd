@@ -18,7 +18,7 @@ namespace Imate.API.Business.Services
         {
             try
             {
-                return await _unitOfWork.Question.GetListHotQuestionsAsync();
+                return await _unitOfWork.Questions.GetListHotQuestionsAsync();
             }
             catch (Exception ex)
             {
@@ -30,7 +30,7 @@ namespace Imate.API.Business.Services
         {
             try
             {
-                return await _unitOfWork.Question.GetQuestionBankListAsync(request);
+                return await _unitOfWork.Questions.GetQuestionBankListAsync(request);
             }
             catch (Exception ex)
             {
@@ -38,11 +38,11 @@ namespace Imate.API.Business.Services
             }
         }
 
-        public async Task<IEnumerable<QuestionResponse.CategoryItem>> GetListQuestionCategoriesAsync()
+        public async Task<IEnumerable<QuestionResponse.QuestionCategoryItem>> GetListQuestionCategoriesAsync()
         {
             try
             {
-                return await _unitOfWork.Category.GetListQuestionCategoriesAsync();
+                return await _unitOfWork.QuestionCategories.GetListQuestionCategoriesAsync();
             }
             catch (Exception ex)
             {

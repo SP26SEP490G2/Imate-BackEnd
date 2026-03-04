@@ -9,40 +9,16 @@ using Imate.API.Presentation.RequestModels;
 
 namespace Imate.API.DataAccess.Interfaces
 {
-    public interface IAccountRepository2 : IRepositoryBase<Account>
-    {
-        // Add specific methods here
-    }
-
-    public interface IMentorRepository : IRepositoryBase<Mentor>
-    {
-        Task<IEnumerable<MentorResponse.ListPreviewMentor>> GetListPreviewMentorsAsync();
-    }
-
-    public interface IQuestionRepository : IRepositoryBase<Question>
-    {
-        Task<IEnumerable<QuestionResponse.ListHotQuestion>> GetListHotQuestionsAsync();
-        Task<QuestionResponse.QuestionBankList> GetQuestionBankListAsync(QuestionRequest.GetQuestionBankList request);
-    }
-
-    public interface ICategoryRepository : IRepositoryBase<Category>
-    {
-        Task<IEnumerable<QuestionResponse.CategoryItem>> GetListQuestionCategoriesAsync();
-    }
-
-
     public interface IUnitOfWork
     {
 
         IAccountRepository Accounts { get; }
-        IAccountRepository2 Account { get; }
         IBookingRepository Bookings { get; }
         IUserSubscriptionRepository UserSubscriptions { get; }
-        Interfaces.QuestionBank.IQuestionRepository Questions { get; }
+        IQuestionRepository Questions { get; }       
+        IMentorRepository Mentors { get; }
+        IQuestionCategoryRepository QuestionCategories { get; }
         Task SaveChangesAsync();
-        IMentorRepository Mentor { get; }
-        Interfaces.IQuestionRepository Question { get; }
-        ICategoryRepository Category { get; }
         Task SaveAsync();
     }
 }

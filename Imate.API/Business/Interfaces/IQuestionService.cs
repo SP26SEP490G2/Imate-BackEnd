@@ -7,6 +7,6 @@ namespace Imate.API.Business.Interfaces
     {
         Task<IEnumerable<QuestionResponse.ListHotQuestion>> GetListHotQuestionsAsync();
         Task<QuestionResponse.QuestionBankList> GetQuestionBankListAsync(QuestionRequest.GetQuestionBankList request);
-        Task<IEnumerable<QuestionResponse.CategoryItem>> GetListQuestionCategoriesAsync();
+        Task<IEnumerable<QuestionResponse.QuestionCategoryItem>> GetListQuestionCategoriesAsync();
     }
 }
