@@ -2,7 +2,7 @@ using Imate.API.Configurations;
 using Imate.API.Middleware;
 using Imate.API.Infrastructure.Configurations;
 using Microsoft.Extensions.Configuration;
-using Peppo.API.Infrastructure.Configurations;
+using Imate.API.Infrastructure.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -16,7 +16,8 @@ namespace Imate.API.DataAccess.Interfaces.UserManagement
         Task UpdateAsync(Account account);
         Task DeleteAsync(Account account);
         Task<Account?> GetByIdWithDetailsAsync(int id);
-  
+        Task<Account> GetByIdMentor(int id);
+
         IQueryable<Account> GetAllAccount();
 
 
