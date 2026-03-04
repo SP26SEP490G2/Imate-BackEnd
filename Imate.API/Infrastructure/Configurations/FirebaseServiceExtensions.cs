@@ -1,7 +1,7 @@
 ﻿using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 
-namespace Peppo.API.Infrastructure.Configurations
+namespace Imate.API.Infrastructure.Configurations
 {
     public static class FirebaseServiceExtensions
     {
