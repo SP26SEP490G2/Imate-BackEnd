@@ -17,6 +17,8 @@ namespace Imate.API.Configurations
         public static void ConfigureServices(this IServiceCollection services)
         {
             services.AddScoped<IAccountService, AccountService>();
+            services.AddScoped<IMentorService, MentorService>();
+            services.AddScoped<IQuestionService, QuestionService>();
         }
 
         public static void ConfigureCors(this IServiceCollection services) =>
