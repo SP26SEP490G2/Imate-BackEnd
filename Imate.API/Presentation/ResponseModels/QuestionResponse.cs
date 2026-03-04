@@ -32,7 +32,7 @@ namespace Imate.API.Presentation.ResponseModels
             public int TotalPages { get; set; }
         }
 
-        public class CategoryItem
+        public class QuestionCategoryItem
         {
             public int Id { get; set; }
             public string Name { get; set; } = string.Empty;
