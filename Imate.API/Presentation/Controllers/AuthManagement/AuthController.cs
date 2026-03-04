@@ -8,6 +8,7 @@ using Imate.API.Business.Exceptions;
 using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Business.Interfaces.UserManagement;
 using Imate.API.Business.Interfaces;
+using Imate.API.Common.Router;
 
 namespace Imate.API.Presentation.Controllers.AuthManagement
 {
@@ -33,7 +34,7 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
         }
 
 
-        [HttpPost("register-email")]
+        [HttpPost(APIConfig.Authentication.RegisterEmail)]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         public async Task<IActionResult> RegisterWithEmail([FromBody] RegisterWithEmailRequest request)
         {
@@ -70,7 +71,7 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
             }
         }
 
-        [HttpPost("login-email")]
+        [HttpPost(APIConfig.Authentication.LoginEmail)]
         [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> LoginWithEmail([FromBody] RequestModels.UserManagement.LoginRequest request)
         {
@@ -78,7 +79,6 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
             {
                 // THAY ĐỔI 2: _authService giờ trả về đối tượng AuthResponse hoàn chỉnh
                 var authResponse = await _authService.VerifyFirebaseTokenAndLoginAsync(request);
-
                 // Trả về thẳng đối tượng nhận được từ service
                 return Ok(authResponse);
             }

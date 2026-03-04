@@ -272,6 +272,7 @@ namespace Imate.API.Business.Services.UserManagement
             }
 
             account.FullName = request.FullName;
+            Console.WriteLine($"FULLNAME:{account.FullName} ");
             await _unitOfWork.Accounts.UpdateAsync(account);
             await _unitOfWork.SaveChangesAsync();
         }
