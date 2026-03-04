@@ -1,24 +1,20 @@
 using Imate.API.Configurations;
-using Imate.API.Business.Interfaces;
-using Imate.API.Business.Services;
 using Imate.API.Middleware;
 using Imate.API.Infrastructure.Configurations;
 using Microsoft.Extensions.Configuration;
 using Peppo.API.Infrastructure.Configurations;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.ConfigureCors();
 builder.Services.ConfigureIISIntegration();
 builder.Services.ConfigureSqlContext(builder.Configuration);
+builder.Services.ConfigureRepositoryManager();
+builder.Services.ConfigureServices();
 builder.Services.ConfigureExternalServices();
 builder.Services.ConfigureBackgroundServices();
 builder.Services.RegisterAIAdapters();
-builder.Services.ConfigureRepositoryManager();
-
-// Business layer services
-builder.Services.AddScoped<IAccountService, AccountService>();
-builder.Services.AddScoped<IMentorService, MentorService>();
 
 builder.Services.AddFirebaseAdmin();
 builder.Services.AddMyServices(builder.Configuration);
@@ -29,6 +25,7 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -47,7 +44,5 @@ app.UseCors("CorsPolicy");
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.Run();app.MapControllers();
 
 app.Run();
