@@ -14,10 +14,6 @@ namespace Imate.API.DataAccess.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ImateDbContext _repositoryContext;
-        
-        private IQuestionRepository? _questionRepository;
-        private IQuestionCategoryRepository? _categoryRepository;
-
         public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts)
         {
             _repositoryContext = repositoryContext;

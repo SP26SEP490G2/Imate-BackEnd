@@ -6,7 +6,6 @@ namespace Imate.API.DataAccess.Interfaces.QuestionBank
 {
     public interface IQuestionRepository : IRepositoryBase<Question>
     {
-    {
         IQueryable<Question> GetAllSystemQuestionsForStaff();
         IQueryable<Question> GetAllContributedForStaffQuestions();
         Task<IEnumerable<Question>> GetPublicSystemQuestionBanksAsync();
