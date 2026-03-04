@@ -29,9 +29,10 @@ namespace Imate.API.DataAccess.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ImateDbContext _repositoryContext;
-        public UnitOfWork(ImateDbContext repositoryContext)
+        public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts)
         {
             _repositoryContext = repositoryContext;
+            Accounts = accounts;
         }
         private IAccountRepository2? _accountRepository;
         public IUserSubscriptionRepository UserSubscriptions { get; private set; }

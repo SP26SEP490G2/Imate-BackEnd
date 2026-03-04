@@ -229,7 +229,7 @@ namespace Imate.API.Business.Services.UserManagement
 
         public async Task UpdateGeneralProfileAsync(int accountId, UpdateGeneralProfileRequest request)
         {
-            var account = await _accountRepository.GetByIdAsync(accountId)
+            var account = await _unitOfWork.Accounts.GetByIdAsync(accountId)
                   ?? throw new NotFoundException("Không tìm thấy tài khoản.");
 
             if (request.AvatarFile != null)
@@ -269,10 +269,10 @@ namespace Imate.API.Business.Services.UserManagement
 
                 // Upload ảnh mới
                 //account.AvatarUrl = await _awsS3Service.UploadFileAsync(request.AvatarFile, "avatars");
+                account.AvatarUrl = "HELLOWORLD";
             }
 
             account.FullName = request.FullName;
-            Console.WriteLine($"FULLNAME:{account.FullName} ");
             await _unitOfWork.Accounts.UpdateAsync(account);
             await _unitOfWork.SaveChangesAsync();
         }
