@@ -35,8 +35,7 @@ namespace Imate.API.Business.Services
             }
             catch (Exception ex)
             {
-                // Log the exception (not implemented here)
-                throw new Exception("Không có dữ liệu!", ex);
+                throw new Exception("Lỗi khi lấy dữ liệu fake!", ex);
             }
         }
     }

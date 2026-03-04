@@ -1,6 +1,7 @@
 ﻿using Imate.API.Business.Interfaces;
 using Imate.API.Common.Router;
 using Microsoft.AspNetCore.Mvc;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Imate.API.Presentation.Controllers
 {
@@ -20,12 +21,17 @@ namespace Imate.API.Presentation.Controllers
         {
             try
             {
-                var data = await _mentorService.GetListPreviewMentors();
-                return Ok(data);
+                return Ok(new
+                {
+                    data = await _mentorService.GetListPreviewMentors()
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new
+                {
+                    data = (object)null
+                });
             }
         }
     }
