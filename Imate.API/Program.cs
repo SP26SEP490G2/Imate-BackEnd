@@ -1,5 +1,8 @@
 using Imate.API.Configurations;
 using Imate.API.Middleware;
+using Imate.API.Infrastructure.Configurations;
+using Microsoft.Extensions.Configuration;
+using Peppo.API.Infrastructure.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +16,8 @@ builder.Services.ConfigureExternalServices();
 builder.Services.ConfigureBackgroundServices();
 builder.Services.RegisterAIAdapters();
 
+builder.Services.AddFirebaseAdmin();
+builder.Services.AddMyServices(builder.Configuration);
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 

@@ -5,6 +5,7 @@ namespace Imate.API.Models.Enums
         Create,
         Update,
         Delete,
-        Read
+        Read,
+        SuspendUser
     }
 }

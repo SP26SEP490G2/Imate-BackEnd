@@ -13,5 +13,11 @@
             public const string GetQuestionBankList = "/get-question-bank-list";
             public const string GetListQuestionCategories = "/get-list-question-categories";
         }
+        public class Authentication
+        {
+            public const string RegisterEmail = "register-email";
+            public const string LoginEmail = "login-email";
+
+        }
     }
 }

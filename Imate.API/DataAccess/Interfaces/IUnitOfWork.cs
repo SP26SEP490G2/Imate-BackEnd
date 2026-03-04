@@ -1,10 +1,15 @@
+using Imate.API.DataAccess.Interfaces.Mentors;
+using Imate.API.DataAccess.Interfaces.Payment;
+using Imate.API.DataAccess.Interfaces.QuestionBank;
+using Imate.API.DataAccess.Interfaces.UserManagement;
 using Imate.API.Models.Entities;
+using Imate.API.DataAccess.Repositories;
 using Imate.API.Presentation.ResponseModels;
 using Imate.API.Presentation.RequestModels;
 
 namespace Imate.API.DataAccess.Interfaces
 {
-    public interface IAccountRepository : IRepositoryBase<Account>
+    public interface IAccountRepository2 : IRepositoryBase<Account>
     {
         // Add specific methods here
     }
@@ -25,11 +30,18 @@ namespace Imate.API.DataAccess.Interfaces
         Task<IEnumerable<QuestionResponse.CategoryItem>> GetListQuestionCategoriesAsync();
     }
 
+
     public interface IUnitOfWork
     {
-        IAccountRepository Account { get; }
+
+        IAccountRepository Accounts { get; }
+        IAccountRepository2 Account { get; }
+        IBookingRepository Bookings { get; }
+        IUserSubscriptionRepository UserSubscriptions { get; }
+        Interfaces.QuestionBank.IQuestionRepository Questions { get; }
+        Task SaveChangesAsync();
         IMentorRepository Mentor { get; }
-        IQuestionRepository Question { get; }
+        Interfaces.IQuestionRepository Question { get; }
         ICategoryRepository Category { get; }
         Task SaveAsync();
     }

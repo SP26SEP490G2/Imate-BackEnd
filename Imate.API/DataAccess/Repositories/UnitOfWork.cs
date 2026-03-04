@@ -1,13 +1,20 @@
 using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces;
+using Imate.API.DataAccess.Interfaces.Mentors;
+using Imate.API.DataAccess.Interfaces.Payment;
+using Imate.API.DataAccess.Interfaces.QuestionBank;
+using Imate.API.DataAccess.Interfaces.UserManagement;
+using Imate.API.DataAccess.Repositories.UserManagement;
+using Imate.API.DataAccess.Repositories;
 using Imate.API.Models.Entities;
+using Imate.API.DataAccess.Interfaces;
 using Imate.API.Presentation.ResponseModels;
 using Imate.API.Presentation.RequestModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.DataAccess.Repositories
 {
-    public class AccountRepository : RepositoryBase<Account>, IAccountRepository
+    public class AccountRepository : RepositoryBase<Account>, IAccountRepository2
     {
         public AccountRepository(ImateDbContext repositoryContext)
             : base(repositoryContext)
@@ -43,7 +50,7 @@ namespace Imate.API.DataAccess.Repositories
         }
     }
 
-    public class QuestionRepository : RepositoryBase<Question>, IQuestionRepository
+    public class QuestionRepository : RepositoryBase<Question>, Interfaces.IQuestionRepository
     {
         public QuestionRepository(ImateDbContext repositoryContext)
             : base(repositoryContext)
@@ -363,17 +370,22 @@ namespace Imate.API.DataAccess.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ImateDbContext _repositoryContext;
-        private IAccountRepository? _accountRepository;
-        private IMentorRepository? _mentorRepository;
-        private IQuestionRepository? _questionRepository;
+        
+        private Interfaces.IQuestionRepository? _questionRepository;
         private ICategoryRepository? _categoryRepository;
 
-        public UnitOfWork(ImateDbContext repositoryContext)
+        public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts)
         {
             _repositoryContext = repositoryContext;
+            Accounts = accounts;
         }
-
-        public IAccountRepository Account
+        private IAccountRepository2? _accountRepository;
+        public IUserSubscriptionRepository UserSubscriptions { get; private set; }
+        public IBookingRepository Bookings { get; }
+        public Interfaces.QuestionBank.IQuestionRepository Questions { get; private set; }
+        private IMentorRepository? _mentorRepository;
+        public IAccountRepository Accounts { get; private set; }
+        public IAccountRepository2 Account
         {
             get
             {
@@ -395,7 +407,7 @@ namespace Imate.API.DataAccess.Repositories
             }
         }
 
-        public IQuestionRepository Question
+        public Interfaces.IQuestionRepository Question
         {
             get
             {
@@ -417,6 +429,7 @@ namespace Imate.API.DataAccess.Repositories
             }
         }
 
+        public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();
         public Task SaveAsync() => _repositoryContext.SaveChangesAsync();
     }
 }
