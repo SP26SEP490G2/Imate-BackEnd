@@ -1,13 +1,14 @@
 using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces;
+using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.DataAccess.Interfaces.UserManagement;
-using Imate.API.DataAccess.Repositories.UserManagement;
 using Imate.API.DataAccess.Repositories;
 using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.QuestionBank;
+using Imate.API.DataAccess.Repositories.UserManagement;
 
 namespace Imate.API.DataAccess.Repositories
 {
@@ -24,6 +25,7 @@ namespace Imate.API.DataAccess.Repositories
         public IQuestionRepository Questions { get; private set; }
         public IMentorRepository Mentors { get; private set; }
         public IAccountRepository Accounts { get; private set; }
+        public ICategoryRepository Categories { get; private set; }
 
         public IQuestionCategoryRepository QuestionCategories { get; private set; }
 
