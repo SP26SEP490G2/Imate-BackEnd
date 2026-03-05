@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -142,6 +142,35 @@ namespace Imate.API.Presentation.Controllers.UserManagement
             catch (Exception ex)
             {
                 return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
+
+        [HttpPost("profile/mentor")]
+        [Authorize]
+        public async Task<IActionResult> SubmitMentorProfile([FromBody] UpdateMentorProfileRequest request)
+        {
+            try
+            {
+                var accountIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(accountIdString, out var accountId))
+                {
+                    return Unauthorized("Token không hợp lệ hoặc không chứa ID người dùng.");
+                }
+
+                await _accountService.SubmitMentorProfileAsync(accountId, request);
+                return NoContent();
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { Status = 404, Message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Status = 500, Message = ex.Message });
             }
         }
 

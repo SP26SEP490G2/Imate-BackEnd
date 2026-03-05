@@ -1,4 +1,4 @@
-﻿using Imate.API.Business.Helper;
+using Imate.API.Business.Helper;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Presentation.ResponseModels.UserManagement;
@@ -18,5 +18,10 @@ namespace Imate.API.Business.Interfaces.UserManagement
         Task<AccountCandidateResponse> GetAccountDetailCandidate(int accountId);
         Task<AccountDashboardResponseModel> GetAccountOverview();
         Task UpdateUserRoleAsync(int accountId, string role);
+
+        /// <summary>
+        /// Tạo mới hoặc cập nhật hồ sơ Mentor cho account hiện tại.
+        /// </summary>
+        Task SubmitMentorProfileAsync(int accountId, UpdateMentorProfileRequest request);
     }
 }

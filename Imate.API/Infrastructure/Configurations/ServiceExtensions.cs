@@ -40,6 +40,7 @@ namespace Imate.API.Infrastructure.Configurations
             // 3. Đăng ký các Repository và Service 
             services.AddScoped<DataAccess.Interfaces.QuestionBank.IQuestionRepository, DataAccess.Repositories.QuestionBank.QuestionRepository>();
             services.AddScoped<IAccountRepository, DataAccess.Repositories.UserManagement.AccountRepository>();
+            services.AddScoped<IMentorRepository, DataAccess.Repositories.Mentors.MentorRepository>();
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             services.AddScoped<IAuditLogService, AuditLogService>();

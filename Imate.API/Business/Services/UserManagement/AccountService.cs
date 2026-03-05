@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces.ExternalServices;
@@ -274,6 +274,80 @@ namespace Imate.API.Business.Services.UserManagement
 
             account.FullName = request.FullName;
             await _unitOfWork.Accounts.UpdateAsync(account);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task SubmitMentorProfileAsync(int accountId, UpdateMentorProfileRequest request)
+        {
+            if (request == null)
+                throw new BadRequestException("Dữ liệu hồ sơ Mentor không hợp lệ.");
+
+            // Lấy account kèm theo navigation Mentor
+            var account = await _unitOfWork.Accounts.GetByIdMentor(accountId)
+                ?? throw new NotFoundException("Không tìm thấy tài khoản.");
+
+            // Chỉ cho phép tài khoản role Mentor nộp hồ sơ
+            var primaryRole = account.AccountRoles.FirstOrDefault()?.Role.Name;
+            if (primaryRole != RoleName.Mentor)
+            {
+                throw new BadRequestException("Chỉ tài khoản Mentor mới có thể nộp hồ sơ Mentor.");
+            }
+
+            // Parse BirthDate nếu có
+            DateOnly? birthDate = null;
+            if (!string.IsNullOrWhiteSpace(request.BirthDate))
+            {
+                if (DateOnly.TryParse(request.BirthDate, out var parsed))
+                {
+                    birthDate = parsed;
+                }
+                else
+                {
+                    throw new BadRequestException("Định dạng ngày sinh không hợp lệ. Vui lòng sử dụng định dạng yyyy-MM-dd.");
+                }
+            }
+
+            if (account.Mentor == null)
+            {
+                var mentor = new Mentor
+                {
+                    AccountId = account.Id,
+                    Bio = request.Bio,
+                    Phone = request.Phone,
+                    BirthDate = birthDate,
+                    Yoe = 0,
+                    CvUrl = null,
+                    CertificateUrl = null,
+                    PricePerSession = request.PricePerSession ?? 0,
+                    BankAccountHolderName = request.BankAccountHolderName,
+                    BankAccountNumber = request.BankAccountNumber,
+                    BankCode = request.BankCode,
+                    AvgRatings = null,
+                    TotalRatingCount = null
+                };
+
+                _unitOfWork.Mentors.Create(mentor);
+            }
+            else
+            {
+                account.Mentor.Bio = request.Bio;
+                account.Mentor.Phone = request.Phone;
+                account.Mentor.BirthDate = birthDate;
+                account.Mentor.PricePerSession = request.PricePerSession ?? account.Mentor.PricePerSession;
+                account.Mentor.BankAccountHolderName = request.BankAccountHolderName;
+                account.Mentor.BankAccountNumber = request.BankAccountNumber;
+                account.Mentor.BankCode = request.BankCode;
+
+                _unitOfWork.Mentors.Update(account.Mentor);
+            }
+
+            // Đảm bảo trạng thái account là PendingVerification sau khi nộp hồ sơ
+            if (account.Status != AccountStatus.PendingVerification)
+            {
+                account.Status = AccountStatus.PendingVerification;
+                await _unitOfWork.Accounts.UpdateAsync(account);
+            }
+
             await _unitOfWork.SaveChangesAsync();
         }
 

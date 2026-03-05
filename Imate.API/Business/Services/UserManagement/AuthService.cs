@@ -1,4 +1,4 @@
-﻿using FirebaseAdmin.Auth;
+using FirebaseAdmin.Auth;
 using Microsoft.Extensions.Options;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
@@ -118,7 +118,7 @@ namespace Imate.API.Business.Services
 
             string uid = decodedToken.Uid;
 
-            // BƯỚC 2: KIỂM TRA EMAIL ĐÃ VERIFY CHƯA (nếu cần)
+            // BƯỚC 2: KIỂM TRA EMAIL ĐÃ VERIFY CHƯA
             bool isEmailVerified = decodedToken.Claims.GetValueOrDefault("email_verified", false) as bool? ?? false;
             if (!isEmailVerified)
             {
