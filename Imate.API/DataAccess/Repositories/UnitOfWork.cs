@@ -26,6 +26,8 @@ namespace Imate.API.DataAccess.Repositories
         public IMentorRepository Mentors { get; private set; }
         public IAccountRepository Accounts { get; private set; }
         public ICategoryRepository Categories { get; private set; }
+        public IPositionRepository Positions { get; private set; }
+        public ISkillRepository Skills { get; private set; }
 
         public IQuestionCategoryRepository QuestionCategories { get; private set; }
 

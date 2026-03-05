@@ -20,6 +20,8 @@ namespace Imate.API.DataAccess.Interfaces
         IMentorRepository Mentors { get; }
         IQuestionCategoryRepository QuestionCategories { get; }
         ICategoryRepository Categories { get; }
+        IPositionRepository Positions { get; }
+        ISkillRepository Skills { get; }
         Task SaveChangesAsync();
         Task SaveAsync();
     }
