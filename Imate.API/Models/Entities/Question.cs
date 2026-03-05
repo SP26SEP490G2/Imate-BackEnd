@@ -1,4 +1,4 @@
-using Imate.API.Models.Enums;
+﻿using Imate.API.Models.Enums;
 
 namespace Imate.API.Models.Entities
 {
@@ -14,6 +14,7 @@ namespace Imate.API.Models.Entities
         public int? ContributedDetailId { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset? UpdatedAt { get; set; }
+        public QuestionApprovalStatus? ApprovalStatus { get; set; } // Trạng thái duyệt: Pending, Approved, Rejected (null cho system questions)
 
         // Navigation properties
         public Account Creator { get; set; } = null!;

@@ -28,9 +28,6 @@ namespace Imate.API.DataAccess.Repositories
         public ICategoryRepository Categories { get; private set; }
         public IPositionRepository Positions { get; private set; }
         public ISkillRepository Skills { get; private set; }
-
-        public IQuestionCategoryRepository QuestionCategories { get; private set; }
-
         public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();
         public Task SaveAsync() => _repositoryContext.SaveChangesAsync();
     }

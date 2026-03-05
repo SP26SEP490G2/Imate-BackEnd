@@ -1,8 +1,8 @@
-﻿using Imate.API.Business.Interfaces;
+﻿using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.Common.Router;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Imate.API.Presentation.Controllers
+namespace Imate.API.Presentation.Controllers.Mentors
 {
     [ApiController]
     [Route("api")]

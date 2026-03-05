@@ -12,6 +12,10 @@
             public const string GetListHotQuestions = "/get-list-hot-questions";
             public const string GetQuestionBankList = "/get-question-bank-list";
             public const string GetListQuestionCategories = "/get-list-question-categories";
+            public const string GetAllSystemQuestionsForStaff = "get-all-system-question-banks-for-staff";
+            public const string GetAllContributedQuestionsForStaff = "get-all-contributed-question-banks-for-staff";
+            public const string CreateSystemQuestionForStaff = "create-system-question-for-staff";
+            public const string UpdateSystemQuestionForStaff = "update-system-question-for-staff/{questionId}";
         }
         public class Authentication
         {
