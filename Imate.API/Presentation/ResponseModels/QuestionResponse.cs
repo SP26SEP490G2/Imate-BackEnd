@@ -1,3 +1,7 @@
+﻿using Imate.API.Models.Entities;
+using Imate.API.Models.Enums;
+using System.ComponentModel.DataAnnotations;
+
 namespace Imate.API.Presentation.ResponseModels
 {
     public class QuestionResponse
@@ -25,7 +29,7 @@ namespace Imate.API.Presentation.ResponseModels
 
         public class QuestionBankList
         {
-            public IEnumerable<QuestionBankItem> Questions { get; set; } = new List<QuestionBankItem>();
+            public IEnumerable<QuestionBankItem> Questions { get; set; }
             public int TotalCount { get; set; }
             public int PageNumber { get; set; }
             public int PageSize { get; set; }
@@ -36,6 +40,36 @@ namespace Imate.API.Presentation.ResponseModels
         {
             public int Id { get; set; }
             public string Name { get; set; } = string.Empty;
+        }
+        public class GetAllSystemQuestionsForStaff
+        {
+            public int Id { get; set; }
+            public string Content { get; set; }
+            public DifficultyLevel? Difficulty { get; set; }
+            public bool IsFromSystem { get; set; }
+            public bool IsActive { get; set; }
+            public int CreatorId { get; set; }
+            public string CreatorName { get; set; }
+            public string? SampleAnswer { get; set; }
+            public List<string> CategoriesName { get; set; }
+            public List<string> SkillsName { get; set; }
+            public List<string> PositionsName { get; set; }
+        }
+        public class GetAllContributedQuestionsForStaff
+        {
+            public int Id { get; set; }
+            public string Content { get; set; }
+            public DifficultyLevel? Difficulty { get; set; }
+            public bool IsFromSystem { get; set; }
+            public bool IsActive { get; set; }
+            public int CreatorId { get; set; }
+            public string CreatorName { get; set; }
+            public string? SampleAnswer { get; set; }
+            public int? ContributedDetailId { get; set; } // Cho phép NULL
+            public ContributedDetail ContributedDetail { get; set; } // Quan hệ 1:0..1
+            public List<string> CategoriesName { get; set; }
+            public List<string> SkillsName { get; set; }
+            public List<string> PositionsName { get; set; }
         }
     }
 }

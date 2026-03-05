@@ -6,9 +6,10 @@ using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Repositories;
 using Imate.API.ExternalServices;
 using Imate.API.BackgroundServices;
-
-using Imate.API.Business.Interfaces;
-using Imate.API.Business.Services;
+using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.Business.Interfaces.QuestionBank;
+using Imate.API.Business.Services.Mentors;
+using Imate.API.Business.Services.QuestionBank;
 
 namespace Imate.API.Configurations
 {

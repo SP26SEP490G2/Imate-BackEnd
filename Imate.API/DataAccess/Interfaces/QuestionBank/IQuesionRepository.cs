@@ -6,8 +6,6 @@ namespace Imate.API.DataAccess.Interfaces.QuestionBank
 {
     public interface IQuestionRepository : IRepositoryBase<Question>
     {
-        IQueryable<Question> GetAllSystemQuestionsForStaff();
-        IQueryable<Question> GetAllContributedForStaffQuestions();
         Task<IEnumerable<Question>> GetPublicSystemQuestionBanksAsync();
         Task<IEnumerable<Question>> GetAllContributedQuestionsWithRelatedDataAsync();
         Task<Question> GetQuestionByIdWithRelatedDataAsync(int questionId);
@@ -30,8 +28,11 @@ namespace Imate.API.DataAccess.Interfaces.QuestionBank
         Task<IEnumerable<Question>> GetLimitedContributedQuestionsWithRelatedDataAsync();
         IQueryable<Question> GetMyContributedQuestions(int accountId);
 
-        //New
+        //Using
         Task<IEnumerable<QuestionResponse.ListHotQuestion>> GetListHotQuestionsAsync();
-        Task<QuestionResponse.QuestionBankList> GetQuestionBankListAsync(QuestionRequest.GetQuestionBankList request);
+        IQueryable<Question> GetQuestionBankListAsync();
+        Task<IEnumerable<QuestionResponse.QuestionCategoryItem>> GetListQuestionCategoriesAsync();
+        IQueryable<Question> GetAllSystemQuestionsForStaff();
+        IQueryable<Question> GetAllContributedForStaffQuestions();
     }
 }

@@ -49,7 +49,6 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
-            services.AddScoped<IQuestionCategoryRepository, QuestionCategoryRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             //Add Merory Cache
             services.AddMemoryCache();

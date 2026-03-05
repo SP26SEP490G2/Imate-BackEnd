@@ -1,8 +1,8 @@
-﻿using Imate.API.Business.Interfaces;
+﻿using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Presentation.ResponseModels;
 
-namespace Imate.API.Business.Services
+namespace Imate.API.Business.Services.Mentors
 {
     public class MentorService : IMentorService
     {
