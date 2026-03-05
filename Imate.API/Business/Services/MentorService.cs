@@ -17,7 +17,7 @@ namespace Imate.API.Business.Services
         {
             try
             {
-                return await _unitOfWork.Mentor.GetListPreviewMentorsAsync();
+                return await _unitOfWork.Mentors.GetListPreviewMentorsAsync();
             }
             catch (Exception ex)
             {

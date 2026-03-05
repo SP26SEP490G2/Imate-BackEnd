@@ -368,7 +368,7 @@ namespace Imate.API.Business.Services
             }
 
             // 4. (Quan trọng) Đối chiếu xem tài khoản local có khớp với token Firebase không
-            if (account.ProviderId != uid || account.Email != email)
+            if (account.ProviderId != uid || !string.Equals(account.Email, email, StringComparison.OrdinalIgnoreCase))
             {
                 // Đảm bảo user trong JWT (accountId) chính là user trong FirebaseIdToken (uid)
                 throw new ForbiddenException("Hành động không được phép. Tài khoản không khớp.");
