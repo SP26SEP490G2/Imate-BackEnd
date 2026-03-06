@@ -2,6 +2,7 @@ using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
+using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces.UserManagement;
 using Imate.API.DataAccess.Repositories;
 using Imate.API.Models.Entities;
@@ -21,6 +22,7 @@ namespace Imate.API.DataAccess.Interfaces
         ICategoryRepository Categories { get; }
         IPositionRepository Positions { get; }
         ISkillRepository Skills { get; }
+        IRecruiterRepository Recruiters { get; }
         Task SaveChangesAsync();
         Task SaveAsync();
     }

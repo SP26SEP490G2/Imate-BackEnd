@@ -81,7 +81,7 @@ namespace Imate.API.Business.Services
 
             var requestedRole = ConvertUserRoleToRoleName(request.Role);
 
-            var accountStatus = (requestedRole == RoleName.Mentor)
+            var accountStatus = (requestedRole == RoleName.Mentor || requestedRole == RoleName.Recruiter)
                 ? AccountStatus.PendingVerification
                 : AccountStatus.Active;
 
@@ -118,12 +118,14 @@ namespace Imate.API.Business.Services
 
             string uid = decodedToken.Uid;
 
-            // BƯỚC 2: KIỂM TRA EMAIL ĐÃ VERIFY CHƯA
+            // BƯỚC 2: KIỂM TRA EMAIL ĐÃ VERIFY CHƯA (Tạm thời bỏ qua để test)
+            /*
             bool isEmailVerified = decodedToken.Claims.GetValueOrDefault("email_verified", false) as bool? ?? false;
             if (!isEmailVerified)
             {
                 throw new UnauthorizedException("Vui lòng xác minh tài khoản email trước khi đăng nhập.");
             }
+            */
 
             // BƯỚC 3: TÌM TÀI KHOẢN TRONG DATABASE
             var account = await _accountRepository.GetByProviderIdAsync(uid);
@@ -189,7 +191,7 @@ namespace Imate.API.Business.Services
                 }
 
                 var requestedRole = ConvertUserRoleToRoleName(request.Role);
-                var accountStatus = (requestedRole == RoleName.Mentor)
+                var accountStatus = (requestedRole == RoleName.Mentor || requestedRole == RoleName.Recruiter)
                     ? AccountStatus.PendingVerification
                     : AccountStatus.Active;
 

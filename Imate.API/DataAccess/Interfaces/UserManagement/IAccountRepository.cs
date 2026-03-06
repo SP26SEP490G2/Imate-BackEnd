@@ -1,4 +1,4 @@
-﻿using Imate.API.Models.Entities;
+using Imate.API.Models.Entities;
 
 namespace Imate.API.DataAccess.Interfaces.UserManagement
 {
@@ -17,7 +17,7 @@ namespace Imate.API.DataAccess.Interfaces.UserManagement
         Task DeleteAsync(Account account);
         Task<Account?> GetByIdWithDetailsAsync(int id);
         Task<Account> GetByIdMentor(int id);
-
+        Task<Account> GetByIdRecruiter(int id);
         IQueryable<Account> GetAllAccount();
 
 

@@ -44,9 +44,8 @@ namespace Imate.API.Presentation.Controllers.UserManagement
         public async Task<IActionResult> GetAllAccountAsync([FromQuery] AccountParams accountParams)
         {
             var pagedResult = await _accountService.GetAllAccountAsync(accountParams);
-            Response.Headers.Add("X-Pagination",
-               System.Text.Json.JsonSerializer.Serialize(
-            new
+            Response.Headers.Append("X-Pagination",
+                System.Text.Json.JsonSerializer.Serialize(new
             {
                 pagedResult.TotalCount,
                 pagedResult.PageSize,
@@ -116,7 +115,7 @@ namespace Imate.API.Presentation.Controllers.UserManagement
                     return Unauthorized("Token không hợp lệ hoặc không chứa ID người dùng.");
                 }
                 var subscription = User.FindFirstValue("SubscriptionPackage");
-                var userProfile = await _accountService.GetUserProfileAsync(accountId, subscription);
+                var userProfile = await _accountService.GetUserProfileAsync(accountId, subscription ?? string.Empty);
 
                 return Ok(userProfile);
             }
