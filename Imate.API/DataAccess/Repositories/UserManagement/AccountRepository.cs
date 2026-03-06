@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Imate.API.DataAccess.Interfaces.UserManagement;
 using Imate.API.Models.Entities;
 using Imate.API.DataAccess.ApplicationDbContext;
@@ -79,6 +79,14 @@ namespace Imate.API.DataAccess.Repositories.UserManagement
         {
             return await _context.Accounts
                 .Include(a => a.Mentor)
+                .Include(a => a.AccountRoles)
+                    .ThenInclude(ar => ar.Role)
+                .FirstOrDefaultAsync(a => a.Id == id);
+        }
+        public async Task<Account> GetByIdRecruiter(int id)
+        {
+            return await _context.Accounts
+                .Include(a => a.Recruiter)
                 .Include(a => a.AccountRoles)
                     .ThenInclude(ar => ar.Role)
                 .FirstOrDefaultAsync(a => a.Id == id);

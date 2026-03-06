@@ -9,6 +9,9 @@ using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Business.Interfaces.UserManagement;
 using Imate.API.Business.Services;
 using Imate.API.Business.Services.UserManagement;
+using Imate.API.Business.Interfaces.Recruiters;
+using Imate.API.Business.Services.Recruiters;
+using Imate.API.Business.Services.Classification;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
@@ -19,6 +22,9 @@ using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.Payment;
 using Imate.API.DataAccess.Repositories.QuestionBank;
 using Imate.API.DataAccess.Repositories.UserManagement;
+using Imate.API.DataAccess.Interfaces.Recruiters;
+using Imate.API.DataAccess.Repositories.Recruiters;
+using Imate.API.DataAccess.Repositories.Classification;
 using System.Text;
 using System.Reflection;
 using Imate.API.Business.Services.ExternalServices;
@@ -38,10 +44,13 @@ namespace Imate.API.Infrastructure.Configurations
             // 3 Cấu hình Swagger
             ConfigureSwagger(services);
             // 3. Đăng ký các Repository và Service 
-            services.AddScoped<DataAccess.Interfaces.QuestionBank.IQuestionRepository, DataAccess.Repositories.QuestionBank.QuestionRepository>();
+            services.AddScoped<IQuestionRepository, QuestionRepository>();
             services.AddScoped<IAccountRepository, DataAccess.Repositories.UserManagement.AccountRepository>();
-            services.AddScoped<IMentorRepository, DataAccess.Repositories.Mentors.MentorRepository>();
+            services.AddScoped<IMentorRepository, MentorRepository>();
+            services.AddScoped<IRecruiterRepository, RecruiterRepository>();
+
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
+            services.AddScoped<IRecruiterService, RecruiterService>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             services.AddScoped<IAuditLogService, AuditLogService>();
             services.AddScoped<IAuthService, AuthService>();
@@ -51,6 +60,14 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            // Classification Services & Repositories
+            services.AddScoped<IPositionService, PositionService>();
+            services.AddScoped<IPositionRepository, PositionRepository>();
+            services.AddScoped<ISkillService, SkillService>();
+            services.AddScoped<ISkillRepository, SkillRepository>();
+            services.AddScoped<ICompanyService, CompanyService>();
+            services.AddScoped<ICompanyRepository, CompanyRepository>();
             //Add Merory Cache
             services.AddMemoryCache();
             // Register HttpClient for Resend API

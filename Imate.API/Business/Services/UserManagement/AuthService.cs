@@ -81,7 +81,7 @@ namespace Imate.API.Business.Services
 
             var requestedRole = ConvertUserRoleToRoleName(request.Role);
 
-            var accountStatus = (requestedRole == RoleName.Mentor)
+            var accountStatus = (requestedRole == RoleName.Mentor || requestedRole == RoleName.Recruiter)
                 ? AccountStatus.PendingVerification
                 : AccountStatus.Active;
 
@@ -189,7 +189,7 @@ namespace Imate.API.Business.Services
                 }
 
                 var requestedRole = ConvertUserRoleToRoleName(request.Role);
-                var accountStatus = (requestedRole == RoleName.Mentor)
+                var accountStatus = (requestedRole == RoleName.Mentor || requestedRole == RoleName.Recruiter)
                     ? AccountStatus.PendingVerification
                     : AccountStatus.Active;
 
