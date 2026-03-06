@@ -15,8 +15,8 @@ namespace Imate.API.DataAccess.Configurations
             builder.HasIndex(e => e.Name).IsUnique();
             builder.Property(e => e.ImageUrl).IsRequired().HasColumnType("nvarchar(500)");
             builder.Property(e => e.IsActive).IsRequired();
-            builder.Property(e => e.CreatedAt).IsRequired().HasColumnType("datetimeoffset");
-            builder.Property(e => e.UpdatedAt).IsRequired(false).HasColumnType("datetimeoffset");
+            builder.Property(e => e.CreatedAt).IsRequired().HasColumnType("datetime");
+            builder.Property(e => e.UpdatedAt).IsRequired(false).HasColumnType("datetime");
         }
     }
 }

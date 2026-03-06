@@ -2,6 +2,7 @@ using Imate.API.Business.Helper;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels;
 using Imate.API.Presentation.ResponseModels;
+using Imate.API.Presentation.ResponseModels.Classification;
 
 namespace Imate.API.Business.Interfaces.QuestionBank
 {
@@ -14,5 +15,6 @@ namespace Imate.API.Business.Interfaces.QuestionBank
         Task<PagedList<QuestionResponse.GetAllContributedQuestionsForStaff>> GetAllContributedQuestionsForStaffAsync(QuestionRequest.GetContributedQuestionParams questionParams);
         Task<Question> CreateSystemQuestionForStaffAsync(QuestionRequest.CreateSystemQuestionForStaff request);
         Task<Question> UpdateSystemQuestionForStaffAsync(int questionId, QuestionRequest.UpdateSystemQuestionForStaff request);
+        Task<CompanyPositionsSkillsResponse> GetPositionsAndSkillsByCompanyAsync(int companyId);
     }
 }

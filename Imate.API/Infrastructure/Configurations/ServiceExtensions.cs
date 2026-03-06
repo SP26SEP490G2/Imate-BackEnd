@@ -7,18 +7,22 @@ using Microsoft.OpenApi.Models;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Business.Interfaces.UserManagement;
+using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Business.Services;
 using Imate.API.Business.Services.UserManagement;
+using Imate.API.Business.Services.Classification;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.DataAccess.Interfaces.UserManagement;
+using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Repositories;
 using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.Payment;
 using Imate.API.DataAccess.Repositories.QuestionBank;
 using Imate.API.DataAccess.Repositories.UserManagement;
+using Imate.API.DataAccess.Repositories.Classification;
 using System.Text;
 using System.Reflection;
 using Imate.API.Business.Services.ExternalServices;
@@ -56,6 +60,15 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IMentorRepository, MentorRepository>();
             services.AddScoped<IRecruiterRepository, RecruiterRepository>();
             services.AddScoped<IRecruiterService, RecruiterService>();
+            
+            // Classification Services & Repositories
+            services.AddScoped<IPositionService, PositionService>();
+            services.AddScoped<IPositionRepository, PositionRepository>();
+            services.AddScoped<ISkillService, SkillService>();
+            services.AddScoped<ISkillRepository, SkillRepository>();
+            services.AddScoped<ICompanyService, CompanyService>();
+            services.AddScoped<ICompanyRepository, CompanyRepository>();
+
             //Add Merory Cache
             services.AddMemoryCache();
             // Register HttpClient for Resend API
@@ -74,7 +87,6 @@ namespace Imate.API.Infrastructure.Configurations
                 options.MultipartBodyLengthLimit = 104857600;
             });
             services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
-
 
 
 
