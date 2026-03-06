@@ -11,7 +11,9 @@ using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Business.Services;
 using Imate.API.Business.Services.UserManagement;
 using Imate.API.Business.Interfaces.Recruiters;
+using Imate.API.Business.Interfaces.Staff;
 using Imate.API.Business.Services.Recruiters;
+using Imate.API.Business.Services.Staff;
 using Imate.API.Business.Services.Classification;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Mentors;
@@ -74,6 +76,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ICompanyService, CompanyService>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
+            services.AddScoped<IStaffReviewService, StaffReviewService>();
 
             //Add Merory Cache
             services.AddMemoryCache();
