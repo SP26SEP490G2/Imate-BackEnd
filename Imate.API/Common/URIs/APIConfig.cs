@@ -22,11 +22,32 @@ namespace Imate.API.Common.Router
             public const string CreateSystemQuestionForStaff = "create-system-question-for-staff";
             public const string UpdateSystemQuestionForStaff = "update-system-question-for-staff/{questionId}";
         }
+        public class Position
+        {
+            public const string GetAllPositions = "/get-positions";
+        }
+        public class Category
+        {
+            public const string GetAllCategories = "/get-categories";
+        }
+        public class Companies
+        {
+            public const string GetAllCompanies = "/get-companies";
+        }
+        public class Skills
+        {
+            public const string GetAllSkills = "/get-skills";
+        }
         public class Authentication
         {
             public const string RegisterEmail = "register-email";
             public const string LoginEmail = "login-email";
-
+            public const string RegisterLoginWithGoogle = "google";
+            public const string RefreshAuthenToken = "refresh-token";
+            public const string ChangePassword = "change-password";
+            public const string GenerateActionCode = "generate-action-code";
+            public const string SendActionEmail = "send-action-email";
+            public const string ActionAuthenHandler = "action-handler";
         }
     }
 }

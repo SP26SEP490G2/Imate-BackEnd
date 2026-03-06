@@ -1,6 +1,9 @@
-﻿using Imate.API.Business.Exceptions;
+﻿using Google;
+using Imate.API.Presentation.ResponseModels.Classification;
+using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces.QuestionBank;
+using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
@@ -13,10 +16,12 @@ namespace Imate.API.Business.Services.QuestionBank
     public class QuestionService : IQuestionService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ImateDbContext _context;
 
-        public QuestionService(IUnitOfWork unitOfWork)
+        public QuestionService(IUnitOfWork unitOfWork, ImateDbContext context)
         {
             _unitOfWork = unitOfWork;
+            _context = context;
         }
 
         public async Task<IEnumerable<QuestionResponse.ListHotQuestion>> GetListHotQuestionsAsync()
@@ -477,6 +482,61 @@ namespace Imate.API.Business.Services.QuestionBank
             {
                 questionToUpdate.QuestionPositions.Add(new QuestionPosition { QuestionId = questionId, PositionId = positionId });
             }
+        }
+        public async Task<CompanyPositionsSkillsResponse> GetPositionsAndSkillsByCompanyAsync(int companyId)
+        {
+            // Query questions that:
+            // 1. Are contributed questions (not system questions) - because only contributed questions have company
+            // 2. Are approved and active
+            // 3. Belong to the specified company
+            var questions = await _context.Questions
+                .Where(q => !q.IsFromSystem // Only contributed questions have company
+                    && q.IsActive
+                    && q.ApprovalStatus == QuestionApprovalStatus.Approved
+                    && q.ContributedDetail != null
+                    && q.ContributedDetail.CompanyId == companyId)
+                .Include(q => q.QuestionPositions)
+                    .ThenInclude(qp => qp.Position)
+                .Include(q => q.QuestionSkills)
+                    .ThenInclude(qs => qs.Skill)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Extract distinct positions
+            var distinctPositions = questions
+                .SelectMany(q => q.QuestionPositions)
+                .Select(qp => qp.Position)
+                .Where(p => p != null && p.IsActive)
+                .GroupBy(p => p.Id)
+                .Select(g => g.First())
+                .Select(p => new PositionForCompanyResponse
+                {
+                    Id = p.Id,
+                    Name = p.Name
+                })
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            // Extract distinct skills
+            var distinctSkills = questions
+                .SelectMany(q => q.QuestionSkills)
+                .Select(qs => qs.Skill)
+                .Where(s => s != null && s.IsActive)
+                .GroupBy(s => s.Id)
+                .Select(g => g.First())
+                .Select(s => new SkillForCompanyResponse
+                {
+                    Id = s.Id,
+                    Name = s.Name
+                })
+                .OrderBy(s => s.Name)
+                .ToList();
+
+            return new CompanyPositionsSkillsResponse
+            {
+                Positions = distinctPositions,
+                Skills = distinctSkills
+            };
         }
 
     }

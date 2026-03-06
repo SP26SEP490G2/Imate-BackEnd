@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Business.Interfaces.UserManagement;
+using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Business.Services;
 using Imate.API.Business.Services.UserManagement;
 using Imate.API.Business.Interfaces.Recruiters;
@@ -17,6 +18,7 @@ using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.DataAccess.Interfaces.UserManagement;
+using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Repositories;
 using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.Payment;
@@ -60,7 +62,8 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-
+            services.AddScoped<IRecruiterRepository, RecruiterRepository>();
+            services.AddScoped<IRecruiterService, RecruiterService>();
             // Classification Services & Repositories
             services.AddScoped<IPositionService, PositionService>();
             services.AddScoped<IPositionRepository, PositionRepository>();
@@ -68,6 +71,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ICompanyService, CompanyService>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
+
             //Add Merory Cache
             services.AddMemoryCache();
             // Register HttpClient for Resend API
@@ -86,7 +90,6 @@ namespace Imate.API.Infrastructure.Configurations
                 options.MultipartBodyLengthLimit = 104857600;
             });
             services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
-
 
 
 

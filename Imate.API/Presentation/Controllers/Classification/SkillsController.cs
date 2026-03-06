@@ -1,6 +1,7 @@
 ﻿using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Classification;
+using Imate.API.Common.Router;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Classification;
@@ -30,7 +31,7 @@ namespace Imate.API.Presentation.Controllers.Classification
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             return userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId) ? userId : null;
         }
-        [HttpGet("skills")]
+        [HttpGet(APIConfig.Skills.GetAllSkills)]
         public async Task<IActionResult> GetAllSkills([FromQuery] CommonParams skillParams)
         {
             var pagedResult = await _skillService.GetAllSkillsAsync(skillParams);
