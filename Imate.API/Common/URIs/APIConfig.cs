@@ -21,6 +21,12 @@
         {
             public const string RegisterEmail = "register-email";
             public const string LoginEmail = "login-email";
+            public const string RegisterLoginWithGoogle = "google";
+            public const string RefreshAuthenToken = "refresh-token";
+            public const string ChangePassword = "change-password";
+            public const string GenerateActionCode = "generate-action-code";
+            public const string SendActionEmail = "send-action-email";
+            public const string ActionAuthenHandler = "action-handler";
 
         }
     }

@@ -11,6 +11,8 @@ using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Presentation.ResponseModels.UserManagement;
+using Imate.API.Presentation.RequestModels;
+using Imate.API.Business.Interfaces.Mentors;
 
 namespace Imate.API.Presentation.Controllers.UserManagement
 {
@@ -21,12 +23,14 @@ namespace Imate.API.Presentation.Controllers.UserManagement
         private readonly Business.Interfaces.UserManagement.IAccountService _accountService;
         private readonly IAuditLogService _auditLogService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMentorService _mentorService;
 
-        public AccountsController(Business.Interfaces.UserManagement.IAccountService accountService, IAuditLogService auditLogService, IUnitOfWork unitOfWork)
+        public AccountsController(Business.Interfaces.UserManagement.IAccountService accountService, IAuditLogService auditLogService, IUnitOfWork unitOfWork, IMentorService mentorService)
         {
             _accountService = accountService;
             _auditLogService = auditLogService;
             _unitOfWork = unitOfWork;
+            _mentorService = mentorService;
         }
 
         private int? GetCurrentUserId()
@@ -143,6 +147,15 @@ namespace Imate.API.Presentation.Controllers.UserManagement
             {
                 return BadRequest(new { Status = 400, Message = ex.Message });
             }
+        }
+
+
+        [HttpPut("mentor-profile")]
+        public async Task<IActionResult> UpdateMyMentorProfile([FromBody] UpdateMentorProfileRequest request)
+        {
+            var accountId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            await _mentorService.UpdateMentorProfileAsync(accountId, request);
+            return NoContent();
         }
 
         [HttpPut("profile/role")]

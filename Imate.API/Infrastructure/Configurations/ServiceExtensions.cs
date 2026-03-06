@@ -50,6 +50,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IMentorRepository, MentorRepository>();
             //Add Merory Cache
             services.AddMemoryCache();
             // Register HttpClient for Resend API

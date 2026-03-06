@@ -94,7 +94,7 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
             }
         }
 
-        [HttpPost("refresh-token")]
+        [HttpPost(APIConfig.Authentication.RefreshAuthenToken)]
         [AllowAnonymous]
         [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
@@ -126,7 +126,7 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
             return NoContent();
         }
 
-        [HttpPut("change-password")]
+        [HttpPut(APIConfig.Authentication.ChangePassword)]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
             try
@@ -162,7 +162,7 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
             }
         }
 
-        [HttpPost("generate-action-code")]
+        [HttpPost(APIConfig.Authentication.GenerateActionCode)]
         [AllowAnonymous]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         public async Task<IActionResult> GenerateActionCode([FromBody] GenerateActionCodeRequest request)
@@ -186,7 +186,7 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
             }
         }
 
-        [HttpPost("send-action-email")]
+        [HttpPost(APIConfig.Authentication.SendActionEmail)]
         [AllowAnonymous]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         public async Task<IActionResult> SendActionEmail([FromBody] SendActionEmailRequest request)
@@ -202,7 +202,7 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
             }
         }
 
-        [HttpGet("action-handler")]
+        [HttpGet(APIConfig.Authentication.ActionAuthenHandler)]
         [AllowAnonymous]
         public IActionResult ActionHandler([FromQuery] string mode, [FromQuery] string oobCode)
         {
