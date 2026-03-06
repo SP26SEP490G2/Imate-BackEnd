@@ -97,6 +97,42 @@ namespace Imate.API.DataAccess.Repositories.UserManagement
                 .ThenInclude(ar => ar.Role)
                 .AsNoTracking();
         }
+
+        public async Task<IEnumerable<Account>> GetPendingMentorAccountsAsync()
+        {
+            return await _context.Accounts
+                .Include(a => a.AccountRoles)
+                    .ThenInclude(ar => ar.Role)
+                .Include(a => a.Mentor)
+                    .ThenInclude(m => m.MentorSkills)
+                        .ThenInclude(ms => ms.Skill)
+                .Include(a => a.Mentor)
+                    .ThenInclude(m => m.MentorPositions)
+                        .ThenInclude(mp => mp.Position)
+                .Include(a => a.Mentor)
+                    .ThenInclude(m => m.MentorPositions)
+                        .ThenInclude(mp => mp.Position)
+                .Include(a => a.Mentor)
+                    .ThenInclude(m => m.MentorCompanies)
+                        .ThenInclude(mc => mc.Company)
+                .Where(a => a.Status == Models.Enums.AccountStatus.PendingVerification 
+                    && a.AccountRoles.Any(ar => ar.Role.Name == Models.Enums.RoleName.Mentor))
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Account>> GetPendingRecruiterAccountsAsync()
+        {
+            return await _context.Accounts
+                .Include(a => a.AccountRoles)
+                    .ThenInclude(ar => ar.Role)
+                .Include(a => a.Recruiter)
+                .Where(a => a.Status == Models.Enums.AccountStatus.PendingVerification 
+                    && a.AccountRoles.Any(ar => ar.Role.Name == Models.Enums.RoleName.Recruiter))
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task DeleteAsync(Account account)
         {
             _context.Accounts.Remove(account);

@@ -18,6 +18,8 @@ namespace Imate.API.DataAccess.Interfaces.UserManagement
         Task<Account?> GetByIdWithDetailsAsync(int id);
         Task<Account> GetByIdMentor(int id);
         Task<Account> GetByIdRecruiter(int id);
+        Task<IEnumerable<Account>> GetPendingMentorAccountsAsync();
+        Task<IEnumerable<Account>> GetPendingRecruiterAccountsAsync();
         IQueryable<Account> GetAllAccount();
 
 
