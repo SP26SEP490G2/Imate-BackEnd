@@ -21,6 +21,7 @@ namespace Imate.API.DataAccess.Interfaces
         ICategoryRepository Categories { get; }
         IPositionRepository Positions { get; }
         ISkillRepository Skills { get; }
+        IRecruiterRepository Recruiters { get; }
         Task SaveChangesAsync();
         Task SaveAsync();
     }

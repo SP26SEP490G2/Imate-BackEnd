@@ -28,6 +28,8 @@
 
   <ItemGroup>
     <Folder Include="Common\Constants\" />
+    <Folder Include="Presentation\RequestModels\Recruiter\" />
+    <Folder Include="Presentation\ResponseModels\Recruiter\" />
   </ItemGroup>
 
 </Project>

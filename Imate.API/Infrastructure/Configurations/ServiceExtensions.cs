@@ -22,6 +22,8 @@ using Imate.API.DataAccess.Repositories.UserManagement;
 using System.Text;
 using System.Reflection;
 using Imate.API.Business.Services.ExternalServices;
+using Imate.API.Business.Interfaces.Recruiter;
+using Imate.API.Business.Services.Recruiter;
 
 
 namespace Imate.API.Infrastructure.Configurations
@@ -52,6 +54,8 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IMentorRepository, MentorRepository>();
+            services.AddScoped<IRecruiterRepository, RecruiterRepository>();
+            services.AddScoped<IRecruiterService, RecruiterService>();
             //Add Merory Cache
             services.AddMemoryCache();
             // Register HttpClient for Resend API

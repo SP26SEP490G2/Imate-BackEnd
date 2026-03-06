@@ -13,6 +13,7 @@ using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Presentation.ResponseModels.UserManagement;
 using Imate.API.Presentation.RequestModels;
 using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.Business.Interfaces.Recruiter;
 
 namespace Imate.API.Presentation.Controllers.UserManagement
 {
@@ -24,13 +25,14 @@ namespace Imate.API.Presentation.Controllers.UserManagement
         private readonly IAuditLogService _auditLogService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMentorService _mentorService;
-
-        public AccountsController(Business.Interfaces.UserManagement.IAccountService accountService, IAuditLogService auditLogService, IUnitOfWork unitOfWork, IMentorService mentorService)
+        private readonly IRecruiterService _recruiterService;
+        public AccountsController(Business.Interfaces.UserManagement.IAccountService accountService, IAuditLogService auditLogService, IUnitOfWork unitOfWork, IMentorService mentorService, IRecruiterService recruiterService)
         {
             _accountService = accountService;
             _auditLogService = auditLogService;
             _unitOfWork = unitOfWork;
             _mentorService = mentorService;
+            _recruiterService = recruiterService;
         }
 
         private int? GetCurrentUserId()
@@ -157,7 +159,15 @@ namespace Imate.API.Presentation.Controllers.UserManagement
             await _mentorService.UpdateMentorProfileAsync(accountId, request);
             return NoContent();
         }
-        
+
+        [HttpPut("recruiter-profile")]
+        public async Task<IActionResult> UpdateMyRecruiterProfile([FromBody] UpdateRecruiterProfileRequest request)
+        {
+            var accountId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            await _recruiterService.UpdataRecruiterrProfileAsync(accountId, request);
+            return NoContent();
+        }
+
         [HttpPost("profile/mentor")]
         [Authorize]
         public async Task<IActionResult> SubmitMentorProfile([FromBody] UpdateMentorProfileRequest request)
