@@ -30,6 +30,9 @@ using Imate.API.DataAccess.Repositories.Classification;
 using System.Text;
 using System.Reflection;
 using Imate.API.Business.Services.ExternalServices;
+using Imate.API.ExternalServices;
+using Amazon.S3;
+
 
 
 namespace Imate.API.Infrastructure.Configurations
@@ -75,14 +78,30 @@ namespace Imate.API.Infrastructure.Configurations
             //Add Merory Cache
             services.AddMemoryCache();
             // Register HttpClient for Resend API
-            services.AddHttpClient<EmailService>();
-            services.AddScoped<IEmailService, EmailService>();
+            services.AddHttpClient<Imate.API.Business.Services.ExternalServices.EmailService>();
+            services.AddScoped<IEmailService, Imate.API.Business.Services.ExternalServices.EmailService>();
 
             services.AddScoped<IUserCvRepository, UserCvRepository>();
 
             // AWS S3 Storage Service
-            //services.Configure<AwsS3Config>(
-            //    configuration.GetSection(AwsS3Config.ConfigSectionName));
+            services.Configure<AwsS3Config>(
+                configuration.GetSection(AwsS3Config.ConfigSectionName));
+
+            var awsS3Config = configuration.GetSection(AwsS3Config.ConfigSectionName).Get<AwsS3Config>();
+            if (awsS3Config != null)
+            {
+                services.AddSingleton<IAmazonS3>(sp =>
+                {
+                    var credentials = new Amazon.Runtime.BasicAWSCredentials(awsS3Config.AccessKey, awsS3Config.SecretKey);
+                    var config = new AmazonS3Config
+                    {
+                        RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsS3Config.RegionName)
+                    };
+                    return new AmazonS3Client(credentials, config);
+                });
+            }
+
+            services.AddScoped<IAwsS3StorageService, AwsS3StorageService>();
 
 
             services.Configure<FormOptions>(options =>
