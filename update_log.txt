@@ -1,0 +1,132 @@
+﻿Build started...
+Build succeeded.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (9ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [MigrationId], [ProductVersion]
+      FROM [__EFMigrationsHistory]
+      ORDER BY [MigrationId];
+info: Microsoft.EntityFrameworkCore.Migrations[20402]
+      Applying migration '20260307201943_SeedLookupData'.
+Applying migration '20260307201943_SeedLookupData'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (15ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      DECLARE @var0 sysname;
+      SELECT @var0 = [d].[name]
+      FROM [sys].[default_constraints] [d]
+      INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+      WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Companies]') AND [c].[name] = N'UpdatedAt');
+      IF @var0 IS NOT NULL EXEC(N'ALTER TABLE [Companies] DROP CONSTRAINT [' + @var0 + '];');
+      ALTER TABLE [Companies] ALTER COLUMN [UpdatedAt] datetime NULL;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      DECLARE @var1 sysname;
+      SELECT @var1 = [d].[name]
+      FROM [sys].[default_constraints] [d]
+      INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+      WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Companies]') AND [c].[name] = N'CreatedAt');
+      IF @var1 IS NOT NULL EXEC(N'ALTER TABLE [Companies] DROP CONSTRAINT [' + @var1 + '];');
+      ALTER TABLE [Companies] ALTER COLUMN [CreatedAt] datetime NOT NULL;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'IsActive', N'Name', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Categories]'))
+          SET IDENTITY_INSERT [Categories] ON;
+      INSERT INTO [Categories] ([Id], [CreatedAt], [IsActive], [Name], [UpdatedAt])
+      VALUES (1, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Behavioral', NULL),
+      (2, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Technical', NULL),
+      (3, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'System Design', NULL),
+      (4, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Coding', NULL),
+      (5, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Case Study', NULL);
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'IsActive', N'Name', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Categories]'))
+          SET IDENTITY_INSERT [Categories] OFF;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'IsActive', N'Name', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Positions]'))
+          SET IDENTITY_INSERT [Positions] ON;
+      INSERT INTO [Positions] ([Id], [CreatedAt], [IsActive], [Name], [UpdatedAt])
+      VALUES (1, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Backend Developer', NULL),
+      (2, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Frontend Developer', NULL),
+      (3, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Fullstack Developer', NULL),
+      (4, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Mobile Developer', NULL),
+      (5, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'DevOps Engineer', NULL),
+      (6, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Data Engineer', NULL),
+      (7, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'QA Engineer', NULL),
+      (8, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Business Analyst', NULL);
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'IsActive', N'Name', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Positions]'))
+          SET IDENTITY_INSERT [Positions] OFF;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'Name', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Roles]'))
+          SET IDENTITY_INSERT [Roles] ON;
+      INSERT INTO [Roles] ([Id], [CreatedAt], [Name], [UpdatedAt])
+      VALUES (1, '2024-01-01T00:00:00.0000000+00:00', N'Candidate', NULL),
+      (2, '2024-01-01T00:00:00.0000000+00:00', N'Mentor', NULL),
+      (3, '2024-01-01T00:00:00.0000000+00:00', N'Recruiter', NULL),
+      (4, '2024-01-01T00:00:00.0000000+00:00', N'Staff', NULL),
+      (5, '2024-01-01T00:00:00.0000000+00:00', N'Admin', NULL);
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'Name', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Roles]'))
+          SET IDENTITY_INSERT [Roles] OFF;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'IsActive', N'Name', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Skills]'))
+          SET IDENTITY_INSERT [Skills] ON;
+      INSERT INTO [Skills] ([Id], [CreatedAt], [IsActive], [Name], [UpdatedAt])
+      VALUES (1, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'C#', NULL),
+      (2, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Java', NULL),
+      (3, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Python', NULL),
+      (4, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'JavaScript', NULL),
+      (5, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'TypeScript', NULL),
+      (6, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'React', NULL),
+      (7, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Angular', NULL),
+      (8, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'.NET', NULL),
+      (9, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'SQL', NULL),
+      (10, '2024-01-01T00:00:00.0000000+00:00', CAST(1 AS bit), N'Docker', NULL);
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedAt', N'IsActive', N'Name', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Skills]'))
+          SET IDENTITY_INSERT [Skills] OFF;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'Benefits', N'DurationDays', N'IsActive', N'Name', N'Price') AND [object_id] = OBJECT_ID(N'[SubscriptionPackages]'))
+          SET IDENTITY_INSERT [SubscriptionPackages] ON;
+      INSERT INTO [SubscriptionPackages] ([Id], [Benefits], [DurationDays], [IsActive], [Name], [Price])
+      VALUES (1, N'{"features":["1 mock interview per month","Basic resume feedback"]}', NULL, CAST(1 AS bit), N'Free', 0.0);
+      IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'Benefits', N'DurationDays', N'IsActive', N'Name', N'Price') AND [object_id] = OBJECT_ID(N'[SubscriptionPackages]'))
+          SET IDENTITY_INSERT [SubscriptionPackages] OFF;
+Failed executing DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'Benefits', N'DurationDays', N'IsActive', N'Name', N'Price') AND [object_id] = OBJECT_ID(N'[SubscriptionPackages]'))
+    SET IDENTITY_INSERT [SubscriptionPackages] ON;
+INSERT INTO [SubscriptionPackages] ([Id], [Benefits], [DurationDays], [IsActive], [Name], [Price])
+VALUES (1, N'{"features":["1 mock interview per month","Basic resume feedback"]}', NULL, CAST(1 AS bit), N'Free', 0.0);
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'Benefits', N'DurationDays', N'IsActive', N'Name', N'Price') AND [object_id] = OBJECT_ID(N'[SubscriptionPackages]'))
+    SET IDENTITY_INSERT [SubscriptionPackages] OFF;
+Microsoft.Data.SqlClient.SqlException (0x80131904): Violation of PRIMARY KEY constraint 'PK_SubscriptionPackages'. Cannot insert duplicate key in object 'dbo.SubscriptionPackages'. The duplicate key value is (1).
+The statement has been terminated.
+   at Microsoft.Data.SqlClient.SqlConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+   at Microsoft.Data.SqlClient.SqlInternalConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+   at Microsoft.Data.SqlClient.TdsParser.ThrowExceptionAndWarning(TdsParserStateObject stateObj, Boolean callerHasConnectionLock, Boolean asyncClose)
+   at Microsoft.Data.SqlClient.TdsParser.TryRun(RunBehavior runBehavior, SqlCommand cmdHandler, SqlDataReader dataStream, BulkCopySimpleResultSet bulkCopyHandler, TdsParserStateObject stateObj, Boolean& dataReady)
+   at Microsoft.Data.SqlClient.SqlCommand.RunExecuteNonQueryTds(String methodName, Boolean isAsync, Int32 timeout, Boolean asyncWrite)
+   at Microsoft.Data.SqlClient.SqlCommand.InternalExecuteNonQuery(TaskCompletionSource`1 completion, Boolean sendToPipe, Int32 timeout, Boolean& usedCache, Boolean asyncWrite, Boolean inRetry, String methodName)
+   at Microsoft.Data.SqlClient.SqlCommand.ExecuteNonQuery()
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteNonQuery(RelationalCommandParameterObject parameterObject)
+   at Microsoft.EntityFrameworkCore.Migrations.MigrationCommand.ExecuteNonQuery(IRelationalConnection connection, IReadOnlyDictionary`2 parameterValues)
+   at Microsoft.EntityFrameworkCore.Migrations.Internal.MigrationCommandExecutor.ExecuteNonQuery(IEnumerable`1 migrationCommands, IRelationalConnection connection)
+   at Microsoft.EntityFrameworkCore.Migrations.Internal.Migrator.Migrate(String targetMigration)
+   at Microsoft.EntityFrameworkCore.Design.Internal.MigrationsOperations.UpdateDatabase(String targetMigration, String connectionString, String contextType)
+   at Microsoft.EntityFrameworkCore.Design.OperationExecutor.UpdateDatabaseImpl(String targetMigration, String connectionString, String contextType)
+   at Microsoft.EntityFrameworkCore.Design.OperationExecutor.UpdateDatabase.<>c__DisplayClass0_0.<.ctor>b__0()
+   at Microsoft.EntityFrameworkCore.Design.OperationExecutor.OperationBase.Execute(Action action)
+ClientConnectionId:4f74ea79-731c-4037-accc-94e2c5401f19
+Error Number:2627,State:1,Class:14
+Violation of PRIMARY KEY constraint 'PK_SubscriptionPackages'. Cannot insert duplicate key in object 'dbo.SubscriptionPackages'. The duplicate key value is (1).
+The statement has been terminated.
