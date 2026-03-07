@@ -56,5 +56,10 @@ namespace Imate.API.Common.Router
             public const string MentorProfile = "mentor-profile";
             public const string RecruiterProfile = "recruiter-profile";
         }
+        
+        public class Subscription
+        {
+            public const string GetSubscriptionPackages = "subscription-packages";
+        }
     }
 }

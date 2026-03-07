@@ -16,6 +16,7 @@ namespace Imate.API.DataAccess.Configurations
             builder.Property(e => e.DurationDays).IsRequired(false);
             builder.Property(e => e.Benefits).HasColumnType("nvarchar(max)").IsRequired(false);
             builder.Property(e => e.IsActive).IsRequired();
+            builder.Property(e => e.IsRecommended).IsRequired().HasDefaultValue(false);
         }
     }
 }
