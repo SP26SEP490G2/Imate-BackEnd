@@ -1,4 +1,4 @@
-﻿using Imate.API.Models.Entities;
+using Imate.API.Models.Entities;
 
 namespace Imate.API.DataAccess.Interfaces.UserManagement
 {
@@ -16,8 +16,14 @@ namespace Imate.API.DataAccess.Interfaces.UserManagement
         Task UpdateAsync(Account account);
         Task DeleteAsync(Account account);
         Task<Account?> GetByIdWithDetailsAsync(int id);
-        Task<Account> GetByIdMentor(int id);
-
+        Task<Account?> GetByIdMentor(int id);
+        Task<Account?> GetByIdMentorWithDetailsAsync(int id);
+        /// <summary>Load chỉ Account + AccountRoles (để kiểm tra role), dùng cho cập nhật Status khi duyệt — tránh cascade Update cả Mentor.</summary>
+        Task<Account?> GetByIdForStatusUpdateAsync(int id);
+        Task<Account> GetByIdRecruiter(int id);
+        Task<IEnumerable<Account>> GetPendingMentorAccountsAsync();
+        Task<(IEnumerable<Account> Items, int TotalCount)> GetPendingMentorAccountsPagedAsync(int pageNumber, int pageSize, string? searchTerm);
+        Task<IEnumerable<Account>> GetPendingRecruiterAccountsAsync();
         IQueryable<Account> GetAllAccount();
 
 

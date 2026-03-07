@@ -9,18 +9,20 @@ using Imate.API.DataAccess.Repositories;
 using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.QuestionBank;
 using Imate.API.DataAccess.Repositories.UserManagement;
+using Imate.API.DataAccess.Interfaces.Recruiters;
+using Imate.API.DataAccess.Repositories.Recruiters;
 
 namespace Imate.API.DataAccess.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ImateDbContext _repositoryContext;
-        public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts, IMentorRepository mentors, IRecruiterRepository recruiter)
+        public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts, IMentorRepository mentors, IRecruiterRepository recruiters)
         {
             _repositoryContext = repositoryContext;
             Accounts = accounts;
             Mentors = mentors;
-            Recruiters = recruiter;
+            Recruiters = recruiters;
         }
         public IUserSubscriptionRepository UserSubscriptions { get; private set; }
         public IBookingRepository Bookings { get; private set; }

@@ -10,6 +10,10 @@ using Imate.API.Business.Interfaces.UserManagement;
 using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Business.Services;
 using Imate.API.Business.Services.UserManagement;
+using Imate.API.Business.Interfaces.Recruiters;
+using Imate.API.Business.Interfaces.Staff;
+using Imate.API.Business.Services.Recruiters;
+using Imate.API.Business.Services.Staff;
 using Imate.API.Business.Services.Classification;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Mentors;
@@ -22,12 +26,17 @@ using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.Payment;
 using Imate.API.DataAccess.Repositories.QuestionBank;
 using Imate.API.DataAccess.Repositories.UserManagement;
+using Imate.API.DataAccess.Interfaces.Recruiters;
+using Imate.API.DataAccess.Repositories.Recruiters;
 using Imate.API.DataAccess.Repositories.Classification;
 using System.Text;
 using System.Reflection;
 using Imate.API.Business.Services.ExternalServices;
 using Imate.API.Business.Interfaces.Recruiter;
 using Imate.API.Business.Services.Recruiter;
+using Imate.API.ExternalServices;
+using Amazon.S3;
+
 
 
 namespace Imate.API.Infrastructure.Configurations
@@ -44,9 +53,10 @@ namespace Imate.API.Infrastructure.Configurations
             // 3 Cấu hình Swagger
             ConfigureSwagger(services);
             // 3. Đăng ký các Repository và Service 
-            services.AddScoped<DataAccess.Interfaces.QuestionBank.IQuestionRepository, DataAccess.Repositories.QuestionBank.QuestionRepository>();
+            services.AddScoped<IQuestionRepository, QuestionRepository>();
             services.AddScoped<IAccountRepository, DataAccess.Repositories.UserManagement.AccountRepository>();
-            services.AddScoped<IMentorRepository, DataAccess.Repositories.Mentors.MentorRepository>();
+            services.AddScoped<IMentorRepository, MentorRepository>();
+
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             services.AddScoped<IAuditLogService, AuditLogService>();
@@ -68,18 +78,35 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ICompanyService, CompanyService>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
+            services.AddScoped<IStaffReviewService, StaffReviewService>();
 
             //Add Merory Cache
             services.AddMemoryCache();
             // Register HttpClient for Resend API
-            services.AddHttpClient<EmailService>();
-            services.AddScoped<IEmailService, EmailService>();
+            services.AddHttpClient<Imate.API.Business.Services.ExternalServices.EmailService>();
+            services.AddScoped<IEmailService, Imate.API.Business.Services.ExternalServices.EmailService>();
 
             services.AddScoped<IUserCvRepository, UserCvRepository>();
 
             // AWS S3 Storage Service
-            //services.Configure<AwsS3Config>(
-            //    configuration.GetSection(AwsS3Config.ConfigSectionName));
+            services.Configure<AwsS3Config>(
+                configuration.GetSection(AwsS3Config.ConfigSectionName));
+
+            var awsS3Config = configuration.GetSection(AwsS3Config.ConfigSectionName).Get<AwsS3Config>();
+            if (awsS3Config != null)
+            {
+                services.AddSingleton<IAmazonS3>(sp =>
+                {
+                    var credentials = new Amazon.Runtime.BasicAWSCredentials(awsS3Config.AccessKey, awsS3Config.SecretKey);
+                    var config = new AmazonS3Config
+                    {
+                        RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsS3Config.RegionName)
+                    };
+                    return new AmazonS3Client(credentials, config);
+                });
+            }
+
+            services.AddScoped<IAwsS3StorageService, AwsS3StorageService>();
 
 
             services.Configure<FormOptions>(options =>

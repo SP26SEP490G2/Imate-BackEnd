@@ -1,10 +1,15 @@
-﻿namespace Imate.API.Common.Router
+namespace Imate.API.Common.Router
 {
     public class APIConfig
     {
         public class Mentor
         {
             public const string GetListPreviewMentors = "/get-list-preview-mentors";
+        }
+
+        public class Recruiter
+        {
+            public const string SubmitRecruiterProfile = "recruiters/submit-profile";
         }
 
         public class Question

@@ -17,6 +17,7 @@ namespace Imate.API.DataAccess.Configurations
             builder.Property(e => e.Industry).IsRequired().HasColumnType("nvarchar(100)");
             builder.Property(e => e.CompanySize).HasColumnType("nvarchar(100)").IsRequired(false);
             builder.Property(e => e.Address).HasColumnType("nvarchar(500)").IsRequired(false);
+            builder.Property(e => e.Phone).HasColumnType("nvarchar(50)").IsRequired(false);
             builder.Property(e => e.VerificationStatus).IsRequired().HasConversion<string>().HasColumnType("nvarchar(50)");
         }
     }

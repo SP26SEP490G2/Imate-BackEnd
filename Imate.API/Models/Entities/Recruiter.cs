@@ -11,6 +11,7 @@ namespace Imate.API.Models.Entities
         public string Industry { get; set; } = string.Empty;
         public string? CompanySize { get; set; }
         public string? Address { get; set; }
+        public string? Phone { get; set; }
         public VerificationStatus VerificationStatus { get; set; }
 
         // Navigation properties
