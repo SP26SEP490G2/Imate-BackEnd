@@ -8,6 +8,7 @@ namespace Imate.API.Models.Entities
         public int? DurationDays { get; set; }
         public string? Benefits { get; set; } // JSON stored as nvarchar(max)
         public bool IsActive { get; set; }
+        public bool IsRecommended { get; set; }
 
         // Navigation properties
         public ICollection<UserSubscription> UserSubscriptions { get; set; } = new List<UserSubscription>();

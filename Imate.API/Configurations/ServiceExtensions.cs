@@ -41,7 +41,7 @@ namespace Imate.API.Configurations
 
         public static void ConfigureExternalServices(this IServiceCollection services)
         {
-            services.AddScoped<AwsS3StorageService>();
+            services.AddScoped<Imate.API.Business.Interfaces.ExternalServices.IAwsS3StorageService, AwsS3StorageService>();
             services.AddScoped<EmailService>();
             services.AddScoped<OpenAIService>();
             services.AddScoped<PayOSService>();
