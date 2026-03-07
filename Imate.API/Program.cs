@@ -2,7 +2,6 @@ using Imate.API.Configurations;
 using Imate.API.Middleware;
 using Imate.API.Infrastructure.Configurations;
 using Microsoft.Extensions.Configuration;
-using Imate.API.Infrastructure.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +36,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 
 app.UseCors("CorsPolicy");
 
