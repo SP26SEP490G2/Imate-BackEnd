@@ -61,6 +61,11 @@ namespace Imate.API.Business.Services
                 throw new ConflictException("Email đã được đăng ký trong hệ thống.");
             }
 
+            if (request.Password != request.ConfirmPassword)
+            {
+                throw new ConflictException("Mật Khẩu và Xác Nhận Mật Khẩu không trùng khớp.");
+            }
+
             UserRecord firebaseUser;    
             try
             {

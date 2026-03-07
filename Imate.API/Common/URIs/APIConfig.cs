@@ -49,5 +49,12 @@ namespace Imate.API.Common.Router
             public const string SendActionEmail = "send-action-email";
             public const string ActionAuthenHandler = "action-handler";
         }
+
+        public class Account
+        {
+            public const string Profile = "profile";
+            public const string MentorProfile = "mentor-profile";
+            public const string RecruiterProfile = "recruiter-profile";
+        }
     }
 }
