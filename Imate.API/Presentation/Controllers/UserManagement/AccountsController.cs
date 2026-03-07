@@ -13,7 +13,8 @@ using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Presentation.ResponseModels.UserManagement;
 using Imate.API.Presentation.RequestModels;
 using Imate.API.Business.Interfaces.Mentors;
-using Imate.API.Business.Interfaces.Recruiter;
+using Imate.API.DataAccess.Interfaces.Recruiters;
+using Imate.API.Business.Interfaces.Recruiters;
 
 namespace Imate.API.Presentation.Controllers.UserManagement
 {

@@ -227,7 +227,8 @@ namespace Imate.API.Business.Services.UserManagement
                     CompanySize = account.Recruiter?.CompanySize,
                     Address = account.Recruiter?.Address,
                     Website = account.Recruiter?.Website,
-                    Industry = account.Recruiter?.Industry
+                    Industry = account.Recruiter?.Industry,
+                    Phone = account.Recruiter?.Phone,
                 };
             } else
             {

@@ -32,8 +32,7 @@ using Imate.API.DataAccess.Repositories.Classification;
 using System.Text;
 using System.Reflection;
 using Imate.API.Business.Services.ExternalServices;
-using Imate.API.Business.Interfaces.Recruiter;
-using Imate.API.Business.Services.Recruiter;
+using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.ExternalServices;
 using Amazon.S3;
 

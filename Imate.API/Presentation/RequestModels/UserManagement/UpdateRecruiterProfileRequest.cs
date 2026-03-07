@@ -17,5 +17,8 @@ namespace Imate.API.Presentation.RequestModels.UserManagement
         public string? CompanySize { get; set; }
         [Required]
         public string? Address { get; set; }
+
+        [Required]
+        public string? Phone { get; set; }
     }
 }

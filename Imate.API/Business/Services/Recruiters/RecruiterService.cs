@@ -4,6 +4,7 @@ using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Recruiters;
+using Imate.API.Presentation.RequestModels.UserManagement;
 
 namespace Imate.API.Business.Services.Recruiters
 {
@@ -75,6 +76,23 @@ namespace Imate.API.Business.Services.Recruiters
                 await _unitOfWork.Accounts.UpdateAsync(account);
             }
 
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task UpdataRecruiterrProfileAsync(int accountId, UpdateRecruiterProfileRequest request)
+        {
+            var recruiter = await _unitOfWork.Recruiters.GetRecruiterByIdAsync(accountId)
+                ?? throw new NotFoundException("Không tìm thấy hồ sơ Recruiter.");
+
+            recruiter.CompanyName = request.CompanyName;
+            recruiter.CompanyLogo = request.CompanyLogo;
+            recruiter.Website = request.Website;
+            recruiter.Industry = request.Industry;
+            recruiter.CompanySize = request.CompanySize;
+            recruiter.Address = request.Address;
+            recruiter.Phone = request.Phone;
+
+            await _unitOfWork.Recruiters.UpdateRecruiterAsync(recruiter);
             await _unitOfWork.SaveChangesAsync();
         }
     }
