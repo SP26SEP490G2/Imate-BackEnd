@@ -8,6 +8,7 @@ using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Business.Interfaces.UserManagement;
 using Imate.API.Business.Interfaces.Classification;
+using Imate.API.Business.Interfaces.Payment;
 using Imate.API.Business.Services;
 using Imate.API.Business.Services.UserManagement;
 using Imate.API.Business.Interfaces.Recruiters;
@@ -15,6 +16,7 @@ using Imate.API.Business.Interfaces.Staff;
 using Imate.API.Business.Services.Recruiters;
 using Imate.API.Business.Services.Staff;
 using Imate.API.Business.Services.Classification;
+using Imate.API.Business.Services.Payment;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
@@ -66,9 +68,11 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
+            services.AddScoped<ISubscriptionPackageRepository, SubscriptionPackageRepository>();
+            services.AddScoped<ISubscriptionPackageService, SubscriptionPackageService>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped<IRecruiterRepository, RecruiterRepository>();
-            services.AddScoped<IRecruiterService, RecruiterService>();
+            services.AddScoped<IMentorRepository, MentorRepository>();
+
             // Classification Services & Repositories
             services.AddScoped<IPositionService, PositionService>();
             services.AddScoped<IPositionRepository, PositionRepository>();
