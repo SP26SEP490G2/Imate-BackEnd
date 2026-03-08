@@ -10,6 +10,7 @@ namespace Imate.API.Common.Router
         public class Recruiter
         {
             public const string SubmitRecruiterProfile = "recruiters/submit-profile";
+            public const string GetJobApplicationList = "job-applications";
         }
 
         public class Question

@@ -1,3 +1,5 @@
+using Amazon.Runtime.Internal;
+using Azure.Core;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces;
@@ -5,6 +7,8 @@ using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Recruiters;
 using Imate.API.Presentation.RequestModels.UserManagement;
+using Imate.API.Presentation.ResponseModels.Recruiter;
+using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.Business.Services.Recruiters
 {
@@ -15,6 +19,72 @@ namespace Imate.API.Business.Services.Recruiters
         public RecruiterService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
+        }
+
+        public async Task<IEnumerable<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest)
+        {
+            try
+            {
+                var query =  _unitOfWork.Recruiters.GetJobsByRecruiterId(accountId);
+                // Search
+                if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.SearchTerm))
+                {
+                    query = query.Where(j => j.Title.Contains(filterRequest.SearchTerm));
+                }
+
+                // Filter location
+                if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.Location))
+                {
+                    query = query.Where(j => j.Location.Contains(filterRequest.Location));
+                }
+
+                // Filter employment type
+                if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.EmploymentType))
+                {
+                    query = query.Where(j => j.EmploymentType == filterRequest.EmploymentType);
+                }
+
+                // Filter status
+                if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.Status))
+                {
+                    query = query.Where(j => j.Status.ToString() == filterRequest.Status);
+                }
+
+                var jobs = await query
+                    .Skip((filterRequest.PageNumber - 1) * filterRequest.PageSize)
+                    .Take(filterRequest.PageSize)
+                    .Select(job => new GetJobRecruiterResponse
+                    {
+                        Id = job.Id,
+                        Title = job.Title,
+                        JobDescription = job.JobDescription,
+                        EmploymentType = job.EmploymentType,
+                        Location = job.Location,
+                        MinSalary = job.MinSalary,
+                        MaxSalary = job.MaxSalary,
+                        ApplicationDeadline = job.ApplicationDeadline,
+                        Status = job.Status,
+
+                        JobSkills = job.JobSkills.Select(s => new JobSkillResponse
+                        {
+                            Id = s.SkillId,
+                            SkillName = s.Skill.Name
+                        }).ToList(),
+
+                        JobPositions = job.JobPositions.Select(p => new JobPositionResponse
+                        {
+                            Id = p.PositionId,
+                            PositionName = p.Position.Name
+                        }).ToList()
+                    })
+                    .ToListAsync();
+
+                return jobs;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("An error occurred while retrieving Jobs.", ex);
+            }
         }
 
         public async Task SubmitRecruiterProfileAsync(int accountId, SubmitRecruiterProfileRequest request)

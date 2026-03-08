@@ -15,6 +15,18 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
             _context = repositoryContext;
 
         }
+
+        public IQueryable<Job> GetJobsByRecruiterId(int recruiterAccountId)
+        {
+            return _context.Jobs
+                .Include(j => j.JobSkills)
+                .Include(j => j.JobPositions)
+                .Include(j => j.JobApplications)
+                .Include(j => j.Recruiter)
+                .Where(j => j.RecruiterId == recruiterAccountId)
+                .AsNoTracking();
+        }
+
         public async Task<Recruiter> GetRecruiterByIdAsync(int id)
         {
             var recruiter = await _context.Recruiters.
@@ -29,5 +41,7 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
             await _context.SaveChangesAsync();
             return recruiter;
         }
+
+
     }
 }
