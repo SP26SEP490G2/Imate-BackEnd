@@ -156,7 +156,7 @@ namespace Imate.API.Presentation.Controllers.Classification
             });
         }
 
-        [HttpPut("categories/{id}/inactive")]
+        [HttpPut("categories/{id}/deactive")]
         public async Task<IActionResult> DeactivateCategory(int id)
         {
             // Get old value

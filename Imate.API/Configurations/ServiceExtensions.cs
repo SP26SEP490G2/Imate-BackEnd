@@ -10,6 +10,8 @@ using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.Business.Interfaces.QuestionBank;
 using Imate.API.Business.Services.Mentors;
 using Imate.API.Business.Services.QuestionBank;
+using Imate.API.Business.Services.Classification;
+using Imate.API.Business.Interfaces.Classification;
 
 namespace Imate.API.Configurations
 {
@@ -19,6 +21,7 @@ namespace Imate.API.Configurations
         {
             services.AddScoped<IMentorService, MentorService>();
             services.AddScoped<IQuestionService, QuestionService>();
+            services.AddScoped<ICategoryService, CategoryService>();
         }
 
         public static void ConfigureCors(this IServiceCollection services) =>
