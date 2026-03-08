@@ -1,6 +1,7 @@
-﻿using Imate.API.DataAccess.ApplicationDbContext;
+using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.Models.Entities;
+using Imate.API.Models.Enums;
 using Imate.API.Presentation.ResponseModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,8 +23,10 @@ namespace Imate.API.DataAccess.Repositories.Mentors
                     .ThenInclude(mp => mp.Position)
                 .Include(m => m.MentorCompanies)
                     .ThenInclude(mc => mc.Company)
+                .Where(m => m.Account.Status == AccountStatus.Active)
                 .Select(m => new MentorResponse.ListPreviewMentor
                 {
+                    AccountId = m.AccountId,
                     FullName = m.Account.FullName,
                     Position = m.MentorPositions.FirstOrDefault() != null ? m.MentorPositions.FirstOrDefault().Position.Name : string.Empty,
                     Yoe = m.Yoe,
