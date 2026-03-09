@@ -2,10 +2,12 @@
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Common.Router;
+using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Classification;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Imate.API.Presentation.Controllers.Classification
@@ -17,12 +19,14 @@ namespace Imate.API.Presentation.Controllers.Classification
         private readonly ICategoryService _categoryService;
         private readonly IAuditLogService _auditLogService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ImateDbContext _context;
 
-        public CategoriesController(ICategoryService categoryService, IAuditLogService auditLogService, IUnitOfWork unitOfWork)
+        public CategoriesController(ICategoryService categoryService, IAuditLogService auditLogService, IUnitOfWork unitOfWork, ImateDbContext context)
         {
             _categoryService = categoryService;
             _auditLogService = auditLogService;
             _unitOfWork = unitOfWork;
+            _context = context;
         }
 
         private int? GetCurrentUserId()
@@ -31,7 +35,7 @@ namespace Imate.API.Presentation.Controllers.Classification
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             return userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId) ? userId : null;
         }
-        [HttpGet(APIConfig.Category.GetAllCategories)]
+        [HttpGet("get-categories")]
         public async Task<IActionResult> GetAllCategories([FromQuery] CommonParams categoryParams)
         {
             var pagedResult = await _categoryService.GetAllCategoryAsync(categoryParams);
@@ -56,7 +60,14 @@ namespace Imate.API.Presentation.Controllers.Classification
             var existingCategory = await _unitOfWork.Categories.GetCategoryByIdAsync(categoryId);
             if (existingCategory == null)
             {
-                return NotFound(new { Message = "Category not found" });
+                return NotFound(new { Message = "Không tìm thấy thể loại" });
+            }
+
+            bool isNameExists = await _context.Categories.AnyAsync(c => c.Name == category.Name && c.Id != categoryId);
+
+            if (isNameExists)
+            {
+                return BadRequest(new { Message = "Tên thể loại đã tồn tại" });
             }
 
             var oldValue = new { existingCategory.Name, existingCategory.IsActive };
@@ -88,6 +99,12 @@ namespace Imate.API.Presentation.Controllers.Classification
         [HttpPost("categories")]
         public async Task<IActionResult> AddCategories([FromBody] CategoryCreateRequest category)
         {
+            bool isNameExists = await _context.Categories.AnyAsync(c => c.Name == category.Name);
+            if (isNameExists)
+            {
+                return BadRequest(new { Message = "Tên thể loại đã tồn tại" });
+            }
+
             var newCategory = await _categoryService.AddCategoriesAsync(category);
 
             // Create audit log
@@ -156,7 +173,7 @@ namespace Imate.API.Presentation.Controllers.Classification
             });
         }
 
-        [HttpPut("categories/{id}/inactive")]
+        [HttpPut("categories/{id}/deactive")]
         public async Task<IActionResult> DeactivateCategory(int id)
         {
             // Get old value

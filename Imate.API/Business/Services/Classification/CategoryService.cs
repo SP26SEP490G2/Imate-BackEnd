@@ -61,19 +61,24 @@ namespace Imate.API.Business.Services.Classification
                 query = categoryParams.SortBy.ToLower() switch
                 {
                     "name" => isDescending
-                    ? query.OrderByDescending(q => q.Name.Substring(0, 1).ToLower())
-                    : query.OrderBy(q => q.Name.Substring(0, 1).ToLower()),
+                        ? query.OrderByDescending(q => q.Name)
+                        : query.OrderBy(q => q.Name),
+
                     "createdat" => isDescending
                         ? query.OrderByDescending(q => q.CreatedAt)
                         : query.OrderBy(q => q.CreatedAt),
 
-                    _ => throw new NotFoundException($"Invalid SortBy value: {categoryParams.SortBy}")
+                    "questioncount" => isDescending
+                        ? query.OrderByDescending(q => q.QuestionCategories.Count())
+                        : query.OrderBy(q => q.QuestionCategories.Count()),
+
+                    _ => query.OrderByDescending(q => q.CreatedAt)
                 };
             }
             else
             {
-                // Sắp xếp mặc định khi không có yêu cầu
-                query = query.OrderBy(q => q.Id);
+                // Sắp xếp mặc định (không có yêu cầu sort)
+                query = query.OrderByDescending(q => q.CreatedAt);
             }
 
             // 3. Phân trang trên dữ liệu Category cơ bản.

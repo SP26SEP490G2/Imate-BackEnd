@@ -4,7 +4,7 @@ namespace Imate.API.Common.Router
     {
         public class Mentor
         {
-            public const string GetListPreviewMentors = "/get-list-preview-mentors";
+            public const string GetListPreviewMentors = "get-list-preview-mentors";
         }
 
         public class Recruiter
@@ -15,9 +15,9 @@ namespace Imate.API.Common.Router
 
         public class Question
         {
-            public const string GetListHotQuestions = "/get-list-hot-questions";
-            public const string GetQuestionBankList = "/get-question-bank-list";
-            public const string GetListQuestionCategories = "/get-list-question-categories";
+            public const string GetListHotQuestions = "get-list-hot-questions";
+            public const string GetQuestionBankList = "get-question-bank-list";
+            public const string GetListQuestionCategories = "get-list-question-categories";
             public const string GetAllSystemQuestionsForStaff = "get-all-system-question-banks-for-staff";
             public const string GetAllContributedQuestionsForStaff = "get-all-contributed-question-banks-for-staff";
             public const string CreateSystemQuestionForStaff = "create-system-question-for-staff";
@@ -29,11 +29,11 @@ namespace Imate.API.Common.Router
         }
         public class Category
         {
-            public const string GetAllCategories = "/get-categories";
+            public const string GetAllCategories = "get-categories";
         }
         public class Companies
         {
-            public const string GetAllCompanies = "/get-companies";
+            public const string GetAllCompanies = "get-companies";
         }
         public class Skills
         {
