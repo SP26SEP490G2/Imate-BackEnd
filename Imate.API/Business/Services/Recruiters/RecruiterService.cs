@@ -1,9 +1,14 @@
+using Amazon.Runtime.Internal;
+using Azure.Core;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Recruiters;
+using Imate.API.Presentation.RequestModels.UserManagement;
+using Imate.API.Presentation.ResponseModels.Recruiter;
+using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.Business.Services.Recruiters
 {
@@ -14,6 +19,72 @@ namespace Imate.API.Business.Services.Recruiters
         public RecruiterService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
+        }
+
+        public async Task<IEnumerable<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest)
+        {
+            try
+            {
+                var query =  _unitOfWork.Recruiters.GetJobsByRecruiterId(accountId);
+                // Search
+                if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.SearchTerm))
+                {
+                    query = query.Where(j => j.Title.Contains(filterRequest.SearchTerm));
+                }
+
+                // Filter location
+                if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.Location))
+                {
+                    query = query.Where(j => j.Location.Contains(filterRequest.Location));
+                }
+
+                // Filter employment type
+                if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.EmploymentType))
+                {
+                    query = query.Where(j => j.EmploymentType == filterRequest.EmploymentType);
+                }
+
+                // Filter status
+                if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.Status))
+                {
+                    query = query.Where(j => j.Status.ToString() == filterRequest.Status);
+                }
+
+                var jobs = await query
+                    .Skip((filterRequest.PageNumber - 1) * filterRequest.PageSize)
+                    .Take(filterRequest.PageSize)
+                    .Select(job => new GetJobRecruiterResponse
+                    {
+                        Id = job.Id,
+                        Title = job.Title,
+                        JobDescription = job.JobDescription,
+                        EmploymentType = job.EmploymentType,
+                        Location = job.Location,
+                        MinSalary = job.MinSalary,
+                        MaxSalary = job.MaxSalary,
+                        ApplicationDeadline = job.ApplicationDeadline,
+                        Status = job.Status,
+
+                        JobSkills = job.JobSkills.Select(s => new JobSkillResponse
+                        {
+                            Id = s.SkillId,
+                            SkillName = s.Skill.Name
+                        }).ToList(),
+
+                        JobPositions = job.JobPositions.Select(p => new JobPositionResponse
+                        {
+                            Id = p.PositionId,
+                            PositionName = p.Position.Name
+                        }).ToList()
+                    })
+                    .ToListAsync();
+
+                return jobs;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("An error occurred while retrieving Jobs.", ex);
+            }
         }
 
         public async Task SubmitRecruiterProfileAsync(int accountId, SubmitRecruiterProfileRequest request)
@@ -77,5 +148,72 @@ namespace Imate.API.Business.Services.Recruiters
 
             await _unitOfWork.SaveChangesAsync();
         }
+
+        public async Task UpdataRecruiterrProfileAsync(int accountId, UpdateRecruiterProfileRequest request)
+        {
+            var recruiter = await _unitOfWork.Recruiters.GetRecruiterByIdAsync(accountId)
+                ?? throw new NotFoundException("Không tìm thấy hồ sơ Recruiter.");
+
+            recruiter.CompanyName = request.CompanyName;
+            recruiter.CompanyLogo = request.CompanyLogo;
+            recruiter.Website = request.Website;
+            recruiter.Industry = request.Industry;
+            recruiter.CompanySize = request.CompanySize;
+            recruiter.Address = request.Address;
+            recruiter.Phone = request.Phone;
+
+            await _unitOfWork.Recruiters.UpdateRecruiterAsync(recruiter);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task CreateJobPost(int accountId, CreateUpdateJobRequest request)
+        {
+            if (request == null)
+                throw new BadRequestException("Dữ liệu hồ sơ Recruiter không hợp lệ.");
+
+            // Lấy account kèm theo navigation Recruiter
+            var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
+                ?? throw new NotFoundException("Không tìm thấy tài khoản.");
+
+            // Chỉ cho phép tài khoản role Recruiter
+            var primaryRole = account.AccountRoles.FirstOrDefault()?.Role.Name;
+            if (primaryRole != RoleName.Recruiter)
+            {
+                throw new BadRequestException("Chỉ tài khoản Recruiter mới có thể tạo Job.");
+            }
+            // Validate bắt buộc
+                // Tạo mới Job
+                var job = new Job
+                {
+                    RecruiterId = account.Id,
+                    Title = request.Title,
+                    EmploymentType = request.EmploymentType,
+                    Location = request.Location,
+                    MinSalary = request.MinSalary,
+                    MaxSalary = request.MaxSalary,
+                    JobDescription = request.Description,
+                    ApplicationDeadline = request.ApplicationDeadline,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                job.JobPositions = request.JobPositions
+                .Select(id => new JobPosition
+                {
+                    PositionId = id
+                })
+                .ToList();
+
+                job.JobSkills = request.JobSkills
+                .Select(id => new JobSkill
+                {
+                    SkillId = id
+                })
+                .ToList();
+               await _unitOfWork.Recruiters.CreateJobPost(job);
+            
+
+            await _unitOfWork.SaveChangesAsync();
+        }
+
     }
 }

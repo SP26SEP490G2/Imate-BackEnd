@@ -53,7 +53,7 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
             }
         }
 
-        [HttpPost("google")]
+        [HttpPost(APIConfig.Authentication.RegisterLoginWithGoogle)]
         [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> RegisterOrLoginWithGoogle([FromBody] RegisterWithGoogleRequest request)
         {

@@ -60,6 +60,7 @@ namespace Imate.API.DataAccess.Repositories.UserManagement
         public async Task<Account?> GetByIdWithDetailsAsync(int id)
         {
             return await _context.Accounts
+                .Include(a=>a.Recruiter)
                 .Include(a => a.AccountRoles)
                     .ThenInclude(ar => ar.Role)
                 .Include(a => a.Mentor)

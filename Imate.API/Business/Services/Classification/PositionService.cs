@@ -55,8 +55,8 @@ namespace Imate.API.Business.Services.Classification
                 query = positionParams.SortBy.ToLower() switch
                 {
                     "name" => isDescending
-    ? query.OrderByDescending(q => q.Name.Substring(0, 1).ToLower())
-    : query.OrderBy(q => q.Name.Substring(0, 1).ToLower()),
+    ? query.OrderByDescending(q => q.Name)
+    : query.OrderBy(q => q.Name),
                     "createdat" => isDescending
                         ? query.OrderByDescending(q => q.CreatedAt)
                         : query.OrderBy(q => q.CreatedAt),

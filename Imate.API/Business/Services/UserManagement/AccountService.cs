@@ -210,7 +210,27 @@ namespace Imate.API.Business.Services.UserManagement
                     Companies = account.Mentor.MentorCompanies.Select(mc => mc.Company.Name)
                 };
             }
-            else
+
+            else if(userRole.ToString().Equals("Recruiter", StringComparison.OrdinalIgnoreCase) && account.Recruiter != null)
+            {
+                return new RecruiterProfileResponse
+                {
+                    Id = account.Id,
+                    Email = account.Email,
+                    FullName = account.FullName,
+                    AvatarUrl = account.AvatarUrl,
+                    Balance = account.Balance,
+                    Role = userRole.ToString(),
+                    AccountStatus = account.Status.ToString(),
+                    CompanyName = account.Recruiter.CompanyName,
+                    CompanyLogo = account.Recruiter?.CompanyLogo,
+                    CompanySize = account.Recruiter?.CompanySize,
+                    Address = account.Recruiter?.Address,
+                    Website = account.Recruiter?.Website,
+                    Industry = account.Recruiter?.Industry,
+                    Phone = account.Recruiter?.Phone,
+                };
+            } else
             {
                 // Với các vai trò khác, chỉ trả về thông tin cơ bản
                 return new UserProfileResponse

@@ -13,6 +13,9 @@ using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Presentation.ResponseModels.UserManagement;
 using Imate.API.Presentation.RequestModels;
 using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.DataAccess.Interfaces.Recruiters;
+using Imate.API.Business.Interfaces.Recruiters;
+using Imate.API.Common.Router;
 
 namespace Imate.API.Presentation.Controllers.UserManagement
 {
@@ -24,13 +27,14 @@ namespace Imate.API.Presentation.Controllers.UserManagement
         private readonly IAuditLogService _auditLogService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMentorService _mentorService;
-
-        public AccountsController(Business.Interfaces.UserManagement.IAccountService accountService, IAuditLogService auditLogService, IUnitOfWork unitOfWork, IMentorService mentorService)
+        private readonly IRecruiterService _recruiterService;
+        public AccountsController(Business.Interfaces.UserManagement.IAccountService accountService, IAuditLogService auditLogService, IUnitOfWork unitOfWork, IMentorService mentorService, IRecruiterService recruiterService)
         {
             _accountService = accountService;
             _auditLogService = auditLogService;
             _unitOfWork = unitOfWork;
             _mentorService = mentorService;
+            _recruiterService = recruiterService;
         }
 
         private int? GetCurrentUserId()
@@ -101,7 +105,7 @@ namespace Imate.API.Presentation.Controllers.UserManagement
             });
         }
 
-        [HttpGet("profile")]
+        [HttpGet(APIConfig.Account.Profile)]
         [Authorize]
         [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyProfile()
@@ -129,7 +133,7 @@ namespace Imate.API.Presentation.Controllers.UserManagement
             }
         }
 
-        [HttpPut("profile")]
+        [HttpPut(APIConfig.Account.Profile)]
         public async Task<IActionResult> UpdateMyProfile([FromForm] UpdateGeneralProfileRequest request)
         {
             try
@@ -149,14 +153,22 @@ namespace Imate.API.Presentation.Controllers.UserManagement
         }
 
 
-        [HttpPut("mentor-profile")]
+        [HttpPut(APIConfig.Account.MentorProfile)]
         public async Task<IActionResult> UpdateMyMentorProfile([FromBody] UpdateMentorProfileRequest request)
         {
             var accountId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             await _mentorService.UpdateMentorProfileAsync(accountId, request);
             return NoContent();
         }
-        
+
+        [HttpPut(APIConfig.Account.RecruiterProfile)]
+        public async Task<IActionResult> UpdateMyRecruiterProfile([FromBody] UpdateRecruiterProfileRequest request)
+        {
+            var accountId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            await _recruiterService.UpdataRecruiterrProfileAsync(accountId, request);
+            return NoContent();
+        }
+
         [HttpPost("profile/mentor")]
         [Authorize]
         public async Task<IActionResult> SubmitMentorProfile([FromBody] UpdateMentorProfileRequest request)

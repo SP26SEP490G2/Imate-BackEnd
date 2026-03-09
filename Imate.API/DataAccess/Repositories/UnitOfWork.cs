@@ -5,7 +5,6 @@ using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.DataAccess.Interfaces.UserManagement;
-using Imate.API.DataAccess.Repositories;
 using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.QuestionBank;
 using Imate.API.DataAccess.Repositories.UserManagement;

@@ -34,6 +34,7 @@ using Imate.API.DataAccess.Repositories.Classification;
 using System.Text;
 using System.Reflection;
 using Imate.API.Business.Services.ExternalServices;
+using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.ExternalServices;
 using Amazon.S3;
 
@@ -56,10 +57,8 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IQuestionRepository, QuestionRepository>();
             services.AddScoped<IAccountRepository, DataAccess.Repositories.UserManagement.AccountRepository>();
             services.AddScoped<IMentorRepository, MentorRepository>();
-            services.AddScoped<IRecruiterRepository, RecruiterRepository>();
 
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
-            services.AddScoped<IRecruiterService, RecruiterService>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             services.AddScoped<IAuditLogService, AuditLogService>();
             services.AddScoped<IAuthService, AuthService>();
@@ -72,6 +71,9 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ISubscriptionPackageService, SubscriptionPackageService>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IMentorRepository, MentorRepository>();
+            services.AddScoped<IRecruiterRepository, RecruiterRepository>();
+            services.AddScoped<IRecruiterService, RecruiterService>();
+            
 
             // Classification Services & Repositories
             services.AddScoped<ICategoryService, CategoryService>();
