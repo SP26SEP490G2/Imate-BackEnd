@@ -2,10 +2,12 @@
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Common.Router;
+using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Classification;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Imate.API.Presentation.Controllers.Classification
@@ -17,12 +19,14 @@ namespace Imate.API.Presentation.Controllers.Classification
         private readonly ISkillService _skillService;
         private readonly IAuditLogService _auditLogService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ImateDbContext _context;
 
-        public SkillsController(ISkillService skillService, IAuditLogService auditLogService, IUnitOfWork unitOfWork)
+        public SkillsController(ISkillService skillService, IAuditLogService auditLogService, IUnitOfWork unitOfWork, ImateDbContext context)
         {
             _skillService = skillService;
             _auditLogService = auditLogService;
             _unitOfWork = unitOfWork;
+            _context = context;
         }
 
         private int? GetCurrentUserId()
@@ -55,7 +59,14 @@ namespace Imate.API.Presentation.Controllers.Classification
             var existingSkill = await _unitOfWork.Skills.GetSkillByIdAsync(skillId);
             if (existingSkill == null)
             {
-                return NotFound(new { Message = "Skill not found" });
+                return NotFound(new { Message = "Không tìm thấy kĩ năng" });
+            }
+
+            bool isNameExists = await _context.Skills.AnyAsync(s => s.Name == skill.Name && s.Id != skillId);
+
+            if (isNameExists)
+            {
+                return BadRequest(new { Message = "Tên kĩ năng đã tồn tại" });
             }
 
             var oldValue = new { existingSkill.Name, existingSkill.IsActive };
@@ -80,13 +91,18 @@ namespace Imate.API.Presentation.Controllers.Classification
 
             return Ok(new
             {
-                Message = "Cập nhật kỹ năng thành công",
+                Message = "Cập nhật kĩ năng thành công",
                 skill
             });
         }
         [HttpPost("skills")]
         public async Task<IActionResult> AddSkills([FromBody] SkillCreateRequest skill)
         {
+            bool isNameExists = await _context.Skills.AnyAsync(s => s.Name == skill.Name);
+            if (isNameExists)
+            {
+                return BadRequest(new { Message = "Tên kĩ năng đã tồn tại" });
+            }
             var newSkill = await _skillService.AddSkillsAsync(skill);
 
             // Create audit log
