@@ -1,4 +1,5 @@
-﻿using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.Business.Helper;
+using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.Common.Router;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,15 +17,23 @@ namespace Imate.API.Presentation.Controllers.Mentors
         }
 
         [HttpGet(APIConfig.Mentor.GetListPreviewMentors)]
-        public async Task<IActionResult> GetListPreviewMentors()
+        public async Task<IActionResult> GetListPreviewMentors([FromQuery] CommonParams mentorParams)
         {
             try
             {
-                var mentors = await _mentorService.GetListPreviewMentorsAsync();
-                return Ok(new
-                {
-                    data = mentors
-                });
+                var pagedResult = await _mentorService.GetListPreviewMentorsAsync(mentorParams);
+
+                Response.Headers.Add("X-Pagination",
+                    System.Text.Json.JsonSerializer.Serialize(
+                        new
+                        {
+                            pagedResult.TotalCount,
+                            pagedResult.PageSize,
+                            pagedResult.PageNumber,
+                            pagedResult.TotalPages
+                        }));
+
+                return Ok(pagedResult);
             }
             catch (Exception ex)
             {

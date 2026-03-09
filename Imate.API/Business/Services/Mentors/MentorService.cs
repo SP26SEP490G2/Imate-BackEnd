@@ -1,4 +1,5 @@
-﻿using Imate.API.Business.Exceptions;
+using Imate.API.Business.Exceptions;
+using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Presentation.RequestModels.UserManagement;
@@ -16,11 +17,29 @@ namespace Imate.API.Business.Services.Mentors
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IEnumerable<MentorResponse.ListPreviewMentor>> GetListPreviewMentorsAsync()
+        public async Task<PagedList<MentorResponse.ListPreviewMentor>> GetListPreviewMentorsAsync(CommonParams mentorParams)
         {
             try
             {
-                return await _unitOfWork.Mentors.GetListPreviewMentorsAsync();
+                var query = _unitOfWork.Mentors.FindAll(trackChanges: false)
+                    .Where(m => m.Account.Status == Models.Enums.AccountStatus.Active)
+                    .Select(m => new MentorResponse.ListPreviewMentor
+                    {
+                        AccountId = m.AccountId,
+                        FullName = m.Account.FullName,
+                        Position = m.MentorPositions.FirstOrDefault() != null ? m.MentorPositions.FirstOrDefault().Position.Name : string.Empty,
+                        Yoe = m.Yoe,
+                        Company = m.MentorCompanies.FirstOrDefault() != null ? m.MentorCompanies.FirstOrDefault().Company.Name : string.Empty,
+                        AvgRatings = m.AvgRatings,
+                        TotalRatingCount = m.TotalRatingCount
+                    });
+
+                // Có thể thêm SearchTerm / SortBy sau nếu cần
+                return await PagedList<MentorResponse.ListPreviewMentor>.CreateAsync(
+                    query,
+                    mentorParams.PageNumber,
+                    mentorParams.PageSize
+                );
             }
             catch (Exception ex)
             {
