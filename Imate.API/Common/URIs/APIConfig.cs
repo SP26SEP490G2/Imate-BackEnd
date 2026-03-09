@@ -25,7 +25,7 @@ namespace Imate.API.Common.Router
         }
         public class Position
         {
-            public const string GetAllPositions = "/get-positions";
+            public const string GetAllPositions = "get-positions";
         }
         public class Category
         {
@@ -37,7 +37,7 @@ namespace Imate.API.Common.Router
         }
         public class Skills
         {
-            public const string GetAllSkills = "/get-skills";
+            public const string GetAllSkills = "get-skills";
         }
         public class Authentication
         {

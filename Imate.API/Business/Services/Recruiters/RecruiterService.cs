@@ -165,5 +165,55 @@ namespace Imate.API.Business.Services.Recruiters
             await _unitOfWork.Recruiters.UpdateRecruiterAsync(recruiter);
             await _unitOfWork.SaveChangesAsync();
         }
+
+        public async Task CreateJobPost(int accountId, CreateJobRequest request)
+        {
+            if (request == null)
+                throw new BadRequestException("Dữ liệu hồ sơ Recruiter không hợp lệ.");
+
+            // Lấy account kèm theo navigation Recruiter
+            var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
+                ?? throw new NotFoundException("Không tìm thấy tài khoản.");
+
+            // Chỉ cho phép tài khoản role Recruiter
+            var primaryRole = account.AccountRoles.FirstOrDefault()?.Role.Name;
+            if (primaryRole != RoleName.Recruiter)
+            {
+                throw new BadRequestException("Chỉ tài khoản Recruiter mới có thể tạo Job.");
+            }
+            // Validate bắt buộc
+                // Tạo mới Job
+                var job = new Job
+                {
+                    RecruiterId = account.Id,
+                    Title = request.Title,
+                    EmploymentType = request.EmploymentType,
+                    Location = request.Location,
+                    MinSalary = request.MinSalary,
+                    MaxSalary = request.MaxSalary,
+                    JobDescription = request.Description,
+                    ApplicationDeadline = request.ApplicationDeadline,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                job.JobPositions = request.JobPositions
+                .Select(id => new JobPosition
+                {
+                    PositionId = id
+                })
+                .ToList();
+
+                job.JobSkills = request.JobSkills
+                .Select(id => new JobSkill
+                {
+                    SkillId = id
+                })
+                .ToList();
+               await _unitOfWork.Recruiters.CreateJobPost(job);
+            
+
+            await _unitOfWork.SaveChangesAsync();
+        }
+
     }
 }

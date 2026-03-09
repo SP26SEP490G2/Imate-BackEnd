@@ -16,6 +16,7 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
         public QuestionRepository(ImateDbContext repositoryContext)
           : base(repositoryContext)
         {
+            _context = repositoryContext;
         }
 
         public IQueryable<Question> GetAllSystemQuestionsForStaff()

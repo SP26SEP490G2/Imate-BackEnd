@@ -42,6 +42,13 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
             return recruiter;
         }
 
+        public async Task<Job> CreateJobPost(Job job)
+        {
+            _context.Jobs.Add(job);
+            await _context.SaveChangesAsync();
+            return job;
+        }
+
 
     }
 }
