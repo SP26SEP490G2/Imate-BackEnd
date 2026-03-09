@@ -17,12 +17,14 @@ namespace Imate.API.DataAccess.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ImateDbContext _repositoryContext;
-        public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts, IMentorRepository mentors, IRecruiterRepository recruiters)
+        public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts, IMentorRepository mentors, IRecruiterRepository recruiters, ICategoryRepository categories, IQuestionRepository questions)
         {
             _repositoryContext = repositoryContext;
             Accounts = accounts;
             Mentors = mentors;
             Recruiters = recruiters;
+            Categories = categories;
+            Questions = questions;
         }
         public IUserSubscriptionRepository UserSubscriptions { get; private set; }
         public IBookingRepository Bookings { get; private set; }

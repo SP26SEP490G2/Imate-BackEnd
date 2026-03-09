@@ -6,5 +6,6 @@
         public string? SortBy { get; set; } // "content", "createdAt", "updatedAt"
         public string? SortOrder { get; set; } = "asc"; // "asc" hoặc "desc"
         public int? PositionId { get; set; } // Filter skills by position
+        public string? SearchTerm { get; set; }
     }
 }
