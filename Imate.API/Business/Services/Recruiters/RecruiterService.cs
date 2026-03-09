@@ -166,7 +166,7 @@ namespace Imate.API.Business.Services.Recruiters
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task CreateJobPost(int accountId, CreateJobRequest request)
+        public async Task CreateJobPost(int accountId, CreateUpdateJobRequest request)
         {
             if (request == null)
                 throw new BadRequestException("Dữ liệu hồ sơ Recruiter không hợp lệ.");

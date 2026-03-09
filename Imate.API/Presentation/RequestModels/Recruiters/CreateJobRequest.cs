@@ -3,7 +3,7 @@ using Imate.API.Models.Entities;
 
 namespace Imate.API.Presentation.RequestModels.Recruiters
 {
-    public class CreateJobRequest
+    public class CreateUpdateJobRequest
     {
         public int Id { get; set; }
         [Required(ErrorMessage ="Title Required")]

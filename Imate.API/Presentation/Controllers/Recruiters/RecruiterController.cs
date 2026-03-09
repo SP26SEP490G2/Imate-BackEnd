@@ -72,7 +72,7 @@ namespace Imate.API.Presentation.Controllers.Recruiters
         }
 
         [HttpPost("create-job-posts")]
-        public async Task<IActionResult> createJobPost([FromBody] CreateJobRequest request)
+        public async Task<IActionResult> createJobPost([FromBody] CreateUpdateJobRequest request)
         {
             try
             {
