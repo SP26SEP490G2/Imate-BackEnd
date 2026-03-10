@@ -6,6 +6,7 @@ namespace Imate.API.Models.Enums
         Update,
         Delete,
         Read,
-        SuspendUser
+        SuspendUser,
+        ActivateUser
     }
 }

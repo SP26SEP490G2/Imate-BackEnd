@@ -1,10 +1,11 @@
 ﻿using Imate.API.DataAccess.ApplicationDbContext;
+using Imate.API.DataAccess.Interfaces.Classification;
 using Microsoft.EntityFrameworkCore;
 using Imate.API.Models.Entities;
 
 namespace Imate.API.DataAccess.Repositories.Classification
 {
-    public class CategoryRepository
+    public class CategoryRepository : ICategoryRepository
     {
         private readonly ImateDbContext _context;
 
