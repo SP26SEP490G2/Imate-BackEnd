@@ -101,7 +101,13 @@ namespace Imate.API.Presentation.Controllers.UserManagement
             return Ok(new
             {
                 Message = "Cập nhật trạng thái tài khoản thành công",
-                updatedAccount
+                Account = new
+                {
+                    updatedAccount.Id,
+                    updatedAccount.Email,
+                    updatedAccount.FullName,
+                    Status = updatedAccount.Status.ToString()
+                }
             });
         }
 

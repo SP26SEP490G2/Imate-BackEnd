@@ -1,5 +1,4 @@
 ﻿using Google;
-using Imate.API.Presentation.ResponseModels.Classification;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces.QuestionBank;
@@ -9,6 +8,7 @@ using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels;
 using Imate.API.Presentation.ResponseModels;
+using Imate.API.Presentation.ResponseModels.Classification;
 using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.Business.Services.QuestionBank
@@ -539,5 +539,29 @@ namespace Imate.API.Business.Services.QuestionBank
             };
         }
 
+        public async Task<QuestionResponse.GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId)
+        {
+            var a = await _unitOfWork.Questions.GetQuestionByIdAsync(questionId);
+            if (a == null) throw new NotFoundException($"Không tìm được câu hỏi hệ thống");
+            var newa = new QuestionResponse.GetAllSystemQuestionsForStaffAsyncResponse
+            {
+                Id = a.Id,
+                Content = a.Content,
+                Difficulty = a.Difficulty,
+                SampleAnswer = a.SampleAnswer,
+                IsFromSystem = a.IsFromSystem,
+                IsActive = a.IsActive,
+                CreatorId = a.CreatorId,
+                CreatorName = a.Creator?.FullName ?? "Unknown",
+                CategoriesName = a.QuestionCategories.Select(c => c.Category.Name).ToList(),
+                SkillsName = a.QuestionSkills.Select(s => s.Skill.Name).ToList(),
+                PositionsName = a.QuestionPositions.Select(p => p.Position.Name).ToList(),
+
+                // THAY THẾ .ToListAsync() bằng .FirstOrDefaultAsync() để chỉ lấy 1 đối tượng.
+
+
+            };
+            return newa;
+        }
     }
 }
