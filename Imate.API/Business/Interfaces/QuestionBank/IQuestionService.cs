@@ -16,5 +16,6 @@ namespace Imate.API.Business.Interfaces.QuestionBank
         Task<Question> CreateSystemQuestionForStaffAsync(QuestionRequest.CreateSystemQuestionForStaff request);
         Task<Question> UpdateSystemQuestionForStaffAsync(int questionId, QuestionRequest.UpdateSystemQuestionForStaff request);
         Task<CompanyPositionsSkillsResponse> GetPositionsAndSkillsByCompanyAsync(int companyId);
+        Task<QuestionResponse.GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId);
     }
 }

@@ -190,5 +190,13 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
                 QuestionId = updatedQuestion.Id
             });
         }
+
+        [HttpGet(APIConfig.Question.GetSystemQuestionById)]
+        public async Task<IActionResult> GetSystemQuestionForStaffByIdAsync(int questionId)
+        {
+            var question = await _questionService.GetSystemQuestionByIdAsync(questionId);
+
+            return Ok(question);
+        }
     }
 }

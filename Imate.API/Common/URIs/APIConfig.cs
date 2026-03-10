@@ -22,6 +22,7 @@ namespace Imate.API.Common.Router
             public const string GetAllContributedQuestionsForStaff = "get-all-contributed-question-banks-for-staff";
             public const string CreateSystemQuestionForStaff = "create-system-question-for-staff";
             public const string UpdateSystemQuestionForStaff = "update-system-question-for-staff/{questionId}";
+            public const string GetSystemQuestionById = "get-system-question-by-id/{questionId}";
         }
         public class Position
         {
