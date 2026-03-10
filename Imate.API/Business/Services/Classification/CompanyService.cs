@@ -153,6 +153,5 @@ namespace Imate.API.Business.Services.Classification
                 CreatedAt = company.CreatedAt
             };
         }
-        //Test đến đây rồi
     }
 }

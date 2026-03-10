@@ -16,7 +16,7 @@ namespace Imate.API.DataAccess.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ImateDbContext _repositoryContext;
-        public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts, IMentorRepository mentors, IRecruiterRepository recruiters, ICategoryRepository categories, IQuestionRepository questions, ISkillRepository skills, IPositionRepository positions)
+        public UnitOfWork(ImateDbContext repositoryContext, IAccountRepository accounts, IMentorRepository mentors, IRecruiterRepository recruiters, ICategoryRepository categories, IQuestionRepository questions, ISkillRepository skills, IPositionRepository positions, ICompanyRepository companies)
         {
             _repositoryContext = repositoryContext;
             Accounts = accounts;
@@ -26,6 +26,7 @@ namespace Imate.API.DataAccess.Repositories
             Questions = questions;
             Skills = skills;
             Positions = positions;
+            Companies = companies;
         }
         public IUserSubscriptionRepository UserSubscriptions { get; private set; }
         public IBookingRepository Bookings { get; private set; }
@@ -35,6 +36,7 @@ namespace Imate.API.DataAccess.Repositories
         public ICategoryRepository Categories { get; private set; }
         public IPositionRepository Positions { get; private set; }
         public ISkillRepository Skills { get; private set; }
+        public ICompanyRepository Companies { get; private set; }
         public IRecruiterRepository Recruiters { get; private set; }
         public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();
         public Task SaveAsync() => _repositoryContext.SaveChangesAsync();
