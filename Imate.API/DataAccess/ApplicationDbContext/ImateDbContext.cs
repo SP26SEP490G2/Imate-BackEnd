@@ -44,7 +44,6 @@ namespace Imate.API.DataAccess.ApplicationDbContext
         public DbSet<Skill> Skills { get; set; }
         public DbSet<Position> Positions { get; set; }
         public DbSet<Company> Companies { get; set; }
-        public DbSet<PositionSkill> PositionSkills { get; set; }
         public DbSet<QuestionCategory> QuestionCategories { get; set; }
         public DbSet<QuestionSkill> QuestionSkills { get; set; }
         public DbSet<QuestionPosition> QuestionPositions { get; set; }

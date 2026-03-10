@@ -75,12 +75,7 @@ namespace Imate.API.Business.Services.Classification
                 Name = p.Name,
                 IsActive = p.IsActive,
                 QuestionCount = _questionRepository.GetAllQuestions()
-                                  .Where(q => q.QuestionPositions.Any(q => q.PositionId == p.Id)).Count(),
-                Skills = p.PositionSkills.Select(ps => new PositionResponse.SkillResponse
-                {
-                    Id = ps.SkillId,
-                    Name = ps.Skill.Name
-                }).ToList()
+                                  .Where(q => q.QuestionPositions.Any(q => q.PositionId == p.Id)).Count()
             });
 
 
@@ -91,20 +86,11 @@ namespace Imate.API.Business.Services.Classification
         }
         public async Task<Position> AddPositionAsync(PositionCreateRequest position)
         {
-            var nonExistingSkillIds = await _skillRepository.GetNonExistingSkillIdsAsync(position.SkillIds);
-            if (nonExistingSkillIds.Any())
-            {
-                throw new NotFoundException($"Skill Id không tồn tại: {string.Join(", ", nonExistingSkillIds)} ");
-            }
             var newPosition = new Position
             {
                 Name = position.Name,
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true,
-                PositionSkills = position.SkillIds.Select(skillId => new PositionSkill
-                {
-                    SkillId = skillId
-                }).ToList()
+                IsActive = true
             };
             return await _positionRepository.AddPositionAsync(newPosition);
         }
@@ -118,36 +104,11 @@ namespace Imate.API.Business.Services.Classification
                 throw new NotFoundException($"Không tìm thấy Position với Id: {id}");
             }
 
-            // 2. Validate Skill IDs (giữ nguyên)
-            var nonExistingSkillIds = await _skillRepository.GetNonExistingSkillIdsAsync(positionUpdate.SkillIds);
-            if (nonExistingSkillIds.Any())
-            {
-                throw new NotFoundException($"Các Skill Id sau không tồn tại: {string.Join(", ", nonExistingSkillIds)}");
-            }
-
             // 3. Cập nhật các thuộc tính của Position trong bộ nhớ.
             // EF đang theo dõi đối tượng này và sẽ tự động phát hiện thay đổi.
             existingPosition.Name = positionUpdate.Name;
             existingPosition.IsActive = positionUpdate.IsActive;
             existingPosition.UpdatedAt = DateTime.UtcNow;
-
-            // 4. Cập nhật collection PositionSkills (giữ nguyên)
-            var existingSkillIds = existingPosition.PositionSkills.Select(ps => ps.SkillId).ToHashSet();
-            var requestedSkillIds = positionUpdate.SkillIds.ToHashSet();
-            var skillIdsToAdd = requestedSkillIds.Except(existingSkillIds).ToList();
-            var skillIdsToRemove = existingSkillIds.Except(requestedSkillIds).ToList();
-
-            // 💡 SỬA LẠI ĐÚNG Ở ĐÂY
-            // Tìm các đối tượng PositionSkill cần xóa.
-            // Dùng .ToList() để tạo một danh sách riêng, tránh lỗi "collection was modified".
-            var positionSkillsToRemove = existingPosition.PositionSkills
-                                              .Where(ps => skillIdsToRemove.Contains(ps.SkillId))
-                                              .ToList();
-
-            foreach (var skillId in skillIdsToAdd)
-            {
-                existingPosition.PositionSkills.Add(new PositionSkill { SkillId = skillId });
-            }
 
             // 5. 💡 LOGIC MỚI: Dùng QuestionRepository để lấy dữ liệu
             if (positionUpdate.IsActive == false)

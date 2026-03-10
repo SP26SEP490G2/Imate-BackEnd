@@ -147,8 +147,6 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
             return await _context.Positions
                 .Where(p => p.IsActive)
                 .AsNoTracking()
-                .Include(p => p.PositionSkills)
-                .ThenInclude(ps => ps.Skill)
                 .ToListAsync();
         }
 
