@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Imate.API.Models.Entities;
+using Imate.API.Models.Enums;
 
 namespace Imate.API.Presentation.RequestModels.Recruiters
 {
@@ -18,7 +20,12 @@ namespace Imate.API.Presentation.RequestModels.Recruiters
         public long MaxSalary { get; set; }
         [Required(ErrorMessage = "Description Required")]
         public string Description { get; set; }
+        [Required(ErrorMessage = "Status Required")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+
+        public JobStatus Status { get; set; }
         [Required(ErrorMessage = "ApplicationDeadline Required")]
+
         public DateTimeOffset ApplicationDeadline { get; set; }
 
         public ICollection<int> JobPositions { get; set; }

@@ -7,6 +7,8 @@ namespace Imate.API.DataAccess.Interfaces.Recruiters
         Task<Recruiter> GetRecruiterByIdAsync(int recruiterAccountId);
         Task<Recruiter> UpdateRecruiterAsync(Recruiter recruiter);
         IQueryable<Job> GetJobsByRecruiterId(int recruiterAccountId);
-        Task<Job> CreateJobPost(Job job);
+        Task<Job> CreateJobPostAsync(Job job);
+        Task<Job> UpdateJobPostAsync(Job job);
+        Task<Job> GetPostedJobByIdAsync(int jobId);
     }
 }

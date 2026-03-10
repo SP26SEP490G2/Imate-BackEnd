@@ -12,7 +12,10 @@ namespace Imate.API.Business.Interfaces.Recruiters
         Task UpdataRecruiterrProfileAsync(int accountId, UpdateRecruiterProfileRequest request);
         Task SubmitRecruiterProfileAsync(int accountId, SubmitRecruiterProfileRequest request);
         Task<IEnumerable<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest);
-        Task CreateJobPost(int accountId, CreateUpdateJobRequest request);
+        Task<Job> CreateJobPostAsync(int accountId, CreateUpdateJobRequest request);
+        Task<Job> UpdateJobPostAsync(int accountId, CreateUpdateJobRequest request);
+
+        Task<Job> CloseJobPostAsync(int accountId, CreateUpdateJobRequest request);
 
     }
 }
