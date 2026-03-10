@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.DataAccess.Repositories.Classification
 {
-    public class CategoryRepository: ICategoryRepository
+    public class CategoryRepository : ICategoryRepository
     {
         private readonly ImateDbContext _context;
 

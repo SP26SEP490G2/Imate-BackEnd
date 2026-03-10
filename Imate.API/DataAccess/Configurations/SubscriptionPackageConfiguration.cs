@@ -12,7 +12,7 @@ namespace Imate.API.DataAccess.Configurations
             builder.HasKey(e => e.Id);
             builder.Property(e => e.Id).UseIdentityColumn();
             builder.Property(e => e.Name).IsRequired().HasColumnType("nvarchar(255)");
-            builder.Property(e => e.Price).IsRequired().HasColumnType("decimal(10,2)");
+            builder.Property(e => e.Price).IsRequired().HasColumnType("decimal(18,2)");
             builder.Property(e => e.DurationDays).IsRequired(false);
             builder.Property(e => e.Benefits).HasColumnType("nvarchar(max)").IsRequired(false);
             builder.Property(e => e.IsActive).IsRequired();

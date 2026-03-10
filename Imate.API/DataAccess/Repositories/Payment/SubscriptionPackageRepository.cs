@@ -22,5 +22,17 @@ namespace Imate.API.DataAccess.Repositories.Payment
                 .OrderBy(package => package.Price)
                 .ToListAsync();
         }
+
+        public async Task<SubscriptionPackage?> GetByIdAsync(int id)
+        {
+            return await _context.SubscriptionPackages.FindAsync(id);
+        }
+
+        public async Task UpdateAsync(SubscriptionPackage package)
+        {
+            _context.SubscriptionPackages.Update(package);
+            await _context.SaveChangesAsync();
+        }
     }
 }
+

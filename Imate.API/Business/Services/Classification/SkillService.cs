@@ -49,16 +49,6 @@ namespace Imate.API.Business.Services.Classification
                 query = query.Where(c => c.IsActive == skillParams.IsActive.Value);
             }
 
-            // 3. Filtering: Lọc theo PositionId thông qua PositionSkills
-            if (skillParams.PositionId.HasValue)
-            {
-                var skillIdsForPosition = _context.PositionSkills
-                    .Where(ps => ps.PositionId == skillParams.PositionId.Value)
-                    .Select(ps => ps.SkillId);
-
-                query = query.Where(s => skillIdsForPosition.Contains(s.Id));
-            }
-
             // --- LOGIC SẮP XẾP (SORTING) ---
             // Luôn phải có một thứ tự sắp xếp để phân trang hoạt động chính xác
             if (!string.IsNullOrWhiteSpace(skillParams.SortBy))

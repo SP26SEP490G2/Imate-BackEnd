@@ -380,7 +380,7 @@ namespace Imate.API.Business.Services.UserManagement
             {
                 throw new NotFoundException($"Không tìm thấy tài khoản mentor với ID {accountId}");
             }
-            if (account.AccountRoles.FirstOrDefault()?.Role.Name != RoleName.Mentor)
+            if (!account.AccountRoles.Any(ar => ar.Role.Name == RoleName.Mentor))
             {
                 throw new BadRequestException($"Tài khoản với ID {accountId} không phải là mentor");
             }
@@ -421,7 +421,7 @@ namespace Imate.API.Business.Services.UserManagement
             {
                 throw new NotFoundException($"Không tìm thấy tài khoản nhân viên với ID {accountId}");
             }
-            if (account.AccountRoles.FirstOrDefault()?.Role.Name != RoleName.Staff)
+            if (!account.AccountRoles.Any(ar => ar.Role.Name == RoleName.Staff))
             {
                 throw new BadRequestException($"Tài khoản với ID {accountId} không phải là nhân viên");
             }
@@ -447,7 +447,7 @@ namespace Imate.API.Business.Services.UserManagement
             {
                 throw new NotFoundException($"Không tìm thấy tài khoản ứng viên với ID {accountId}");
             }
-            if (account.AccountRoles.FirstOrDefault()?.Role.Name != RoleName.Candidate)
+            if (!account.AccountRoles.Any(ar => ar.Role.Name == RoleName.Candidate))
             {
                 throw new BadRequestException($"Tài khoản với ID {accountId} không phải là ứng viên");
             }
@@ -459,25 +459,29 @@ namespace Imate.API.Business.Services.UserManagement
                                                       .GetSubscriptionsByCandidateIdAsync(accountId);
             // 3. Tìm gói HIỆN TẠI (PresentPackage)
             string presentPackageName = null;
-            var now = DateOnly.FromDateTime(DateTime.UtcNow);
+            List<string> exPackageNames = new List<string>();
 
-            // Tìm gói đăng ký nào có ngày hết hạn > hôm nay
-            // (Giả sử UserSubscription có StartDate và Package có DurationDays)
-            var activeSub = allSubscriptions
-                .FirstOrDefault(sub => sub.Package != null &&
-                                       sub.StartDate.AddDays(sub.Package.DurationDays ?? 0) > now);
-
-            if (activeSub != null)
+            if (allSubscriptions != null && allSubscriptions.Count > 0)
             {
-                presentPackageName = activeSub.Package.Name;
-            }
+                var now = DateOnly.FromDateTime(DateTime.UtcNow);
 
-            // 4. Lấy tất cả các gói ĐÃ TỪNG MUA (ExPackages)
-            var exPackageNames = allSubscriptions
-                .Where(sub => sub.Package != null)
-                .Select(sub => sub.Package.Name)
-                .Distinct()
-                .ToList();
+                // Tìm gói đăng ký nào có ngày hết hạn > hôm nay
+                var activeSub = allSubscriptions
+                    .FirstOrDefault(sub => sub.Package != null &&
+                                           sub.StartDate.AddDays(sub.Package.DurationDays ?? 0) > now);
+
+                if (activeSub != null)
+                {
+                    presentPackageName = activeSub.Package?.Name;
+                }
+
+                // 4. Lấy tất cả các gói ĐÃ TỪNG MUA (ExPackages)
+                exPackageNames = allSubscriptions
+                    .Where(sub => sub.Package != null)
+                    .Select(sub => sub.Package.Name)
+                    .Distinct()
+                    .ToList();
+            }
             // 5. LẤY SỐ LẦN PHỎNG VẤN (Yêu cầu mới)
             int mentorSessionCount = await _unitOfWork.Bookings.CountBookingsCompletedByCandidateIdAsync(accountId);
             // --- KẾT THÚC LOGIC MỚI ---
