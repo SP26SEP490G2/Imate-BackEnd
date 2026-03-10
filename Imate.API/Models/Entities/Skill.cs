@@ -11,7 +11,6 @@ namespace Imate.API.Models.Entities
         // Navigation properties
         public ICollection<MentorSkill> MentorSkills { get; set; } = new List<MentorSkill>();
         public ICollection<QuestionSkill> QuestionSkills { get; set; } = new List<QuestionSkill>();
-        public ICollection<PositionSkill> PositionSkills { get; set; } = new List<PositionSkill>();
         public ICollection<JobSkill> JobSkills { get; set; } = new List<JobSkill>();
     }
 }

@@ -7,6 +7,5 @@ namespace Imate.API.Presentation.RequestModels.Classification
         [Required(ErrorMessage = "Không được để tên trống")]
         public string Name { get; set; }
         public bool IsActive { get; set; }
-        public List<int> SkillIds { get; set; }
     }
 }

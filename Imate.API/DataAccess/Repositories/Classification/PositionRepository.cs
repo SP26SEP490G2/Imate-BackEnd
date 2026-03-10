@@ -63,14 +63,11 @@ namespace Imate.API.DataAccess.Repositories.Classification
         }
         public IQueryable<Position> GetAllPositions()
         {
-            return _context.Positions.Include(a => a.PositionSkills).
-                ThenInclude(a => a.Skill).AsNoTracking();
+            return _context.Positions.AsNoTracking();
         }
         public async Task<Position> GetPositionByIdAsync(int id)
         {
-            return await _context.Positions.Include(a => a.PositionSkills).
-                ThenInclude(a => a.Skill).
-                FirstOrDefaultAsync(c => c.Id == id);
+            return await _context.Positions.FirstOrDefaultAsync(c => c.Id == id);
         }
         public async Task<Position> AddPositionAsync(Position position)
         {

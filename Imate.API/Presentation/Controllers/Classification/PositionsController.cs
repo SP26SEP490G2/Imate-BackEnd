@@ -2,11 +2,16 @@
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Common.Router;
+using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces;
+using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Classification;
+using Imate.API.Presentation.ResponseModels.Classification;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Imate.API.Presentation.Controllers.Classification
 {
@@ -17,12 +22,14 @@ namespace Imate.API.Presentation.Controllers.Classification
         private readonly IPositionService _positionService;
         private readonly IAuditLogService _auditLogService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ImateDbContext _context;
 
-        public PositionsController(IPositionService positionService, IAuditLogService auditLogService, IUnitOfWork unitOfWork)
+        public PositionsController(IPositionService positionService, IAuditLogService auditLogService, IUnitOfWork unitOfWork, ImateDbContext context)
         {
             _positionService = positionService;
             _auditLogService = auditLogService;
             _unitOfWork = unitOfWork;
+            _context = context;
         }
 
         private int? GetCurrentUserId()
@@ -51,6 +58,11 @@ namespace Imate.API.Presentation.Controllers.Classification
         [HttpPost("positions")]
         public async Task<IActionResult> AddPositions([FromBody] PositionCreateRequest request)
         {
+            bool isNameExists = await _context.Positions.AnyAsync(s => s.Name == request.Name);
+            if (isNameExists)
+            {
+                return BadRequest(new { Message = "Tên vị trí đã tồn tại" });
+            }
             var positions = await _positionService.AddPositionAsync(request);
 
             // Create audit log
@@ -62,15 +74,13 @@ namespace Imate.API.Presentation.Controllers.Classification
                     AuditAction.Create,
                     "Position",
                     positions.Id,
-                    null,
-                    new { positions.Name, positions.IsActive, SkillIds = request.SkillIds }
+                    null
                 );
             }
 
             return Ok(new
             {
                 Message = "Thêm mới vị trí thành công",
-                positions
             });
         }
         [HttpPut("positions/{id}")]
@@ -80,18 +90,23 @@ namespace Imate.API.Presentation.Controllers.Classification
             var existingPosition = await _unitOfWork.Positions.GetPositionByIdAsync(id);
             if (existingPosition == null)
             {
-                return NotFound(new { Message = "Position not found" });
+                return NotFound(new { Message = "Không tìm thấy vị trí" });
             }
 
-            var oldSkillIds = existingPosition.PositionSkills.Select(ps => ps.SkillId).ToList();
-            var oldValue = new { existingPosition.Name, existingPosition.IsActive, SkillIds = oldSkillIds };
+            bool isNameExists = await _context.Positions.AnyAsync(s => s.Name == request.Name && s.Id != id);
+
+            if (isNameExists)
+            {
+                return BadRequest(new { Message = "Tên vị trí đã tồn tại" });
+            }
+
+            var oldValue = new { existingPosition.Name, existingPosition.IsActive};
 
             var updatedPosition = await _positionService.UpdatePositionAsync(id, request);
 
             // Get new value from entity after update (not from request)
             // updatedPosition already has updated PositionSkills collection
-            var newSkillIds = updatedPosition.PositionSkills.Select(ps => ps.SkillId).ToList();
-            var newValue = new { updatedPosition.Name, updatedPosition.IsActive, SkillIds = newSkillIds };
+            var newValue = new { updatedPosition.Name, updatedPosition.IsActive};
 
             // Create audit log
             var userId = GetCurrentUserId();
@@ -110,7 +125,6 @@ namespace Imate.API.Presentation.Controllers.Classification
             return Ok(new
             {
                 Message = "Cập nhật vị trí thành công",
-                updatedPosition
             });
         }
         [HttpGet("positions/{positionId}/affected-questions")]
