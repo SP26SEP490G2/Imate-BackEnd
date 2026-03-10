@@ -122,8 +122,20 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
         [HttpPost("create-employee")]
         public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployeeRequest request)
         {
-            await _authService.CreateEmployeeAccountAsync(request);
-            return NoContent();
+            try
+            {
+                await _authService.CreateEmployeeAccountAsync(request);
+                return Ok(new { Message = "Tạo tài khoản nhân viên thành công" });
+            }
+            catch (ConflictException ex)
+            {
+                // E2: Duplicate Email
+                return Conflict(new { Status = 409, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Status = 500, Message = ex.Message });
+            }
         }
 
         [HttpPut(APIConfig.Authentication.ChangePassword)]
