@@ -1,6 +1,8 @@
 using Amazon.Runtime.Internal;
+using Azure;
 using Azure.Core;
 using Imate.API.Business.Exceptions;
+using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces;
@@ -24,7 +26,7 @@ namespace Imate.API.Business.Services.Recruiters
             _auditLogService = auditLogService;
         }
 
-        public async Task<IEnumerable<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest)
+        public async Task<PagedList<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest)
         {
             try
             {
@@ -53,9 +55,7 @@ namespace Imate.API.Business.Services.Recruiters
                     query = query.Where(j => j.Status.ToString() == filterRequest.Status);
                 }
 
-                var jobs = await query
-                    .Skip((filterRequest.PageNumber - 1) * filterRequest.PageSize)
-                    .Take(filterRequest.PageSize)
+                var jobs =  query
                     .Select(job => new GetJobRecruiterResponse
                     {
                         Id = job.Id,
@@ -79,10 +79,8 @@ namespace Imate.API.Business.Services.Recruiters
                             Id = p.PositionId,
                             PositionName = p.Position.Name
                         }).ToList()
-                    })
-                    .ToListAsync();
-
-                return jobs;
+                    });
+                return await PagedList<GetJobRecruiterResponse>.CreateAsync(jobs, filterRequest.PageNumber, filterRequest.PageSize);
             }
             catch (Exception ex)
             {

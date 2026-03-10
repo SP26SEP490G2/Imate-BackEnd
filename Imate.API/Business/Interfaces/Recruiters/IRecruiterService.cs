@@ -1,3 +1,4 @@
+using Imate.API.Business.Helper;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels.Recruiters;
 using Imate.API.Presentation.RequestModels.UserManagement;
@@ -11,7 +12,7 @@ namespace Imate.API.Business.Interfaces.Recruiters
     {
         Task UpdataRecruiterrProfileAsync(int accountId, UpdateRecruiterProfileRequest request);
         Task SubmitRecruiterProfileAsync(int accountId, SubmitRecruiterProfileRequest request);
-        Task<IEnumerable<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest);
+        Task<PagedList<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest);
         Task<Job> CreateJobPostAsync(int accountId, CreateUpdateJobRequest request);
         Task<Job> UpdateJobPostAsync(int accountId, CreateUpdateJobRequest request);
 
