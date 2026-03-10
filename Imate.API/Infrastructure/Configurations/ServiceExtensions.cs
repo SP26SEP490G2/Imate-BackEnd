@@ -57,6 +57,9 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IQuestionRepository, QuestionRepository>();
             services.AddScoped<IAccountRepository, DataAccess.Repositories.UserManagement.AccountRepository>();
             services.AddScoped<IMentorRepository, MentorRepository>();
+            services.AddScoped<IRecruiterRepository, RecruiterRepository>();
+            services.AddScoped<IBookingRepository, BookingRepository>();
+            services.AddScoped<ICategoryRepository, CategoryRepository>();
 
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();

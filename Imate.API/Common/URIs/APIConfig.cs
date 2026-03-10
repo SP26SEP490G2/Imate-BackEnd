@@ -61,6 +61,8 @@ namespace Imate.API.Common.Router
         public class Subscription
         {
             public const string GetSubscriptionPackages = "subscription-packages";
+            public const string GetSubscriptionOverview = "subscription-packages/overview";
+            public const string UpdateSubscriptionPackagePrice = "subscription-packages/{id}/price";
         }
     }
 }
