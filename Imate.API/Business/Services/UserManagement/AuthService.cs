@@ -11,6 +11,8 @@ using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Presentation.ResponseModels.UserManagement;
 using System.Text;
+using Imate.API.Presentation.ResponseModels.Recruiter;
+using Microsoft.Identity.Client;
 
 namespace Imate.API.Business.Services
 {
@@ -25,6 +27,8 @@ namespace Imate.API.Business.Services
         private readonly JwtSettings _jwtSettings;
         private readonly IConfiguration _configuration;
         private readonly string _frontendBaseUrl;
+        private readonly IAuditLogService _auditLogService;
+
 
         public AuthService(
             IAccountRepository accountRepository,
@@ -33,7 +37,8 @@ namespace Imate.API.Business.Services
             IEmailService emailService,
             IRefreshTokenRepository refreshTokenRepository,
             IOptions<JwtSettings> jwtOptions,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IAuditLogService auditLogService)
         {
             _accountRepository = accountRepository;
             _roleService = roleService;
@@ -43,8 +48,9 @@ namespace Imate.API.Business.Services
             _refreshTokenRepository = refreshTokenRepository;
             _jwtSettings = jwtOptions.Value;
             _configuration = configuration;
-            _frontendBaseUrl = _configuration["FrontendSettings:BaseUrl"] ?? 
+            _frontendBaseUrl = _configuration["FrontendSettings:BaseUrl"] ??
                               throw new ArgumentNullException("FrontendSettings:BaseUrl is not set in appsettings");
+            _auditLogService = auditLogService;
         }
 
         public async Task<string> RegisterWithEmailAsync(RegisterWithEmailRequest request)
@@ -267,7 +273,7 @@ namespace Imate.API.Business.Services
             };
         }
 
-        public async Task CreateEmployeeAccountAsync(CreateEmployeeRequest request)
+        public async Task CreateEmployeeAccountAsync(int accountId, CreateEmployeeRequest request)
         {
             // 1. Kiểm tra Email đã tồn tại trong DB của bạn chưa
             if (await _accountRepository.ExistsByEmailAsync(request.Email))
@@ -326,10 +332,22 @@ namespace Imate.API.Business.Services
                 await _accountRepository.DeleteAsync(newAccount);
                 throw new Exception($"Tạo user thành công nhưng không thể tạo link reset: {ex.Message}");
             }
-
+           
             var emailSubject = "Chào mừng bạn! Vui lòng thiết lập mật khẩu";
             var emailBody = GenerateEmployeeWelcomeTemplate(request.FullName, resetLink);
             await _emailService.SendEmailAsync(request.Email, emailSubject, emailBody);
+            //await _emailService.SendEmailAsync("startingimate@gmail.com", emailSubject, emailBody);
+
+            await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Create, "Account", newAccount.Id,
+               new { },
+               new
+               {
+                   newAccount.Email,
+                   newAccount.FullName,
+                   newAccount.CreatedAt,
+                   
+               }
+            );
         }
 
         // Thêm hàm helper này vào cuối class AuthService
