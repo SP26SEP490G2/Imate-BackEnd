@@ -1,6 +1,6 @@
 ﻿using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels;
-using Imate.API.Presentation.ResponseModels;
+using Imate.API.Presentation.ResponseModels.QuestionBank;
 
 namespace Imate.API.DataAccess.Interfaces.QuestionBank
 {

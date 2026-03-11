@@ -7,6 +7,11 @@ namespace Imate.API.Models.Enums
         Delete,
         Read,
         SuspendUser,
-        ActivateUser
+        ApproveMentor,
+        RejectMentor,
+        ApproveQuestion,
+        RejectQuestion,
+        ApproveApplication,
+        RejectApplication
     }
 }

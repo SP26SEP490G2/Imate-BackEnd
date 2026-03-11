@@ -7,6 +7,7 @@ namespace Imate.API.Models.Enums
         Booking,
         Subscription,
         Refund,
-        Commission
+        Commission,
+        PointDeposit
     }
 }
