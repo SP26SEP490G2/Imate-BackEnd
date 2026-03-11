@@ -1,6 +1,9 @@
 using Amazon.Runtime.Internal;
+using Azure;
 using Azure.Core;
 using Imate.API.Business.Exceptions;
+using Imate.API.Business.Helper;
+using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
@@ -15,17 +18,19 @@ namespace Imate.API.Business.Services.Recruiters
     public class RecruiterService : IRecruiterService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IAuditLogService _auditLogService;
 
-        public RecruiterService(IUnitOfWork unitOfWork)
+        public RecruiterService(IUnitOfWork unitOfWork, IAuditLogService auditLogService)
         {
             _unitOfWork = unitOfWork;
+            _auditLogService = auditLogService;
         }
 
-        public async Task<IEnumerable<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest)
+        public async Task<PagedList<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest)
         {
             try
             {
-                var query =  _unitOfWork.Recruiters.GetJobsByRecruiterId(accountId);
+                var query = _unitOfWork.Recruiters.GetJobsByRecruiterId(accountId);
                 // Search
                 if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.SearchTerm))
                 {
@@ -50,9 +55,7 @@ namespace Imate.API.Business.Services.Recruiters
                     query = query.Where(j => j.Status.ToString() == filterRequest.Status);
                 }
 
-                var jobs = await query
-                    .Skip((filterRequest.PageNumber - 1) * filterRequest.PageSize)
-                    .Take(filterRequest.PageSize)
+                var jobs =  query
                     .Select(job => new GetJobRecruiterResponse
                     {
                         Id = job.Id,
@@ -76,10 +79,8 @@ namespace Imate.API.Business.Services.Recruiters
                             Id = p.PositionId,
                             PositionName = p.Position.Name
                         }).ToList()
-                    })
-                    .ToListAsync();
-
-                return jobs;
+                    });
+                return await PagedList<GetJobRecruiterResponse>.CreateAsync(jobs, filterRequest.PageNumber, filterRequest.PageSize);
             }
             catch (Exception ex)
             {
@@ -166,10 +167,10 @@ namespace Imate.API.Business.Services.Recruiters
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task CreateJobPost(int accountId, CreateUpdateJobRequest request)
+        public async Task<Job> CreateJobPostAsync(int accountId, CreateUpdateJobRequest request)
         {
-            if (request == null)
-                throw new BadRequestException("Dữ liệu hồ sơ Recruiter không hợp lệ.");
+            if (request == null || request.ApplicationDeadline < DateTime.UtcNow.Date || request.MinSalary > request.MinSalary)
+                throw new BadRequestException("Dữ liệu hồ sơ Đăng tuyển không hợp lệ.");
 
             // Lấy account kèm theo navigation Recruiter
             var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
@@ -182,38 +183,215 @@ namespace Imate.API.Business.Services.Recruiters
                 throw new BadRequestException("Chỉ tài khoản Recruiter mới có thể tạo Job.");
             }
             // Validate bắt buộc
-                // Tạo mới Job
-                var job = new Job
-                {
-                    RecruiterId = account.Id,
-                    Title = request.Title,
-                    EmploymentType = request.EmploymentType,
-                    Location = request.Location,
-                    MinSalary = request.MinSalary,
-                    MaxSalary = request.MaxSalary,
-                    JobDescription = request.Description,
-                    ApplicationDeadline = request.ApplicationDeadline,
-                    CreatedAt = DateTime.UtcNow
-                };
+            // Tạo mới Job
+            var job = new Job
+            {
+                RecruiterId = account.Id,
+                Title = request.Title,
+                EmploymentType = request.EmploymentType,
+                Location = request.Location,
+                MinSalary = request.MinSalary,
+                MaxSalary = request.MaxSalary,
+                JobDescription = request.Description,
+                ApplicationDeadline = request.ApplicationDeadline,
+                CreatedAt = DateTime.UtcNow
+            };
 
-                job.JobPositions = request.JobPositions
-                .Select(id => new JobPosition
-                {
-                    PositionId = id
-                })
-                .ToList();
+            job.JobPositions = request.JobPositions
+            .Select(id => new JobPosition
+            {
+                PositionId = id
+            })
+            .ToList();
 
-                job.JobSkills = request.JobSkills
-                .Select(id => new JobSkill
-                {
-                    SkillId = id
-                })
-                .ToList();
-               await _unitOfWork.Recruiters.CreateJobPost(job);
-            
+            job.JobSkills = request.JobSkills
+            .Select(id => new JobSkill
+            {
+                SkillId = id
+            })
+            .ToList();
+            var result = await _unitOfWork.Recruiters.CreateJobPostAsync(job);
+
 
             await _unitOfWork.SaveChangesAsync();
+            var exsitingJob = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(result.Id);
+
+            await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Create, "Job", result.Id,
+                new { },
+                new
+                {
+                    exsitingJob.Title,
+                    exsitingJob.Location,
+                    exsitingJob.EmploymentType,
+                    exsitingJob.MinSalary,
+                    exsitingJob.MaxSalary,
+                    exsitingJob.JobDescription,
+                    exsitingJob.Status,
+                    exsitingJob.ApplicationDeadline,
+                    JobSkills = exsitingJob.JobSkills.Select(id => new JobSkillResponse
+                    {
+                        Id = id.SkillId,
+                        SkillName = id.Skill.Name,
+                    }),
+                    JobPosition = exsitingJob.JobPositions.Select(id => new JobPositionResponse
+                    {
+                        Id = id.PositionId,
+                        PositionName = id.Position.Name,
+
+                    }),
+                }
+             );
+            return result;
+
         }
 
+        public async Task<Job> UpdateJobPostAsync(int accountId, CreateUpdateJobRequest request)
+        {
+            var exsitingJob = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(request.Id);
+            var oldData = new
+            {
+                exsitingJob.Title,
+                exsitingJob.Location,
+                exsitingJob.EmploymentType,
+                exsitingJob.MinSalary,
+                exsitingJob.MaxSalary,
+                exsitingJob.JobDescription,
+                exsitingJob.ApplicationDeadline,
+                exsitingJob.Status,
+                JobSkills = exsitingJob.JobSkills.Select(id => new JobSkillResponse
+                {
+                    Id = id.SkillId,
+                    SkillName = id.Skill.Name,
+                }),
+                JobPosition = exsitingJob.JobPositions.Select(id => new JobPositionResponse
+                {
+                    Id = id.PositionId,
+                    PositionName = id.Position.Name,
+
+                }),
+            };
+            if (exsitingJob == null)
+            {
+                throw new NotFoundException($"Job with Id {request.Id} not found");
+            }
+
+
+            if (request == null || request.MinSalary > request.MaxSalary)
+                throw new BadRequestException("Dữ liệu hồ sơ Đăng tuyển không hợp lệ.");
+            // Lấy account kèm theo navigation Recruiter
+            var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
+                ?? throw new NotFoundException("Không tìm thấy tài khoản.");
+
+            // Chỉ cho phép tài khoản role Recruiter
+            var primaryRole = account.AccountRoles.FirstOrDefault()?.Role.Name;
+            if (primaryRole != RoleName.Recruiter)
+            {
+                throw new BadRequestException("Chỉ tài khoản Recruiter mới có thể cập nhật Job.");
+            }
+            // Validate bắt buộc
+            // Tạo mới Job
+
+            exsitingJob.RecruiterId = account.Id;
+            exsitingJob.Title = request.Title;
+            exsitingJob.EmploymentType = request.EmploymentType;
+            exsitingJob.Location = request.Location;
+            exsitingJob.MinSalary = request.MinSalary;
+            exsitingJob.MaxSalary = request.MaxSalary;
+            exsitingJob.JobDescription = request.Description;
+            exsitingJob.ApplicationDeadline = request.ApplicationDeadline;
+            exsitingJob.Status = request.Status;
+            exsitingJob.UpdatedAt = DateTime.UtcNow;
+
+            exsitingJob.JobPositions.Clear();
+
+            exsitingJob.JobPositions = request.JobPositions
+            .Select(id => new JobPosition
+            {
+                JobId = exsitingJob.Id,
+                PositionId = id
+            })
+            .ToList();
+            exsitingJob.JobSkills.Clear();
+
+            exsitingJob.JobSkills = request.JobSkills
+            .Select(id => new JobSkill
+            {
+                JobId = exsitingJob.Id,
+                SkillId = id
+            })
+            .ToList();
+            var result = await _unitOfWork.Recruiters.UpdateJobPostAsync(exsitingJob);
+
+
+            await _unitOfWork.SaveChangesAsync();
+            await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Update, "Job", exsitingJob.Id,
+            new { oldData },
+            new
+            {
+                exsitingJob.Title,
+                exsitingJob.Location,
+                exsitingJob.EmploymentType,
+                exsitingJob.MinSalary,
+                exsitingJob.MaxSalary,
+                exsitingJob.JobDescription,
+                exsitingJob.Status,
+                exsitingJob.ApplicationDeadline,
+                JobSkills = exsitingJob.JobSkills.Select(id => new JobSkillResponse
+                {
+                    Id = id.SkillId,
+                    SkillName = id.Skill.Name,
+                }),
+                JobPosition = exsitingJob.JobPositions.Select(id => new JobPositionResponse
+                {
+                    Id = id.PositionId,
+                    PositionName = id.Position.Name,
+
+                }),
+            });
+            return result;
+        }
+
+        public async Task<Job> CloseJobPostAsync(int accountId, CreateUpdateJobRequest request)
+        {
+            var exsitingJob = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(request.Id);
+            var oldData = new
+            {
+                exsitingJob.Status,
+            };
+            if (exsitingJob == null)
+            {
+                throw new NotFoundException($"Job with Id {request.Id} not found");
+            }
+
+
+            if (request == null)
+                throw new BadRequestException("Dữ liệu hồ sơ Đăng tuyển không hợp lệ.");
+            // Lấy account kèm theo navigation Recruiter
+            var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
+                ?? throw new NotFoundException("Không tìm thấy tài khoản.");
+
+            // Chỉ cho phép tài khoản role Recruiter
+            var primaryRole = account.AccountRoles.FirstOrDefault()?.Role.Name;
+            if (primaryRole != RoleName.Recruiter)
+            {
+                throw new BadRequestException("Chỉ tài khoản Recruiter mới có thể cập nhật Job.");
+            }
+            // Validate bắt buộc
+            // Tạo mới Job
+            exsitingJob.Status = request.Status;
+            exsitingJob.UpdatedAt = DateTime.UtcNow;
+            var result = await _unitOfWork.Recruiters.UpdateJobPostAsync(exsitingJob);
+
+
+            await _unitOfWork.SaveChangesAsync();
+            await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Update, "Job", exsitingJob.Id,
+            new { oldData },
+            new
+            {
+                exsitingJob.Status,
+            });
+            return result;
+
+        }
     }
 }

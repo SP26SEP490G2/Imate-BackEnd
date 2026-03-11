@@ -124,7 +124,14 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
         {
             try
             {
-                await _authService.CreateEmployeeAccountAsync(request);
+                var accountIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst("accountId")?.Value;
+
+                if (accountIdClaim == null || !int.TryParse(accountIdClaim, out int accountId))
+                    return Unauthorized(new { message = "Không thể xác định thông tin người dùng." });
+
+                await _authService.CreateEmployeeAccountAsync(accountId, request);
                 return Ok(new { Message = "Tạo tài khoản nhân viên thành công" });
             }
             catch (ConflictException ex)

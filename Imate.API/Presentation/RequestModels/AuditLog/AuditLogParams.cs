@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Imate.API.Models.Enums;
 
 namespace Imate.API.Presentation.RequestModels.AuditLog
@@ -8,6 +9,7 @@ namespace Imate.API.Presentation.RequestModels.AuditLog
         public int PageSize { get; set; } = 10;
         public string? StaffName { get; set; }
         public string? EntityType { get; set; }
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public AuditAction? Action { get; set; }
         public string? SearchTerm { get; set; }
         public DateTime? FromDate { get; set; }
