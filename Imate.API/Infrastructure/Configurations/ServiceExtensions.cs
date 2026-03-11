@@ -53,6 +53,10 @@ namespace Imate.API.Infrastructure.Configurations
             ConfigureJwtAuthentication(services, configuration);
             // 3 Cấu hình Swagger
             ConfigureSwagger(services);
+            
+            // Register MediatR
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+            
             // 3. Đăng ký các Repository và Service 
             services.AddScoped<IQuestionRepository, QuestionRepository>();
             services.AddScoped<IAccountRepository, DataAccess.Repositories.UserManagement.AccountRepository>();

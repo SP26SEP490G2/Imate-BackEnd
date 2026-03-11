@@ -89,7 +89,7 @@ namespace Imate.API.Business.Services.Classification
             var newPosition = new Position
             {
                 Name = position.Name,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow,
                 IsActive = true
             };
             return await _positionRepository.AddPositionAsync(newPosition);

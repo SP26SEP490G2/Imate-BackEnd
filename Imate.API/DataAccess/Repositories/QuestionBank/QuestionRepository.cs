@@ -3,7 +3,7 @@ using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels;
-using Imate.API.Presentation.ResponseModels;
+using Imate.API.Presentation.ResponseModels.QuestionBank;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
@@ -75,7 +75,7 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
         public async Task<Question> GetQuestionByIdWithRelatedDataAsync(int questionId)
         {
             return await _context.Questions
-                .Where(q => q.Id == questionId && q.IsFromSystem == false)
+                .Where(q => q.Id == questionId)
                 .Include(q => q.Creator)
                     .ThenInclude(c => c.AccountRoles)
                         .ThenInclude(ar => ar.Role)
@@ -194,7 +194,6 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
                     .ThenInclude(qp => qp.Position)
                           .FirstOrDefaultAsync();
             return a;
-
         }
 
         public async Task<IEnumerable<int>> GetSavedQuestionIdsByAccountAsync(int accountId)

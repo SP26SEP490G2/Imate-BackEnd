@@ -1,8 +1,7 @@
 ﻿using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
-using System.ComponentModel.DataAnnotations;
 
-namespace Imate.API.Presentation.ResponseModels
+namespace Imate.API.Presentation.ResponseModels.QuestionBank
 {
     public class QuestionResponse
     {
