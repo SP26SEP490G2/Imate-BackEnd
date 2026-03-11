@@ -136,6 +136,7 @@ namespace Imate.API.Business.Services.Recruiters
                 account.Recruiter.Website = request.CompanyWebsite?.Trim();
                 account.Recruiter.Address = request.CompanyAddress?.Trim();
                 account.Recruiter.Phone = request.Phone.Trim();
+                account.Recruiter.VerificationStatus = VerificationStatus.Pending;
 
                 _unitOfWork.Recruiters.Update(account.Recruiter);
             }

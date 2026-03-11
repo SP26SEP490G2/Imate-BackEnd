@@ -1,11 +1,11 @@
-﻿using Imate.API.Presentation.RequestModels.UserManagement;
+using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Presentation.ResponseModels.UserManagement;
 
 namespace Imate.API.Business.Interfaces
 {
     public interface IAuthService
     {
-        Task<string> RegisterWithEmailAsync(RegisterWithEmailRequest request);
+        Task<AuthResponse> RegisterWithEmailAsync(RegisterWithEmailRequest request);
         Task<AuthResponse> VerifyFirebaseTokenAndLoginAsync(LoginRequest request);
         Task<AuthResponse> RegisterOrLoginWithGoogleAsync(RegisterWithGoogleRequest request);
         Task CreateEmployeeAccountAsync(int accountId, CreateEmployeeRequest request);

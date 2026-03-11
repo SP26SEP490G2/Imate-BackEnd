@@ -357,6 +357,7 @@ namespace Imate.API.Business.Services.UserManagement
                 account.Mentor.BankAccountHolderName = request.BankAccountHolderName;
                 account.Mentor.BankAccountNumber = request.BankAccountNumber;
                 account.Mentor.BankCode = request.BankCode;
+                account.Mentor.VerificationStatus = VerificationStatus.Pending;
 
                 _unitOfWork.Mentors.Update(account.Mentor);
             }

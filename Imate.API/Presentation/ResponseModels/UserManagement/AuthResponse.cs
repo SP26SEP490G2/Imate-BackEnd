@@ -1,4 +1,4 @@
-﻿namespace Imate.API.Presentation.ResponseModels.UserManagement
+namespace Imate.API.Presentation.ResponseModels.UserManagement
 {
     public class AuthResponse
     {
@@ -16,5 +16,7 @@
         public string Role { get; set; }
         public bool? IsNewAccount { get; set; }
         public string? AccountStatus { get; set; }
+        public string? VerificationStatus { get; set; }
+
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.Data;
@@ -35,14 +35,14 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
 
 
         [HttpPost(APIConfig.Authentication.RegisterEmail)]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> RegisterWithEmail([FromBody] RegisterWithEmailRequest request)
         {
             try
             {
-                await _authService.RegisterWithEmailAsync(request);
+                var authResponse = await _authService.RegisterWithEmailAsync(request);
 
-                return Ok(new { Message = "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản." });
+                return Ok(authResponse);
             }
             catch (Exception ex)
             {
