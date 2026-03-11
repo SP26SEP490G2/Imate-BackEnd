@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.Data;
@@ -35,14 +35,14 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
 
 
         [HttpPost(APIConfig.Authentication.RegisterEmail)]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> RegisterWithEmail([FromBody] RegisterWithEmailRequest request)
         {
             try
             {
-                await _authService.RegisterWithEmailAsync(request);
+                var authResponse = await _authService.RegisterWithEmailAsync(request);
 
-                return Ok(new { Message = "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản." });
+                return Ok(authResponse);
             }
             catch (Exception ex)
             {
@@ -122,8 +122,27 @@ namespace Imate.API.Presentation.Controllers.AuthManagement
         [HttpPost("create-employee")]
         public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployeeRequest request)
         {
-            await _authService.CreateEmployeeAccountAsync(request);
-            return NoContent();
+            try
+            {
+                var accountIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst("accountId")?.Value;
+
+                if (accountIdClaim == null || !int.TryParse(accountIdClaim, out int accountId))
+                    return Unauthorized(new { message = "Không thể xác định thông tin người dùng." });
+
+                await _authService.CreateEmployeeAccountAsync(accountId, request);
+                return Ok(new { Message = "Tạo tài khoản nhân viên thành công" });
+            }
+            catch (ConflictException ex)
+            {
+                // E2: Duplicate Email
+                return Conflict(new { Status = 409, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Status = 500, Message = ex.Message });
+            }
         }
 
         [HttpPut(APIConfig.Authentication.ChangePassword)]

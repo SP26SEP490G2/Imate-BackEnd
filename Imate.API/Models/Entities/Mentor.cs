@@ -1,3 +1,5 @@
+using Imate.API.Models.Enums;
+
 namespace Imate.API.Models.Entities
 {
     public class Mentor
@@ -16,6 +18,7 @@ namespace Imate.API.Models.Entities
         public string BankAccountHolderName { get; set; } = string.Empty;
         public string BankAccountNumber { get; set; } = string.Empty;
         public string BankCode { get; set; } = string.Empty;
+        public VerificationStatus VerificationStatus { get; set; } = VerificationStatus.Pending;
 
         // Navigation properties
         public Account Account { get; set; } = null!;

@@ -11,12 +11,18 @@ using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.UserManagement;
 using Imate.API.Presentation.ResponseModels.UserManagement;
 using System.Text;
+using Imate.API.Presentation.ResponseModels.Recruiter;
+using Microsoft.Identity.Client;
+using Imate.API.DataAccess.Interfaces.Mentors;
+using Imate.API.DataAccess.Interfaces.Recruiters;
 
 namespace Imate.API.Business.Services
 {
     public class AuthService : IAuthService
     {
         private readonly IAccountRepository _accountRepository;
+        private readonly IMentorRepository _mentorRepository;
+        private readonly IRecruiterRepository _recruiterRepository;
         private readonly IRoleService _roleService;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly FirebaseAuth _firebaseAuth;
@@ -25,17 +31,24 @@ namespace Imate.API.Business.Services
         private readonly JwtSettings _jwtSettings;
         private readonly IConfiguration _configuration;
         private readonly string _frontendBaseUrl;
+        private readonly IAuditLogService _auditLogService;
+
 
         public AuthService(
             IAccountRepository accountRepository,
+            IMentorRepository mentorRepository,
+            IRecruiterRepository recruiterRepository,
             IRoleService roleService,
             IJwtTokenGenerator jwtTokenGenerator,
             IEmailService emailService,
             IRefreshTokenRepository refreshTokenRepository,
             IOptions<JwtSettings> jwtOptions,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IAuditLogService auditLogService)
         {
             _accountRepository = accountRepository;
+            _mentorRepository = mentorRepository;
+            _recruiterRepository = recruiterRepository;
             _roleService = roleService;
             _jwtTokenGenerator = jwtTokenGenerator;
             _firebaseAuth = FirebaseAuth.DefaultInstance;
@@ -43,11 +56,12 @@ namespace Imate.API.Business.Services
             _refreshTokenRepository = refreshTokenRepository;
             _jwtSettings = jwtOptions.Value;
             _configuration = configuration;
-            _frontendBaseUrl = _configuration["FrontendSettings:BaseUrl"] ?? 
+            _frontendBaseUrl = _configuration["FrontendSettings:BaseUrl"] ??
                               throw new ArgumentNullException("FrontendSettings:BaseUrl is not set in appsettings");
+            _auditLogService = auditLogService;
         }
 
-        public async Task<string> RegisterWithEmailAsync(RegisterWithEmailRequest request)
+        public async Task<AuthResponse> RegisterWithEmailAsync(RegisterWithEmailRequest request)
         {
             // --- 1. VALIDATION ROLE ---
             // Cố gắng parse string sang Enum (ignoreCase: true để không phân biệt hoa thường)
@@ -106,7 +120,33 @@ namespace Imate.API.Business.Services
 
             // 5. TẠO VÀ TRẢ VỀ LOCAL JWT TOKEN (Sử dụng JWT Generator)
             var roles = await _roleService.GetRolesForAccountAsync(newAccount.Id);
-            return _jwtTokenGenerator.GenerateToken(newAccount.Id, roles);
+            var token = _jwtTokenGenerator.GenerateToken(newAccount.Id, roles);
+            
+            // TẠO VÀ LƯU REFRESH TOKEN
+            var refreshToken = await CreateAndSaveRefreshTokenAsync(newAccount.Id);
+
+            var rolesList = roles.ToList();
+            var primaryRole = rolesList.FirstOrDefault().ToString() ?? "Candidate";
+            var verificationStatus = await GetVerificationStatusAsync(newAccount.Id, primaryRole);
+
+            var userDto = new UserDto
+            {
+                Id = newAccount.Id,
+                FullName = newAccount.FullName,
+                Email = newAccount.Email,
+                AvatarUrl = newAccount.AvatarUrl,
+                Role = primaryRole,
+                IsNewAccount = true,
+                AccountStatus = newAccount.Status.ToString(),
+                VerificationStatus = verificationStatus
+            };
+
+            return new AuthResponse
+            {
+                Token = token,
+                RefreshToken = refreshToken.Token,
+                User = userDto
+            };
         }
         public async Task<AuthResponse> VerifyFirebaseTokenAndLoginAsync(LoginRequest request)
         {
@@ -148,14 +188,19 @@ namespace Imate.API.Business.Services
             // BƯỚC 5: TẠO VÀ LƯU REFRESH TOKEN
             var refreshToken = await CreateAndSaveRefreshTokenAsync(account.Id);
             
+            var rolesList = roles.ToList();
+            var primaryRole = rolesList.FirstOrDefault().ToString() ?? "Candidate";
+            var verificationStatus = await GetVerificationStatusAsync(account.Id, primaryRole);
+
             var userDto = new UserDto
             {
                 Id = account.Id,
                 FullName = account.FullName,
                 Email = account.Email,
                 AvatarUrl = account.AvatarUrl,
-                Role = roles.FirstOrDefault().ToString() ?? "Candidate",
-                AccountStatus = account.Status.ToString()
+                Role = primaryRole,
+                AccountStatus = account.Status.ToString(),
+                VerificationStatus = verificationStatus
             };
 
             return new AuthResponse
@@ -226,20 +271,23 @@ namespace Imate.API.Business.Services
             // TẠO VÀ LƯU REFRESH TOKEN
             var refreshToken = await CreateAndSaveRefreshTokenAsync(accountToUse.Id);
             
-            // Kiểm tra xem đây có phải là account mới được tạo không
-            // Nếu existingAccount == null, tức là account vừa được tạo mới
-            // Nếu existingAccount != null, tức là account đã tồn tại từ trước
+            // Khoảng existingAccount check
             var isNewAccount = existingAccount == null;
             
+            var rolesList = roles.ToList();
+            var primaryRole = rolesList.FirstOrDefault().ToString() ?? "Candidate";
+            var verificationStatus = await GetVerificationStatusAsync(accountToUse.Id, primaryRole);
+
             var userDto = new UserDto
             {
                 Id = accountToUse.Id,
                 FullName = accountToUse.FullName,
                 Email = accountToUse.Email,
                 AvatarUrl = accountToUse.AvatarUrl,
-                Role = roles.FirstOrDefault().ToString() ?? "Candidate",
+                Role = primaryRole,
                 IsNewAccount = isNewAccount,
-                AccountStatus = accountToUse.Status.ToString()
+                AccountStatus = accountToUse.Status.ToString(),
+                VerificationStatus = verificationStatus
             };
 
             return new AuthResponse
@@ -254,20 +302,32 @@ namespace Imate.API.Business.Services
         {
             if (string.IsNullOrWhiteSpace(userRole))
             {
-                return RoleName.Candidate;
+                return RoleName.Candidate; // Default
             }
 
-            return userRole.ToLower() switch
+            if (Enum.TryParse<RoleName>(userRole, true, out var parsedRole))
             {
-                "mentor" => RoleName.Mentor,
-                "candidate" => RoleName.Candidate,
-                "recruiter" => RoleName.Recruiter,
-                _ => RoleName.Candidate,
-                
-            };
+                return parsedRole;
+            }
+            return RoleName.Candidate;
         }
 
-        public async Task CreateEmployeeAccountAsync(CreateEmployeeRequest request)
+        private async Task<string?> GetVerificationStatusAsync(int accountId, string primaryRole)
+        {
+            if (primaryRole == "Mentor")
+            {
+                var mentor = await _mentorRepository.GetMentorByIdAsync(accountId);
+                return mentor?.VerificationStatus.ToString();
+            }
+            if (primaryRole == "Recruiter")
+            {
+                var recruiter = await _recruiterRepository.GetRecruiterByIdAsync(accountId);
+                return recruiter?.VerificationStatus.ToString();
+            }
+            return null;
+        }
+
+        public async Task CreateEmployeeAccountAsync(int accountId, CreateEmployeeRequest request)
         {
             // 1. Kiểm tra Email đã tồn tại trong DB của bạn chưa
             if (await _accountRepository.ExistsByEmailAsync(request.Email))
@@ -326,10 +386,22 @@ namespace Imate.API.Business.Services
                 await _accountRepository.DeleteAsync(newAccount);
                 throw new Exception($"Tạo user thành công nhưng không thể tạo link reset: {ex.Message}");
             }
-
+           
             var emailSubject = "Chào mừng bạn! Vui lòng thiết lập mật khẩu";
             var emailBody = GenerateEmployeeWelcomeTemplate(request.FullName, resetLink);
             await _emailService.SendEmailAsync(request.Email, emailSubject, emailBody);
+            //await _emailService.SendEmailAsync("startingimate@gmail.com", emailSubject, emailBody);
+
+            await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Create, "Account", newAccount.Id,
+               new { },
+               new
+               {
+                   newAccount.Email,
+                   newAccount.FullName,
+                   newAccount.CreatedAt,
+                   
+               }
+            );
         }
 
         // Thêm hàm helper này vào cuối class AuthService
@@ -475,6 +547,10 @@ namespace Imate.API.Business.Services
             // 7. Tạo refresh token mới
             var newRefreshToken = await CreateAndSaveRefreshTokenAsync(account.Id);
 
+            var rolesList = roles.ToList();
+            var primaryRole = rolesList.FirstOrDefault().ToString() ?? "Candidate";
+            var verificationStatus = await GetVerificationStatusAsync(account.Id, primaryRole);
+
             // 8. Tạo UserDto
             var userDto = new UserDto
             {
@@ -482,8 +558,9 @@ namespace Imate.API.Business.Services
                 FullName = account.FullName,
                 Email = account.Email,
                 AvatarUrl = account.AvatarUrl,
-                Role = roles.FirstOrDefault().ToString() ?? "Candidate",
-                AccountStatus = account.Status.ToString()
+                Role = primaryRole,
+                AccountStatus = account.Status.ToString(),
+                VerificationStatus = verificationStatus
             };
 
             return new AuthResponse

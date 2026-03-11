@@ -99,12 +99,19 @@ namespace Imate.API.Business.Services
             if (!string.IsNullOrWhiteSpace(auditLogParams.SearchTerm))
             {
                 var searchTerm = auditLogParams.SearchTerm.ToLower().Trim();
+
+                Enum.TryParse<AuditAction>(searchTerm, true, out var actionEnum);
+                var isAction = Enum.IsDefined(typeof(AuditAction), actionEnum);
+
+                int.TryParse(searchTerm, out var entityId);
+                var isEntityId = int.TryParse(searchTerm, out entityId);
+
                 query = query.Where(al =>
                     (al.User != null && al.User.FullName.ToLower().Contains(searchTerm)) ||
                     (al.User != null && al.User.Email != null && al.User.Email.ToLower().Contains(searchTerm)) ||
                     al.EntityType.ToLower().Contains(searchTerm) ||
-                    al.Action.ToString().ToLower().Contains(searchTerm) ||
-                    al.EntityId.ToString().Contains(searchTerm)
+                    (isAction && al.Action == actionEnum) ||
+                    (isEntityId && al.EntityId == entityId)
                 );
             }
 
@@ -207,8 +214,13 @@ namespace Imate.API.Business.Services
                 ActionTime = auditLog.ActionTime.DateTime,
                 CreatedAt = auditLog.CreatedAt.DateTime,
                 UpdatedAt = auditLog.UpdatedAt?.DateTime,
-                OldValue = auditLog.OldValue,
-                NewValue = auditLog.NewValue
+                OldValue = string.IsNullOrEmpty(auditLog.OldValue)
+            ? null
+            : JsonSerializer.Deserialize<object>(auditLog.OldValue),
+
+                NewValue = string.IsNullOrEmpty(auditLog.NewValue)
+            ? null
+            : JsonSerializer.Deserialize<object>(auditLog.NewValue)
             };
         }
     }

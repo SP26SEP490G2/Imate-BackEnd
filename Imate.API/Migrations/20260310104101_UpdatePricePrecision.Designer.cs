@@ -4,6 +4,7 @@ using Imate.API.DataAccess.ApplicationDbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Imate.API.Migrations
 {
     [DbContext(typeof(ImateDbContext))]
-    partial class ImateDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310104101_UpdatePricePrecision")]
+    partial class UpdatePricePrecision
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -361,8 +364,8 @@ namespace Imate.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
 
                     b.Property<string>("ImageUrl")
                         .IsRequired()
@@ -375,8 +378,8 @@ namespace Imate.API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("datetimeoffset");
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime");
 
                     b.HasKey("Id");
 
@@ -758,9 +761,6 @@ namespace Imate.API.Migrations
                     b.Property<int?>("TotalRatingCount")
                         .HasColumnType("int");
 
-                    b.Property<int>("VerificationStatus")
-                        .HasColumnType("int");
-
                     b.Property<int>("Yoe")
                         .HasColumnType("int");
 
@@ -931,6 +931,21 @@ namespace Imate.API.Migrations
                             IsActive = true,
                             Name = "Business Analyst"
                         });
+                });
+
+            modelBuilder.Entity("Imate.API.Models.Entities.PositionSkill", b =>
+                {
+                    b.Property<int>("PositionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SkillId")
+                        .HasColumnType("int");
+
+                    b.HasKey("PositionId", "SkillId");
+
+                    b.HasIndex("SkillId");
+
+                    b.ToTable("PositionSkills", (string)null);
                 });
 
             modelBuilder.Entity("Imate.API.Models.Entities.Question", b =>
@@ -1995,6 +2010,25 @@ namespace Imate.API.Migrations
                     b.Navigation("Skill");
                 });
 
+            modelBuilder.Entity("Imate.API.Models.Entities.PositionSkill", b =>
+                {
+                    b.HasOne("Imate.API.Models.Entities.Position", "Position")
+                        .WithMany("PositionSkills")
+                        .HasForeignKey("PositionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Imate.API.Models.Entities.Skill", "Skill")
+                        .WithMany("PositionSkills")
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Position");
+
+                    b.Navigation("Skill");
+                });
+
             modelBuilder.Entity("Imate.API.Models.Entities.Question", b =>
                 {
                     b.HasOne("Imate.API.Models.Entities.ContributedDetail", "ContributedDetail")
@@ -2372,6 +2406,8 @@ namespace Imate.API.Migrations
 
                     b.Navigation("MentorPositions");
 
+                    b.Navigation("PositionSkills");
+
                     b.Navigation("QuestionPositions");
                 });
 
@@ -2400,6 +2436,8 @@ namespace Imate.API.Migrations
                     b.Navigation("JobSkills");
 
                     b.Navigation("MentorSkills");
+
+                    b.Navigation("PositionSkills");
 
                     b.Navigation("QuestionSkills");
                 });
