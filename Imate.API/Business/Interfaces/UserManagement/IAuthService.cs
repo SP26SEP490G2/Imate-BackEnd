@@ -8,7 +8,7 @@ namespace Imate.API.Business.Interfaces
         Task<string> RegisterWithEmailAsync(RegisterWithEmailRequest request);
         Task<AuthResponse> VerifyFirebaseTokenAndLoginAsync(LoginRequest request);
         Task<AuthResponse> RegisterOrLoginWithGoogleAsync(RegisterWithGoogleRequest request);
-        Task CreateEmployeeAccountAsync(CreateEmployeeRequest request);
+        Task CreateEmployeeAccountAsync(int accountId, CreateEmployeeRequest request);
         Task ChangePasswordAsync(int accountId, ChangePasswordRequest request);
         Task<AuthResponse> RefreshTokenAsync(string refreshToken);
         Task<string> GenerateActionCodeAsync(string email, string actionType);

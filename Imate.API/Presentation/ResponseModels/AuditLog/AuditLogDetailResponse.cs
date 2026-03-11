@@ -13,8 +13,8 @@ namespace Imate.API.Presentation.ResponseModels.AuditLog
         public DateTime ActionTime { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-        public String? OldValue { get; set; }
-        public String? NewValue { get; set; }
+        public object? OldValue { get; set; }
+        public object? NewValue { get; set; }
     }
 }
 
