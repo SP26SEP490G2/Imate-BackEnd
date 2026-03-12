@@ -33,4 +33,8 @@
     <Folder Include="Presentation\RequestModels\Recruiter\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Imate.AI.Module\Imate.AI.Module.csproj" />
+  </ItemGroup>
+
 </Project>

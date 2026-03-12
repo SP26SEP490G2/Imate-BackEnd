@@ -20,7 +20,8 @@ builder.Services.AddMyServices(builder.Configuration);
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddApplicationPart(typeof(Imate.AI.Module.Controllers.CvAnalysisController).Assembly);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
