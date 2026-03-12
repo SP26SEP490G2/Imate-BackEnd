@@ -16,7 +16,7 @@ namespace Imate.API.Business.Interfaces.Recruiters
         Task<Job> CreateJobPostAsync(int accountId, CreateUpdateJobRequest request);
         Task<Job> UpdateJobPostAsync(int accountId, CreateUpdateJobRequest request);
 
-        Task<Job> CloseJobPostAsync(int accountId, CreateUpdateJobRequest request);
+        Task<Job> CloseJobPostAsync(int accountId, int jobId);
 
     }
 }

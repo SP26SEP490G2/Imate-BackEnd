@@ -352,34 +352,39 @@ namespace Imate.API.Business.Services.Recruiters
             return result;
         }
 
-        public async Task<Job> CloseJobPostAsync(int accountId, CreateUpdateJobRequest request)
+        public async Task<Job> CloseJobPostAsync(int accountId,int jobId)
         {
-            var exsitingJob = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(request.Id);
+            var exsitingJob = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(jobId);
             var oldData = new
             {
                 exsitingJob.Status,
             };
             if (exsitingJob == null)
             {
-                throw new NotFoundException($"Job with Id {request.Id} not found");
+                throw new NotFoundException($"Job with Id {jobId} not found");
             }
 
 
-            if (request == null)
-                throw new BadRequestException("Dữ liệu hồ sơ Đăng tuyển không hợp lệ.");
             // Lấy account kèm theo navigation Recruiter
             var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
                 ?? throw new NotFoundException("Không tìm thấy tài khoản.");
 
-            // Chỉ cho phép tài khoản role Recruiter
-            var primaryRole = account.AccountRoles.FirstOrDefault()?.Role.Name;
+            var query =  _unitOfWork.Recruiters.GetJobsByRecruiterId(accountId);
+			var isJobOfRecruiter = query.Any(j => j.Id == jobId);
+
+			if (!isJobOfRecruiter)
+			{
+				throw new ForbiddenException("Đơn ứng tuyển này không hợp lệ");
+			}
+			// Chỉ cho phép tài khoản role Recruiter
+			var primaryRole = account.AccountRoles.FirstOrDefault()?.Role.Name;
             if (primaryRole != RoleName.Recruiter)
             {
                 throw new BadRequestException("Chỉ tài khoản Recruiter mới có thể cập nhật Job.");
             }
             // Validate bắt buộc
             // Tạo mới Job
-            exsitingJob.Status = request.Status;
+            exsitingJob.Status = JobStatus.Closed;
             exsitingJob.UpdatedAt = DateTime.UtcNow;
             var result = await _unitOfWork.Recruiters.UpdateJobPostAsync(exsitingJob);
 

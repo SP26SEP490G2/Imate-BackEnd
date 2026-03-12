@@ -123,7 +123,7 @@ namespace Imate.API.Presentation.Controllers.Recruiters
             }
         }
         [HttpPut("close-job-applications")]
-        public async Task<IActionResult> CloseJobPost([FromBody] CreateUpdateJobRequest request)
+        public async Task<IActionResult> CloseJobPost([FromBody] int jobId)
         {
             try
             {
@@ -134,7 +134,7 @@ namespace Imate.API.Presentation.Controllers.Recruiters
                 if (accountIdClaim == null || !int.TryParse(accountIdClaim, out int accountId))
                     return Unauthorized(new { message = "Không thể xác định thông tin người dùng." });
 
-                var newjob = await _recruiterService.UpdateJobPostAsync(accountId, request);
+                var newjob = await _recruiterService.CloseJobPostAsync(accountId, jobId);
                 return Ok(new { message = "Update Đơn Đăng Tuyển thành công" });
             }
             catch (Exception ex)
