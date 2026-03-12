@@ -1,6 +1,7 @@
 using Amazon.Runtime.Internal;
 using Azure;
 using Azure.Core;
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
@@ -216,32 +217,31 @@ namespace Imate.API.Business.Services.Recruiters
 
             await _unitOfWork.SaveChangesAsync();
             var exsitingJob = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(result.Id);
-
-            await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Create, "Job", result.Id,
-                new { },
-                new
+            var newData = new
+            {
+                exsitingJob.Title,
+                exsitingJob.Location,
+                exsitingJob.EmploymentType,
+                exsitingJob.MinSalary,
+                exsitingJob.MaxSalary,
+                exsitingJob.JobDescription,
+                exsitingJob.Status,
+                exsitingJob.ApplicationDeadline,
+                JobSkills = exsitingJob.JobSkills.Select(id => new JobSkillResponse
                 {
-                    exsitingJob.Title,
-                    exsitingJob.Location,
-                    exsitingJob.EmploymentType,
-                    exsitingJob.MinSalary,
-                    exsitingJob.MaxSalary,
-                    exsitingJob.JobDescription,
-                    exsitingJob.Status,
-                    exsitingJob.ApplicationDeadline,
-                    JobSkills = exsitingJob.JobSkills.Select(id => new JobSkillResponse
-                    {
-                        Id = id.SkillId,
-                        SkillName = id.Skill.Name,
-                    }),
-                    JobPosition = exsitingJob.JobPositions.Select(id => new JobPositionResponse
-                    {
-                        Id = id.PositionId,
-                        PositionName = id.Position.Name,
+                    Id = id.SkillId,
+                    SkillName = id.Skill.Name,
+                }),
+                JobPosition = exsitingJob.JobPositions.Select(id => new JobPositionResponse
+                {
+                    Id = id.PositionId,
+                    PositionName = id.Position.Name,
 
-                    }),
-                }
-             );
+                }),
+            };
+			var (oldChanges, newChanges) = AuditHelper.GetChanges(new { }, newData);
+
+			await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Create, "Job", result.Id, oldChanges, newChanges);
             return result;
 
         }
@@ -263,13 +263,13 @@ namespace Imate.API.Business.Services.Recruiters
                 {
                     Id = id.SkillId,
                     SkillName = id.Skill.Name,
-                }),
+                }).ToList(),
                 JobPosition = exsitingJob.JobPositions.Select(id => new JobPositionResponse
                 {
                     Id = id.PositionId,
                     PositionName = id.Position.Name,
 
-                }),
+                }).ToList(),
             };
             if (exsitingJob == null)
             {
@@ -325,9 +325,7 @@ namespace Imate.API.Business.Services.Recruiters
 
 
             await _unitOfWork.SaveChangesAsync();
-            await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Update, "Job", exsitingJob.Id,
-            new { oldData },
-            new
+            var newData = new
             {
                 exsitingJob.Title,
                 exsitingJob.Location,
@@ -341,14 +339,16 @@ namespace Imate.API.Business.Services.Recruiters
                 {
                     Id = id.SkillId,
                     SkillName = id.Skill.Name,
-                }),
+                }).ToList(),
                 JobPosition = exsitingJob.JobPositions.Select(id => new JobPositionResponse
                 {
                     Id = id.PositionId,
                     PositionName = id.Position.Name,
 
-                }),
-            });
+                }).ToList(),
+            };
+			var (oldChanges, newChanges) = AuditHelper.GetChanges(oldData, newData);
+            await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Update, "Job", exsitingJob.Id, oldChanges, newChanges);
             return result;
         }
 
