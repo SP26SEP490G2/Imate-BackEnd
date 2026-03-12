@@ -4,6 +4,7 @@ using Imate.API.Business.Interfaces.QuestionBank;
 using Imate.API.Common.Router;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.QuestionBank;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -200,7 +201,7 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
             return Ok(question);
         }
 
-        [HttpGet(APIConfig.Question.GetSystemQuestionBanks)]
+        [HttpGet(APIConfig.Question.GetPublicSystemQuestionBanks)]
         public async Task<IActionResult> GetPublicSystemQuestionBanks([FromQuery] GetPublicSystemQuestionParams questionParams)
         {
             try
@@ -251,7 +252,7 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
             }
         }
 
-        [HttpGet(APIConfig.Question.GetContributedQuestionBanks)]
+        [HttpGet(APIConfig.Question.GetPublicContributedQuestionBanks)]
         public async Task<IActionResult> GetPublicContributedQuestionBanks([FromQuery] GetPublicContributedQuestionParams questionParams)
         {
             try
@@ -302,7 +303,7 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
                 });
             }
         }
-
+        
         [HttpPost(APIConfig.Question.ContributeQuestion)]
         public async Task<IActionResult> ContributeQuestion([FromBody] ContributeQuestionRequestModel request)
         {
