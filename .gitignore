@@ -36,6 +36,7 @@ PublishProfiles/
 # appsettings with secrets (keep appsettings.json but ignore environment-specific secrets)
 appsettings.Development.json
 appsettings.Production.json
+appsettings.json
 
 # Logs
 *.log

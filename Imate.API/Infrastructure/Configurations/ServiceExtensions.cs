@@ -100,6 +100,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IEmailService, Imate.API.Business.Services.ExternalServices.EmailService>();
 
             services.AddScoped<IUserCvRepository, UserCvRepository>();
+            services.AddScoped<ICvService, CvService>();
 
             // AWS S3 Storage Service
             services.Configure<AwsS3Config>(
