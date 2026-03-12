@@ -1,18 +1,25 @@
 ﻿using Imate.API.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace Imate.API.Presentation.RequestModels.QuestionBank
 {
     public class ContributeQuestionRequestModel
     {
         public int CompanyId { get; set; }
-        public int PositionId { get; set; }
+        public List<int> CategoryIds { get; set; }
+        [MinLength(1, ErrorMessage = "Phải có ít nhất một kỹ năng.")]
+        public List<int> SkillIds { get; set; }
+        [MinLength(1, ErrorMessage = "Phải có ít nhất một vị trí.")]
+        public List<int> PositionIds { get; set; }
+        [Required(ErrorMessage = "Độ khó là bắt buộc.")]
+        public DifficultyLevel Difficulty { get; set; }
+        [Required(ErrorMessage = "Cấp độ là bắt buộc.")]
         public Level Level { get; set; }
-        public IEnumerable<int> SkillIds { get; set; }
+        [Required(ErrorMessage = "Câu trả lời mẫu không được để trống.")]
         public DateOnly InterviewDate { get; set; }
-        public int CategoryId { get; set; }
-        public string QuestionContent { get; set; }
+        [Required(ErrorMessage = "Nội dung câu hỏi không được để trống.")]
+        public string Content { get; set; }
+        [Required(ErrorMessage = "Độ khó là bắt buộc.")]
         public string? UserAnswer { get; set; }
-
-        
     }
 }

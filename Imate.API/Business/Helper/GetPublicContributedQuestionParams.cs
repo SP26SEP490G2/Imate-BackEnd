@@ -12,6 +12,7 @@ namespace Imate.API.Business.Helper
 
         // Filter theo Enum
         public Level? Level { get; set; }
+        public DifficultyLevel? Difficulty { get; set; }
 
         // Filter theo Company Name (string search)
         public string? CompanyName { get; set; }
