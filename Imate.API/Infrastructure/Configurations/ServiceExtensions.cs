@@ -19,6 +19,8 @@ using Imate.API.Business.Services.Classification;
 using Imate.API.Business.Services.Payment;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Mentors;
+using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.Business.Services.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.DataAccess.Interfaces.UserManagement;
@@ -63,6 +65,8 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IMentorRepository, MentorRepository>();
             services.AddScoped<IRecruiterRepository, RecruiterRepository>();
             services.AddScoped<IBookingRepository, BookingRepository>();
+            services.AddScoped<ISlotRepository, SlotRepository>();
+            services.AddScoped<ITransactionRepository, TransactionRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
 
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
@@ -98,6 +102,7 @@ namespace Imate.API.Infrastructure.Configurations
             // Register HttpClient for Resend API
             services.AddHttpClient<Imate.API.Business.Services.ExternalServices.EmailService>();
             services.AddScoped<IEmailService, Imate.API.Business.Services.ExternalServices.EmailService>();
+            services.AddScoped<IBookingService, BookingService>();
 
             services.AddScoped<IUserCvRepository, UserCvRepository>();
             services.AddScoped<ICvService, CvService>();

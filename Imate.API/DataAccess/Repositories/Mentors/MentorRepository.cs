@@ -48,6 +48,19 @@ namespace Imate.API.DataAccess.Repositories.Mentors
                 FirstOrDefaultAsync(m => m.AccountId == id);
             return mentor;
         }
+        public async Task<Mentor?> GetByIdAsync(int id)
+        {
+            return await FindByCondition(m => m.AccountId == id, false).FirstOrDefaultAsync();
+        }
+
+        public async Task<Mentor?> GetByIdWithSkillsAsync(int id)
+        {
+            return await FindByCondition(m => m.AccountId == id, false)
+                .Include(m => m.MentorSkills)
+                    .ThenInclude(ms => ms.Skill)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<Mentor> UpdateMentorAsync(Mentor mentor)
         {
             _context.Mentors.Update(mentor);

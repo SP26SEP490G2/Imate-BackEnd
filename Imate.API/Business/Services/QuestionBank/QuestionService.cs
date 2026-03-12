@@ -916,19 +916,79 @@ namespace Imate.API.Business.Services.QuestionBank
 
             var question = new Question
             {
-                Content = request.QuestionContent,
+                Content = request.Content,
                 SampleAnswer = request.UserAnswer,
                 CreatorId = creatorId,
-                Difficulty = null,
+                Difficulty = request.Difficulty,
                 IsFromSystem = false,
                 IsActive = false,
                 ApprovalStatus = QuestionApprovalStatus.Pending, // Mặc định là Pending khi tạo mới
                 ContributedDetail = contributedDetail,
-                QuestionCategories = new List<QuestionCategory> { new() { CategoryId = request.CategoryId } },
-                QuestionPositions = new List<QuestionPosition> { new() { PositionId = request.PositionId } },
                 QuestionSkills = request.SkillIds.Select(skillId => new QuestionSkill { SkillId = skillId }).ToList()
             };
+            var a = new List<int>();
+            // 2. Kiểm tra tồn tại của Creator ID
+            if (await _unitOfWork.Accounts.AreUsersExisted(creatorId) == false)
+                throw new NotFoundException($"Creator ID {creatorId} không tồn tại.");
 
+            // --- BẮT ĐẦU PHẦN ÁNH XẠ VÀ VALIDATION CHO CÁC MỐI QUAN HỆ ---
+
+            // 3. Ánh xạ và Validate Category IDs
+            if (request.CategoryIds?.Any() == true)
+            {
+                // 3a. Validate: Kiểm tra từng ID (Nên tối ưu thành 1 Query như đã thảo luận)
+                a = await _unitOfWork.Categories.GetNonExistingCategoryIdsAsync(request.CategoryIds);
+                if (a.Any())
+                    throw new NotFoundException($"Category ID {string.Join(", ", a)} không tồn tại.");
+
+
+                // 3b. ÁNH XẠ: Tạo Collection các QuestionCategory
+                question.QuestionCategories = request.CategoryIds
+                    .Select(cId => new QuestionCategory
+                    {
+                        CategoryId = cId,
+                        Question = question // Liên kết ngược (nếu cần thiết cho EF Core)
+                    })
+                    .ToList();
+            }
+
+            // 4. Ánh xạ và Validate Skill IDs
+            if (request.SkillIds?.Any() == true)
+            {
+                a = await _unitOfWork.Skills.GetNonExistingSkillIdsAsync(request.SkillIds);
+                if (a.Any())
+                    throw new NotFoundException($"Skill ID {string.Join(", ", a)} không tồn tại.");
+
+
+                // 4b. ÁNH XẠ: Tạo Collection các QuestionSkill
+                question.QuestionSkills = request.SkillIds
+                    .Select(sId => new QuestionSkill
+                    {
+                        SkillId = sId,
+                        Question = question
+                    })
+                    .ToList();
+            }
+
+            // 5. Ánh xạ và Validate Position IDs
+            if (request.PositionIds?.Any() == true)
+            {
+                a = await _unitOfWork.Positions.GetNonExistingPositionIdsAsync(request.PositionIds);
+                if (a.Any())
+                    throw new NotFoundException($"Position ID {string.Join(", ", a)} không tồn tại.");
+
+
+                // 5b. ÁNH XẠ: Tạo Collection các QuestionPosition
+                question.QuestionPositions = request.PositionIds
+                    .Select(pId => new QuestionPosition
+                    {
+                        PositionId = pId,
+                        Question = question
+                    })
+                    .ToList();
+            }
+
+            // --- KẾT THÚC ÁNH XẠ ---
             await _unitOfWork.Questions.CreateContributedQuestionAsync(question);
             await _mediator.Publish(new NewContributedQuestionEvent(question));
         }

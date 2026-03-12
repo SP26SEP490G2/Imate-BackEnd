@@ -4,6 +4,7 @@ using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels.Classification;
 using Imate.API.Presentation.ResponseModels.Classification;
+using static Imate.API.Common.Router.APIConfig;
 
 namespace Imate.API.Business.Services.Classification
 {
@@ -35,7 +36,7 @@ namespace Imate.API.Business.Services.Classification
         {
             if (await _companyRepository.NameExistsAsync(model.Name)) 
             {
-                throw new InvalidOperationException($"Tên công ty '{model.Name}' đã tồn tại.");
+                throw new InvalidOperationException($"Tên công ty đã tồn tại.");
             }
             string imageUrl = string.Empty;
 
@@ -80,13 +81,15 @@ namespace Imate.API.Business.Services.Classification
             {
                 if (await _companyRepository.NameExistsExcludingIdAsync(model.Name, id))
                 {
-                    throw new InvalidOperationException($"Tên công ty '{model.Name}' đã được sử dụng bởi công ty khác.");
+                    throw new InvalidOperationException($"Tên công ty đã được sử dụng");
                 }
             }
 
             companyToUpdate.Name = model.Name;
+            companyToUpdate.IsActive = model.IsActive;
+            companyToUpdate.UpdatedAt = DateTime.UtcNow;
 
-            
+
             Console.WriteLine($"[DEBUG] About to check image file...");
 
             if (model.NewImageFile != null && model.NewImageFile.Length > 0)
@@ -153,6 +156,5 @@ namespace Imate.API.Business.Services.Classification
                 CreatedAt = company.CreatedAt
             };
         }
-        //Test đến đây rồi
     }
 }
