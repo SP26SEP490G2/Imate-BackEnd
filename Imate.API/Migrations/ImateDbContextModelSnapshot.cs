@@ -941,8 +941,8 @@ namespace Imate.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("ApprovalStatus")
-                        .HasColumnType("int");
+                    b.Property<string>("ApprovalStatus")
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Content")
                         .IsRequired()

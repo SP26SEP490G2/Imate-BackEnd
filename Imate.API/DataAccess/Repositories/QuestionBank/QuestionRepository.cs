@@ -181,11 +181,31 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
             return question;
         }
 
+        public async Task<Question> GetQuestionByIdAsync(int questionId, bool isFromSystem)
+        {
+            var a = await _context.Questions
+                .Where(q => q.Id == questionId)
+                .Include(q => q.Creator)
+                .Include(q => q.ContributedDetail)
+                    .ThenInclude(cd => cd.Company)
+                .Include(q => q.QuestionCategories)
+                    .ThenInclude(qc => qc.Category)
+                .Include(q => q.QuestionSkills)
+                    .ThenInclude(qs => qs.Skill)
+                .Include(q => q.QuestionPositions)
+                    .ThenInclude(qp => qp.Position)
+                    .Where(q => q.IsFromSystem == isFromSystem)
+                          .FirstOrDefaultAsync();
+            return a;
+        }
+
         public async Task<Question> GetQuestionByIdAsync(int questionId)
         {
             var a = await _context.Questions
                 .Where(q => q.Id == questionId)
                 .Include(q => q.Creator)
+                .Include(q => q.ContributedDetail)
+                    .ThenInclude(cd => cd.Company)
                 .Include(q => q.QuestionCategories)
                     .ThenInclude(qc => qc.Category)
                 .Include(q => q.QuestionSkills)

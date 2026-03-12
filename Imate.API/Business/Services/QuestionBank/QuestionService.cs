@@ -285,7 +285,8 @@ namespace Imate.API.Business.Services.QuestionBank
                 CreatorName = q.Creator.FullName ?? string.Empty,
                 SampleAnswer = q.SampleAnswer,
                 ContributedDetailId = q.ContributedDetailId,
-                ContributedDetail = q.ContributedDetail,
+                Level = q.ContributedDetail.Level,
+                CompanyName = q.ContributedDetail.Company.Name,
                 CategoriesName = q.QuestionCategories.Select(qc => qc.Category.Name).ToList(),
                 SkillsName = q.QuestionSkills.Select(qs => qs.Skill.Name ?? string.Empty).ToList(),
                 PositionsName = q.QuestionPositions.Select(qp => qp.Position.Name ?? string.Empty).ToList()
@@ -293,6 +294,34 @@ namespace Imate.API.Business.Services.QuestionBank
             });
 
             return await PagedList<GetAllContributedQuestionsForStaffAsyncResponse>.CreateAsync(response, questionParams.PageNumber, questionParams.PageSize);
+        }
+
+        public async Task<GetAllContributedQuestionsForStaffAsyncResponse> GetContributedQuestionByIdAsync(int questionId)
+        {
+            var a = await _unitOfWork.Questions.GetQuestionByIdAsync(questionId, false);
+            if (a == null) throw new NotFoundException($"Không tìm được câu hỏi hệ thống");
+            var newa = new GetAllContributedQuestionsForStaffAsyncResponse
+            {
+                Id = a.Id,
+                Content = a.Content,
+                Difficulty = a.Difficulty,
+                SampleAnswer = a.SampleAnswer,
+                IsFromSystem = a.IsFromSystem,
+                IsActive = a.IsActive,
+                CreatorId = a.CreatorId,
+                CreatorName = a.Creator?.FullName ?? "Unknown",
+                CategoriesName = a.QuestionCategories.Select(c => c.Category.Name).ToList(),
+                SkillsName = a.QuestionSkills.Select(s => s.Skill.Name).ToList(),
+                PositionsName = a.QuestionPositions.Select(p => p.Position.Name).ToList(),
+                Level = a.ContributedDetail.Level,
+                CompanyName = a.ContributedDetail.Company.Name,
+                ContributedDetailId = a.ContributedDetailId
+
+                // THAY THẾ .ToListAsync() bằng .FirstOrDefaultAsync() để chỉ lấy 1 đối tượng.
+
+
+            };
+            return newa;
         }
         public async Task<List<HiddenQuestion>> GetAllQuestionsHiddenAsync(AllQuestionParams questionParams)
         {
@@ -402,8 +431,8 @@ namespace Imate.API.Business.Services.QuestionBank
                 CreatorId = q.CreatorId,
                 CreatorName = q.Creator.FullName ?? string.Empty,
                 SampleAnswer = q.SampleAnswer,
-                ContributedDetailId = q.ContributedDetailId,
-                ContributedDetail = q.ContributedDetail,
+                Level = q.ContributedDetail.Level,
+                CompanyName = q.ContributedDetail.Company.Name,
                 CategoriesName = q.QuestionCategories.Select(qc => qc.Category.Name).ToList(),
                 SkillsName = q.QuestionSkills.Select(qs => qs.Skill.Name ?? string.Empty).ToList(),
                 PositionsName = q.QuestionPositions.Select(qp => qp.Position.Name ?? string.Empty).ToList()
@@ -1076,7 +1105,7 @@ namespace Imate.API.Business.Services.QuestionBank
         }
         public async Task<GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId)
         {
-            var a = await _unitOfWork.Questions.GetQuestionByIdAsync(questionId);
+            var a = await _unitOfWork.Questions.GetQuestionByIdAsync(questionId, true);
             if (a == null) throw new NotFoundException($"Không tìm được câu hỏi hệ thống");
             var newa = new GetAllSystemQuestionsForStaffAsyncResponse
             {
