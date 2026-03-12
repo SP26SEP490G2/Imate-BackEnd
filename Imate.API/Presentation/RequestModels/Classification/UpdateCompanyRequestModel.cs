@@ -9,5 +9,7 @@ namespace Imate.API.Presentation.RequestModels.Classification
         public string Name { get; set; } = string.Empty;
 
         public IFormFile? NewImageFile { get; set; }
+
+        public bool IsActive { get; set; }
     }
 }
