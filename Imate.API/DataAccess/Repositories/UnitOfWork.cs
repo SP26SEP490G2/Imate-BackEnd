@@ -31,9 +31,8 @@ namespace Imate.API.DataAccess.Repositories
             ICompanyRepository companies,
             ISlotRepository slots,
             ITransactionRepository transactions,
-            ISystemConfigRepository systemConfigs)
-            IMentorRecurringSlotRepository mentorRecurringSlots,
-            ITransactionRepository transactions)
+            ISystemConfigRepository systemConfigs,
+            IMentorRecurringSlotRepository mentorRecurringSlots)
         {
             _repositoryContext = repositoryContext;
             Accounts = accounts;
