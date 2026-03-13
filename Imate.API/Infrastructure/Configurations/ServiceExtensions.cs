@@ -70,6 +70,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IRecruiterRepository, RecruiterRepository>();
             services.AddScoped<IBookingRepository, BookingRepository>();
             services.AddScoped<ISlotRepository, SlotRepository>();
+            services.AddScoped<IMentorRecurringSlotRepository, MentorRecurringSlotRepository>();
             services.AddScoped<ITransactionRepository, TransactionRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
 
@@ -107,6 +108,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddHttpClient<Imate.API.Business.Services.ExternalServices.EmailService>();
             services.AddScoped<IEmailService, Imate.API.Business.Services.ExternalServices.EmailService>();
             services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IMentorSlotService, MentorSlotService>();
 
             services.AddScoped<IUserCvRepository, UserCvRepository>();
 
