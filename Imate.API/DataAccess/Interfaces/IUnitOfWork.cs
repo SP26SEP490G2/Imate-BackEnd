@@ -17,6 +17,8 @@ namespace Imate.API.DataAccess.Interfaces
         IBookingRepository Bookings { get; }
         IUserSubscriptionRepository UserSubscriptions { get; }
         IQuestionRepository Questions { get; }
+        ISavedQuestionRepository SavedQuestions { get; }
+
         IMentorRepository Mentors { get; }
         ICategoryRepository Categories { get; }
         IPositionRepository Positions { get; }

@@ -39,6 +39,8 @@ using Imate.API.Business.Services.ExternalServices;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.ExternalServices;
 using Amazon.S3;
+using Imate.API.Business.Interfaces.QuestionBank;
+using Imate.API.Business.Services.QuestionBank;
 
 
 
@@ -61,6 +63,8 @@ namespace Imate.API.Infrastructure.Configurations
             
             // 3. Đăng ký các Repository và Service 
             services.AddScoped<IQuestionRepository, QuestionRepository>();
+            services.AddScoped<ISavedQuestionService, SavedQuestionService>();
+            services.AddScoped<ISavedQuestionRepository, SavedQuestionRepository>();
             services.AddScoped<IAccountRepository, DataAccess.Repositories.UserManagement.AccountRepository>();
             services.AddScoped<IMentorRepository, MentorRepository>();
             services.AddScoped<IRecruiterRepository, RecruiterRepository>();
