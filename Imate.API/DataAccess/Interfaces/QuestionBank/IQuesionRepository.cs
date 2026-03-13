@@ -17,6 +17,7 @@ namespace Imate.API.DataAccess.Interfaces.QuestionBank
         Task CreateContributedQuestionAsync(Question question);
         Task<Question> CreateSystemQuestionForStaffAsync(Question question);
         Task<Question> UpdateQuestionAsync(Question question);
+        Task<Question> GetQuestionByIdAsync(int questionId, bool isFromSystem);
         Task<Question> GetQuestionByIdAsync(int questionId);
         Task<IEnumerable<int>> GetSavedQuestionIdsByAccountAsync(int accountId);
         Task<HashSet<string>> FindExistingContentsAsync(List<string> contents);

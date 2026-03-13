@@ -201,6 +201,14 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
             return Ok(question);
         }
 
+        [HttpGet(APIConfig.Question.GetContributedQuestionById)]
+        public async Task<IActionResult> GetContributedQuestionForStaffByIdAsync(int questionId)
+        {
+            var question = await _questionService.GetContributedQuestionByIdAsync(questionId);
+
+            return Ok(question);
+        }
+
         [HttpGet(APIConfig.Question.GetPublicSystemQuestionBanks)]
         public async Task<IActionResult> GetPublicSystemQuestionBanks([FromQuery] GetPublicSystemQuestionParams questionParams)
         {

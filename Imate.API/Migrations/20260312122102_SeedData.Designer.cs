@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Imate.API.Migrations
 {
     [DbContext(typeof(ImateDbContext))]
-    [Migration("20260307201943_SeedLookupData")]
-    partial class SeedLookupData
+    [Migration("20260312122102_SeedData")]
+    partial class SeedData
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -364,8 +364,8 @@ namespace Imate.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("ImageUrl")
                         .IsRequired()
@@ -378,8 +378,8 @@ namespace Imate.API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime");
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.HasKey("Id");
 
@@ -761,6 +761,9 @@ namespace Imate.API.Migrations
                     b.Property<int?>("TotalRatingCount")
                         .HasColumnType("int");
 
+                    b.Property<int>("VerificationStatus")
+                        .HasColumnType("int");
+
                     b.Property<int>("Yoe")
                         .HasColumnType("int");
 
@@ -933,21 +936,6 @@ namespace Imate.API.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Imate.API.Models.Entities.PositionSkill", b =>
-                {
-                    b.Property<int>("PositionId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SkillId")
-                        .HasColumnType("int");
-
-                    b.HasKey("PositionId", "SkillId");
-
-                    b.HasIndex("SkillId");
-
-                    b.ToTable("PositionSkills", (string)null);
-                });
-
             modelBuilder.Entity("Imate.API.Models.Entities.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -956,8 +944,8 @@ namespace Imate.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("ApprovalStatus")
-                        .HasColumnType("int");
+                    b.Property<string>("ApprovalStatus")
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -1384,7 +1372,7 @@ namespace Imate.API.Migrations
                         .HasColumnType("nvarchar(255)");
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("decimal(10,2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -2010,25 +1998,6 @@ namespace Imate.API.Migrations
                     b.Navigation("Skill");
                 });
 
-            modelBuilder.Entity("Imate.API.Models.Entities.PositionSkill", b =>
-                {
-                    b.HasOne("Imate.API.Models.Entities.Position", "Position")
-                        .WithMany("PositionSkills")
-                        .HasForeignKey("PositionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Imate.API.Models.Entities.Skill", "Skill")
-                        .WithMany("PositionSkills")
-                        .HasForeignKey("SkillId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Position");
-
-                    b.Navigation("Skill");
-                });
-
             modelBuilder.Entity("Imate.API.Models.Entities.Question", b =>
                 {
                     b.HasOne("Imate.API.Models.Entities.ContributedDetail", "ContributedDetail")
@@ -2406,8 +2375,6 @@ namespace Imate.API.Migrations
 
                     b.Navigation("MentorPositions");
 
-                    b.Navigation("PositionSkills");
-
                     b.Navigation("QuestionPositions");
                 });
 
@@ -2436,8 +2403,6 @@ namespace Imate.API.Migrations
                     b.Navigation("JobSkills");
 
                     b.Navigation("MentorSkills");
-
-                    b.Navigation("PositionSkills");
 
                     b.Navigation("QuestionSkills");
                 });
