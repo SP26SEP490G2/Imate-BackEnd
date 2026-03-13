@@ -3,7 +3,7 @@
     public class BalanceSummaryResponse
     {
         public int CurrentBalance { get; set; } 
-        public DateTime? LastUpdated { get; set; }
+        public DateTimeOffset? LastUpdated { get; set; }
         public int TotalDeposit { get; set; }
         public int TotalWithdrawal { get; set; }
         
