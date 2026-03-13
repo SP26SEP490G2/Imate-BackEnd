@@ -17,6 +17,8 @@ namespace Imate.API.Business.Interfaces.Recruiters
         Task<Job> UpdateJobPostAsync(int accountId, CreateUpdateJobRequest request);
 
         Task<Job> CloseJobPostAsync(int accountId, int jobId);
+        Task<PagedList<GetAppliedJobApplicationCandidateResponse>> GetAppliedCandidateByJobIdAsync(int jobId, AppliedApplicationCandidateFilterRequest filterRequest);
 
-    }
+
+	}
 }

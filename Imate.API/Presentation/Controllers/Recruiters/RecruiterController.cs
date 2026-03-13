@@ -76,7 +76,33 @@ namespace Imate.API.Presentation.Controllers.Recruiters
             }
         }
 
-        [HttpPost("create-job-posts")]
+        [HttpGet("{jobId}/applied-candidates")]
+		public async Task<IActionResult> getAppliedCandidatr(int jobId, [FromQuery] AppliedApplicationCandidateFilterRequest? request)
+		{
+			try
+			{
+				var accountIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+					?? User.FindFirst("sub")?.Value
+					?? User.FindFirst("accountId")?.Value;
+
+				if (accountIdClaim == null || !int.TryParse(accountIdClaim, out int accountId))
+					return Unauthorized(new { message = "Không thể xác định thông tin người dùng." });
+
+				var result = await _recruiterService.GetAppliedCandidateByJobIdAsync(jobId, request);
+
+				return Ok(new { data = result, message = "Lấy danh sách Candidate đơn đăng tuyển thành công." });
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new
+				{
+					data = (object?)null,
+					message = ex.Message
+				});
+			}
+		}
+
+		[HttpPost("create-job-posts")]
         public async Task<IActionResult> createJobPost([FromBody] CreateUpdateJobRequest request)
         {
             try
