@@ -117,7 +117,7 @@ namespace Imate.API.Business.Services.Mentors
             
             // Link transaction to booking
             transaction.BookingId = booking.Id;
-            _unitOfWork.Transactions.Create(transaction);
+            _unitOfWork.Transactions.AddAsync(transaction);
 
             await _unitOfWork.SaveChangesAsync();
 

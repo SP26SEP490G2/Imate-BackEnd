@@ -26,6 +26,8 @@ namespace Imate.API.DataAccess.Interfaces
         ISlotRepository Slots { get; }
         ITransactionRepository Transactions { get; }
         IRecruiterRepository Recruiters { get; }
+        ISystemConfigRepository SystemConfigs { get; }
+
         Task SaveChangesAsync();
         Task SaveAsync();
     }
