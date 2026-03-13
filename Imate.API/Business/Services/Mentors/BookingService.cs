@@ -80,14 +80,15 @@ namespace Imate.API.Business.Services.Mentors
 
             // 2. Financials
             int price = mentor.PricePerSession;
+            /* 
             if (candidateAccount.Balance < price)
             {
                 throw new BadRequestException("Insufficient balance to book this session.");
             }
 
-            // Deduct balance
+            // Deduct balance (tracked by EF, will save with SaveChangesAsync below)
             candidateAccount.Balance -= price;
-            await _unitOfWork.Accounts.UpdateAsync(candidateAccount);
+            */
 
             // Create Escrow Transaction
             var transaction = new Transaction
@@ -113,12 +114,11 @@ namespace Imate.API.Business.Services.Mentors
                 CreatedAt = DateTime.UtcNow
             };
 
+            // Link transaction to booking using navigation property for proper ID handling
+            booking.Transactions.Add(transaction);
+
             await _unitOfWork.Bookings.AddAsync(booking);
             
-            // Link transaction to booking
-            transaction.BookingId = booking.Id;
-            _unitOfWork.Transactions.Create(transaction);
-
             await _unitOfWork.SaveChangesAsync();
 
             return new BookingResponseModel
@@ -129,6 +129,22 @@ namespace Imate.API.Business.Services.Mentors
                 Price = booking.PriceAtBooking,
                 Status = booking.Status
             };
+        }
+
+        public async Task<List<MentorBookedSlotResponse>> GetBookedSlotsByMentorIdAsync(int mentorId)
+        {
+            var bookings = await _unitOfWork.Bookings.GetMentorUpcomingBookingsAsync(mentorId, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
+            
+            return bookings.Select(b => new MentorBookedSlotResponse
+            {
+                BookingId = b.Id,
+                CandidateId = b.CandidateId,
+                CandidateName = b.Candidate.FullName,
+                CandidateAvatarUrl = b.Candidate.AvatarUrl,
+                StartTime = b.StartTime,
+                BookDate = b.BookDate,
+                Status = b.Status
+            }).ToList();
         }
     }
 }

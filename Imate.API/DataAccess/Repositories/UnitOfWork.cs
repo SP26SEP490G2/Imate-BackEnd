@@ -29,6 +29,7 @@ namespace Imate.API.DataAccess.Repositories
             ISkillRepository skills,
             ICompanyRepository companies,
             ISlotRepository slots,
+            IMentorRecurringSlotRepository mentorRecurringSlots,
             ITransactionRepository transactions)
         {
             _repositoryContext = repositoryContext;
@@ -43,6 +44,7 @@ namespace Imate.API.DataAccess.Repositories
             Companies = companies;
             Skills = skills;
             Slots = slots;
+            MentorRecurringSlots = mentorRecurringSlots;
             Transactions = transactions;
         }
         public IAccountRepository Accounts { get; private set; }
@@ -56,6 +58,7 @@ namespace Imate.API.DataAccess.Repositories
         public ISkillRepository Skills { get; private set; }
         public ICompanyRepository Companies { get; private set; }
         public ISlotRepository Slots { get; private set; }
+        public IMentorRecurringSlotRepository MentorRecurringSlots { get; private set; }
         public ITransactionRepository Transactions { get; private set; }
         public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();
         public Task SaveAsync() => _repositoryContext.SaveChangesAsync();

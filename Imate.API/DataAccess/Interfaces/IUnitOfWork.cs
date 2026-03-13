@@ -22,6 +22,7 @@ namespace Imate.API.DataAccess.Interfaces
         IPositionRepository Positions { get; }
         ISkillRepository Skills { get; }
         ISlotRepository Slots { get; }
+        IMentorRecurringSlotRepository MentorRecurringSlots { get; }
         ITransactionRepository Transactions { get; }
         IRecruiterRepository Recruiters { get; }
         Task SaveChangesAsync();
