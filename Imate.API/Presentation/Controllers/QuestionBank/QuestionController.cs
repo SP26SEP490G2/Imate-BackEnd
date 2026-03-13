@@ -1,4 +1,5 @@
-﻿using Imate.API.Business.Helper;
+﻿using Imate.API.Business.Exceptions;
+using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.QuestionBank;
 using Imate.API.Common.Router;
@@ -323,6 +324,106 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
 
             await _questionService.CreateContributedQuestionAsync(request, userId);
             return StatusCode(201, new { message = "Your question has been contributed successfully!" });
+        }
+
+        [HttpGet(APIConfig.Question.ExportSystemQuestions)]
+        public async Task<IActionResult> ExportSystemQuestionsAsync([FromQuery] GetSystemQuestionParams questionParams)
+        {
+            try
+            {
+                var fileBytes = await _questionService.ExportSystemQuestionsToExcelAsync(questionParams);
+
+                // Đặt tên file với timestamp
+                string fileName = $"System_Questions_Export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+                // Trả về file với Content-Type chính xác
+                return File(
+                    fileBytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName
+                );
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to export questions: " + ex.Message });
+            }
+        }
+
+        [HttpGet(APIConfig.Question.GetMyContributedQuestions)]
+        public async Task<IActionResult> GetMyContributedQuestionsAsync([FromQuery] GetMyContributedQuestionsParams questionParams)
+        {
+            try
+            {
+                var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(accountIdClaim) || !int.TryParse(accountIdClaim, out int accountId))
+                {
+                    return Unauthorized(new { message = "Invalid user authentication." });
+                }
+
+                var pagedResult = await _questionService.GetMyContributedQuestionsAsync(accountId, questionParams);
+                Response.Headers.Add("X-Pagination",
+                    System.Text.Json.JsonSerializer.Serialize(
+                        new
+                        {
+                            pagedResult.TotalCount,
+                            pagedResult.PageSize,
+                            pagedResult.PageNumber,
+                            pagedResult.TotalPages
+                        }));
+
+                return Ok(pagedResult);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Có lỗi xảy ra khi lấy danh sách câu hỏi đóng góp của bạn",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet(APIConfig.Question.GetAllPendingContributedQuestionsForStaff)]
+        public async Task<IActionResult> GetAllPendingContributedQuestionForStaffAsync([FromQuery] PendingContributedParams questionParams)
+        {
+            var pagedResult = await _questionService.GetAllPendingContributedQuestionForStaffAsync(questionParams);
+            Response.Headers.Add("X-Pagination",
+                 System.Text.Json.JsonSerializer.Serialize(
+             new
+             {
+                 pagedResult.TotalCount,
+                 pagedResult.PageSize,
+                 pagedResult.PageNumber,
+                 pagedResult.TotalPages
+             }));
+
+            return Ok(pagedResult);
+        }
+
+        [HttpPut(APIConfig.Question.ChangeContributedQuestionStatusForStaff)]
+        public async Task<IActionResult> UpdateContributedQuestionStatusAsync(int questionId, bool status)
+        {
+            try
+            {
+                var accountIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(accountIdString, out var staffId))
+                {
+                    return Unauthorized("Token không hợp lệ.");
+                }
+
+                var question = await _questionService.UpdateContributedQuestionStatusAsync(questionId, status, staffId);
+                return Ok(new
+                {
+                    Message = $"Cập nhật trạng thái câu hỏi ID {questionId} thành công.",
+                    QuestionId = question.Id,
+                    NewStatus = question.IsActive
+                });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

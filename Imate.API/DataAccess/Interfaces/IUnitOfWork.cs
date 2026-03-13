@@ -27,6 +27,8 @@ namespace Imate.API.DataAccess.Interfaces
         IMentorRecurringSlotRepository MentorRecurringSlots { get; }
         ITransactionRepository Transactions { get; }
         IRecruiterRepository Recruiters { get; }
+        ISystemConfigRepository SystemConfigs { get; }
+
         Task SaveChangesAsync();
         Task SaveAsync();
     }

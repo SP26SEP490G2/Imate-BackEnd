@@ -24,7 +24,7 @@ namespace Imate.API.Business.Interfaces.QuestionBank
         Task<GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId);
         Task<GetAllContributedQuestionsForStaffAsyncResponse> GetContributedQuestionByIdAsync(int questionId);
 
-        //Task<Question> UpdateContributedQuestionStatusAsync(int questionId, bool status, int staffId);
+        Task<Question> UpdateContributedQuestionStatusAsync(int questionId, bool status, int staffId);
         Task<Question> ToggleQuestionActiveStatusAsync(int questionId, bool isActive, int staffId);
         Task<List<QuestionValidationResponse>> ValidateQuestionsFromExcelAsync(IFormFile file);
         Task<int> CreateValidatedQuestionsAsync(List<FinalImportRequest> requests, int creatorId);

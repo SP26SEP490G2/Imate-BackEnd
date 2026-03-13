@@ -89,7 +89,9 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IMentorRepository, MentorRepository>();
             services.AddScoped<IRecruiterRepository, RecruiterRepository>();
             services.AddScoped<IRecruiterService, RecruiterService>();
-            
+            services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+            services.AddScoped<ISystemConfigService, SystemConfigService>();
+
 
             // Classification Services & Repositories
             services.AddScoped<ICategoryService, CategoryService>();
