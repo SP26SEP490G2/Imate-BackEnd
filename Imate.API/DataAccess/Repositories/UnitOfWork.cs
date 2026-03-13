@@ -24,6 +24,7 @@ namespace Imate.API.DataAccess.Repositories
             IUserSubscriptionRepository userSubscriptions,
             IBookingRepository bookings,
             IQuestionRepository questions,
+            ISavedQuestionRepository savedQuestions,
             ICategoryRepository categories,
             IPositionRepository positions,
             ISkillRepository skills,
@@ -38,6 +39,7 @@ namespace Imate.API.DataAccess.Repositories
             UserSubscriptions = userSubscriptions;
             Bookings = bookings;
             Questions = questions;
+            SavedQuestions = savedQuestions;
             Categories = categories;
             Positions = positions;
             Companies = companies;
@@ -51,6 +53,7 @@ namespace Imate.API.DataAccess.Repositories
         public IUserSubscriptionRepository UserSubscriptions { get; private set; }
         public IBookingRepository Bookings { get; private set; }
         public IQuestionRepository Questions { get; private set; }
+        public ISavedQuestionRepository SavedQuestions { get; private set; }
         public ICategoryRepository Categories { get; private set; }
         public IPositionRepository Positions { get; private set; }
         public ISkillRepository Skills { get; private set; }
