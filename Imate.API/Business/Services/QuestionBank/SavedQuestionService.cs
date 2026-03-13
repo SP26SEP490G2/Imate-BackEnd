@@ -1,4 +1,5 @@
 ﻿using Imate.API.Business.Interfaces.QuestionBank;
+using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.ResponseModels.QuestionBank;
@@ -7,15 +8,12 @@ namespace Imate.API.Business.Services.QuestionBank
 {
     public class SavedQuestionService : ISavedQuestionService
     {
-        private readonly ISavedQuestionRepository _savedQuestionRepository;
-        private readonly IQuestionRepository _questionRepository;
+        private readonly IUnitOfWork _unitOfWork;
 
         public SavedQuestionService(
-            ISavedQuestionRepository savedQuestionRepository,
-            IQuestionRepository questionRepository)
+            IUnitOfWork unitOfWork)
         {
-            _savedQuestionRepository = savedQuestionRepository;
-            _questionRepository = questionRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<SaveQuestionResponseModel> ToggleSaveQuestionAsync(int accountId, int questionId)
@@ -28,13 +26,13 @@ namespace Imate.API.Business.Services.QuestionBank
             //}
 
             // Kiểm tra xem đã save chưa
-            var existingSave = await _savedQuestionRepository
+            var existingSave = await _unitOfWork.SavedQuestions
                 .GetByAccountAndQuestionAsync(accountId, questionId);
 
             if (existingSave != null)
             {
                 // Đã save rồi → Xóa (unsave)
-                await _savedQuestionRepository.DeleteAsync(existingSave);
+                await _unitOfWork.SavedQuestions.DeleteAsync(existingSave);
 
                 return new SaveQuestionResponseModel
                 {
@@ -51,7 +49,7 @@ namespace Imate.API.Business.Services.QuestionBank
                     QuestionId = questionId
                 };
 
-                await _savedQuestionRepository.AddAsync(newSave);
+                await _unitOfWork.SavedQuestions.AddAsync(newSave);
 
                 return new SaveQuestionResponseModel
                 {
@@ -73,14 +71,14 @@ namespace Imate.API.Business.Services.QuestionBank
 
         public async Task<IEnumerable<PublicContributedQuestionResponseModel>> GetSavedContributedQuestionsAsync(int accountId)
         {
-            var questions = await _savedQuestionRepository.GetSavedContributedQuestionsByAccountAsync(accountId);
+            var questions = await _unitOfWork.SavedQuestions.GetSavedContributedQuestionsByAccountAsync(accountId);
 
             return questions.Select(q => MapToQuestionListResponseModel(q)).ToList();
         }
 
         public async Task<IEnumerable<PublicSystemQuestionResponseModel>> GetSavedSystemQuestionsAsync(int accountId)
         {
-            var questions = await _savedQuestionRepository.GetSavedSystemQuestionsByAccountAsync(accountId);
+            var questions = await _unitOfWork.SavedQuestions.GetSavedSystemQuestionsByAccountAsync(accountId);
 
             return questions.Select(q => new PublicSystemQuestionResponseModel
             {
