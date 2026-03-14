@@ -32,5 +32,14 @@ namespace Imate.API.Presentation.Controllers.Mentors
             var result = await _bookingService.GetBookedSlotsByMentorIdAsync(mentorId);
             return Ok(result);
         }
+
+        [HttpGet("mentor/my-bookings")]
+        [Authorize(Roles = "Mentor")]
+        public async Task<IActionResult> GetMyBookings()
+        {
+            var mentorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _bookingService.GetMentorBookingsAsync(mentorId);
+            return Ok(result);
+        }
     }
 }

@@ -146,5 +146,109 @@ namespace Imate.API.Business.Services.Mentors
                 Status = b.Status
             }).ToList();
         }
+
+        public async Task<List<BookingDetailResponse>> GetCandidateBookingsAsync(int candidateId)
+        {
+            var bookings = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.CandidateId == candidateId)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.MentorId,
+                    b.CandidateId,
+                    ProfileName = b.Mentor.Account.FullName,
+                    ProfileAvatarUrl = b.Mentor.Account.AvatarUrl,
+                    b.StartTime,
+                    b.BookDate,
+                    b.Status,
+                    b.AgoraChannelName,
+                    b.PriceAtBooking
+                })
+                .ToListAsync();
+
+            var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
+            TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
+
+            return bookings.Select(b =>
+            {
+                var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(b.StartTime.DateTime, localTimeZone);
+                var timeOnly = TimeOnly.FromDateTime(localStartTime);
+                var slot = slots.FirstOrDefault(s => s.DayOfWeek == (int)b.BookDate.DayOfWeek && s.StartTime == timeOnly);
+                
+                DateTimeOffset endTime = b.StartTime.AddHours(1); // fallback
+                if (slot != null)
+                {
+                    endTime = b.StartTime.Add(slot.EndTime.ToTimeSpan() - slot.StartTime.ToTimeSpan());
+                }
+
+                return new BookingDetailResponse
+                {
+                    BookingId = b.Id,
+                    MentorId = b.MentorId,
+                    CandidateId = b.CandidateId,
+                    ProfileName = b.ProfileName,
+                    ProfileAvatarUrl = b.ProfileAvatarUrl,
+                    JobTitle = "Mentor",
+                    StartTime = b.StartTime,
+                    EndTime = endTime,
+                    BookDate = b.BookDate,
+                    Status = b.Status,
+                    MeetingRoomId = b.AgoraChannelName,
+                    Price = b.PriceAtBooking
+                };
+            }).ToList();
+        }
+
+        public async Task<List<BookingDetailResponse>> GetMentorBookingsAsync(int mentorId)
+        {
+            var bookings = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.MentorId == mentorId)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.MentorId,
+                    b.CandidateId,
+                    ProfileName = b.Candidate.FullName,
+                    ProfileAvatarUrl = b.Candidate.AvatarUrl,
+                    b.StartTime,
+                    b.BookDate,
+                    b.Status,
+                    b.AgoraChannelName,
+                    b.PriceAtBooking
+                })
+                .ToListAsync();
+
+            var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
+            TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
+
+            return bookings.Select(b =>
+            {
+                var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(b.StartTime.DateTime, localTimeZone);
+                var timeOnly = TimeOnly.FromDateTime(localStartTime);
+                var slot = slots.FirstOrDefault(s => s.DayOfWeek == (int)b.BookDate.DayOfWeek && s.StartTime == timeOnly);
+                
+                DateTimeOffset endTime = b.StartTime.AddHours(1); // fallback
+                if (slot != null)
+                {
+                    endTime = b.StartTime.Add(slot.EndTime.ToTimeSpan() - slot.StartTime.ToTimeSpan());
+                }
+
+                return new BookingDetailResponse
+                {
+                    BookingId = b.Id,
+                    MentorId = b.MentorId,
+                    CandidateId = b.CandidateId,
+                    ProfileName = b.ProfileName,
+                    ProfileAvatarUrl = b.ProfileAvatarUrl,
+                    JobTitle = "Candidate",
+                    StartTime = b.StartTime,
+                    EndTime = endTime,
+                    BookDate = b.BookDate,
+                    Status = b.Status,
+                    MeetingRoomId = b.AgoraChannelName,
+                    Price = b.PriceAtBooking
+                };
+            }).ToList();
+        }
     }
 }
