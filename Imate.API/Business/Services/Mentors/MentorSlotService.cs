@@ -9,7 +9,7 @@ namespace Imate.API.Business.Services.Mentors
     public class MentorSlotService : IMentorSlotService
     {
         private readonly IUnitOfWork _unitOfWork;
-        // Using a similar approach as Peppo but adapting to IMATE structure
+        // Using a similar approach as Imate but adapting to IMATE structure
         // Since there's no dedicated MentorRecurringSlot repository in IUnitOfWork yet, 
         // we might need to access it via context or add it. 
         // For now, let's assume we can use the Slot repository or I'll implement it within BookingService 
