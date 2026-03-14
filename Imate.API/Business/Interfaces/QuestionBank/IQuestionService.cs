@@ -22,7 +22,7 @@ namespace Imate.API.Business.Interfaces.QuestionBank
         Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request);
         Task<Question> UpdateSystemQuestionForStaffAsync(int questionId, UpdateSystemQuestionForStaffRequest request);
         Task<GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId);
-        Task<GetAllContributedQuestionsForStaffAsyncResponse> GetContributedQuestionByIdAsync(int questionId);
+        Task<GetAllContributedQuestionsForStaffAsyncResponse> GetContributedQuestionByIdAsync(int questionId, int? accountId);
 
         Task<Question> UpdateContributedQuestionStatusAsync(int questionId, bool status, int staffId);
         Task<Question> ToggleQuestionActiveStatusAsync(int questionId, bool isActive, int staffId);
