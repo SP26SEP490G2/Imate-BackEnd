@@ -21,6 +21,9 @@ namespace Imate.AI.Module.Extensions
             // CV Analysis business service
             services.AddScoped<ICvAnalysisService, CvAnalysisService>();
 
+            // Practice Test service (UC-30)
+            services.AddScoped<IPracticeTestService, PracticeTestService>();
+
             return services;
         }
     }
