@@ -298,10 +298,11 @@ namespace Imate.API.Business.Services.QuestionBank
             return await PagedList<GetAllContributedQuestionsForStaffAsyncResponse>.CreateAsync(response, questionParams.PageNumber, questionParams.PageSize);
         }
 
-        public async Task<GetAllContributedQuestionsForStaffAsyncResponse> GetContributedQuestionByIdAsync(int questionId)
+        public async Task<GetAllContributedQuestionsForStaffAsyncResponse> GetContributedQuestionByIdAsync(int questionId, int? accountId)
         {
             var a = await _unitOfWork.Questions.GetQuestionByIdAsync(questionId, false);
             if (a == null) throw new NotFoundException($"Không tìm được câu hỏi hệ thống");
+
             var newa = new GetAllContributedQuestionsForStaffAsyncResponse
             {
                 Id = a.Id,
@@ -317,7 +318,22 @@ namespace Imate.API.Business.Services.QuestionBank
                 PositionsName = a.QuestionPositions.Select(p => p.Position.Name).ToList(),
                 Level = a.ContributedDetail.Level,
                 CompanyName = a.ContributedDetail.Company.Name,
-                ContributedDetailId = a.ContributedDetailId
+                ContributedDetailId = a.ContributedDetailId,
+                Comments = a.Comments.Select(c => new CommentDto
+                {
+                    Id = c.Id,
+                    Content = c.Content,
+                    UserId = c.UserId,
+                    UserName = c.User?.FullName ?? "Unknown",
+                    UserAvatarUrl = c.User?.AvatarUrl ?? string.Empty,
+                    UserRole = c.User?.AccountRoles?.FirstOrDefault()?.Role?.Name.ToString() ?? "Candidate",
+                    CreatedAt = c.CreatedAt,
+                    UpdatedAt = c.UpdatedAt,
+                    UpvoteCount = c.Votes?.Count(v => v.IsUpvote) ?? 0,
+                    DownvoteCount = c.Votes?.Count(v => !v.IsUpvote) ?? 0,
+                    TotalVotes = c.Votes?.Count ?? 0,
+                    CurrentUserVoteIsUpvote = accountId.HasValue ? c.Votes?.FirstOrDefault(v => v.AccountId == accountId.Value)?.IsUpvote : null
+                }).ToList()
 
                 // THAY THẾ .ToListAsync() bằng .FirstOrDefaultAsync() để chỉ lấy 1 đối tượng.
 

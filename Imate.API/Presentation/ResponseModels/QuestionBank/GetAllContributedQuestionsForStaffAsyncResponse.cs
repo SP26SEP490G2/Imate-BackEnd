@@ -1,4 +1,5 @@
-﻿using Imate.API.Models.Entities;
+﻿using DocumentFormat.OpenXml.Bibliography;
+using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 
 namespace Imate.API.Presentation.ResponseModels.QuestionBank
@@ -17,6 +18,7 @@ namespace Imate.API.Presentation.ResponseModels.QuestionBank
         public string? SampleAnswer { get; set; }
         public int? ContributedDetailId { get; set; } // Cho phép 
         public ContributedDetail ContributedDetail { get; set; } // Quan hệ 1:0..1
+        public List<CommentDto> Comments { get; set; }
         public List<string> CategoriesName { get; set; }
         public List<string> SkillsName { get; set; }
         public List<string> PositionsName { get; set; }

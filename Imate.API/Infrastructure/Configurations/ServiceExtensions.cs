@@ -41,6 +41,10 @@ using Imate.API.ExternalServices;
 using Amazon.S3;
 using Imate.API.Business.Interfaces.QuestionBank;
 using Imate.API.Business.Services.QuestionBank;
+using Imate.API.DataAccess.Interfaces.Comunity;
+using Imate.API.DataAccess.Repositories.Comunity;
+using Imate.API.Business.Interfaces.Comunity;
+using Imate.API.Business.Services.Comunity;
 
 
 
@@ -91,6 +95,10 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IRecruiterService, RecruiterService>();
             services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
             services.AddScoped<ISystemConfigService, SystemConfigService>();
+            services.AddScoped<IVoteRepository, VoteRepository>();
+            services.AddScoped<ICommentRepository, CommentRepository>();
+            services.AddScoped<ICommentService, CommentService>();
+
 
 
             // Classification Services & Repositories
