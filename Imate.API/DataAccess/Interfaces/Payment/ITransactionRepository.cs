@@ -17,6 +17,7 @@ namespace Imate.API.DataAccess.Interfaces.Payment
         Task<List<Transaction>> GetRecentTransactionsAsync(int accountId, int take = 5);
         Task<PagedList<Transaction>> GetAllTransactionsAsync(TransactionQueryParameters paginationParams);
         Task<Transaction?> GetTransactionByBookingIdAsync(int bookingId);
+        Task<Transaction?> GetBookingTransactionAsync(int bookingId);
         Task<PagedList<Transaction>> GetReadyForPayoutBookingsAsync(TransactionQueryParameters paginationParams);
         IQueryable<Transaction> GetAllTransactionsQueryable();
     }

@@ -1,4 +1,4 @@
-﻿using Imate.API.Business.Exceptions;
+using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.QuestionBank;

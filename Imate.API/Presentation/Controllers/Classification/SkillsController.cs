@@ -1,4 +1,4 @@
-﻿using Imate.API.Business.Helper;
+using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Common.Router;

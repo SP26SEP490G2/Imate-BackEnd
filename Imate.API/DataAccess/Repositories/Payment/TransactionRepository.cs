@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Imate.API.Business.Helper;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.Models.Entities;
@@ -119,6 +119,12 @@ namespace Imate.API.DataAccess.Repositories.Payment
                 .Where(t => t.BookingId == bookingId && t.TransactionType == TransactionType.PointDeposit)
                 .OrderByDescending(t => t.CreatedAt)
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task<Transaction?> GetBookingTransactionAsync(int bookingId)
+        {
+            return await _context.Transactions
+                .FirstOrDefaultAsync(t => t.BookingId == bookingId && t.TransactionType == TransactionType.Booking);
         }
 
         public async Task<PagedList<Transaction>> GetAllTransactionsAsync(TransactionQueryParameters paginationParams)
