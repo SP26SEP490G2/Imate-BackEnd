@@ -8,6 +8,7 @@ namespace Imate.API.Models.Enums
         Subscription,
         Refund,
         Commission,
+        Penalty,
         PointDeposit
     }
 }
