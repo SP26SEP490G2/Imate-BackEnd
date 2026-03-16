@@ -250,5 +250,53 @@ namespace Imate.API.Business.Services.Mentors
                 };
             }).ToList();
         }
+
+        public async Task CancelBookingAsync(int bookingId, int candidateId)
+        {
+            var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(bookingId)
+                ?? throw new NotFoundException("Booking not found.");
+
+            if (booking.CandidateId != candidateId)
+            {
+                throw new BadRequestException("You are not authorized to cancel this booking.");
+            }
+
+            if (booking.Status != BookingStatus.Confirmed)
+            {
+                throw new BadRequestException($"Cannot cancel booking with status {booking.Status}.");
+            }
+
+            // Cancellation deadline: at least 6 hours before StartTime
+            if (booking.StartTime < DateTime.UtcNow.AddHours(6))
+            {
+                throw new BadRequestException("You can only cancel bookings at least 6 hours before the start time.");
+            }
+
+            booking.Status = BookingStatus.Cancelled;
+            booking.UpdatedAt = DateTime.UtcNow;
+            // No need to call UpdateAsync as it's already tracked.
+
+            // Handle Point Refund
+            // Find the associated transaction
+            var transaction = await _unitOfWork.Transactions.GetBookingTransactionAsync(bookingId);
+
+            if (transaction != null && transaction.Status == TransactionStatus.Escrow)
+            {
+                transaction.Status = TransactionStatus.Cancelled;
+                transaction.UpdatedAt = DateTime.UtcNow;
+                // No need to call UpdateAsync as it's tracked and SaveChangesAsync will catch it.
+                // Using UpdateAsync(transaction) here would trigger the tracking conflict.
+
+                // Assuming points should be returned to candidate balance
+                var candidateAccount = await _unitOfWork.Accounts.GetByIdAsync(candidateId);
+                if (candidateAccount != null)
+                {
+                    candidateAccount.Balance += transaction.Amount;
+                    await _unitOfWork.Accounts.UpdateAsync(candidateAccount);
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+        }
     }
 }
