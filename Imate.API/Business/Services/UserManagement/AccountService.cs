@@ -18,14 +18,14 @@ namespace Imate.API.Business.Services.UserManagement
     public class AccountService : IAccountService
     {
         private readonly IAccountRepository _accountRepository;
-        //private readonly IAwsS3StorageService _awsS3Service, IAwsS3StorageService awsS3Storage;
+        private readonly IAwsS3StorageService _awsS3Service;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IRoleService _roleService;
 
-        public AccountService(IAccountRepository accountRepository, IUnitOfWork unitOfWork, IRoleService roleService)
+        public AccountService(IAccountRepository accountRepository, IUnitOfWork unitOfWork, IRoleService roleService, IAwsS3StorageService awsS3Storage)
         {
             _accountRepository = accountRepository;
-            //_awsS3Service = awsS3Storage;
+            _awsS3Service = awsS3Storage;
             _unitOfWork = unitOfWork;
             _roleService = roleService;
         }
@@ -284,12 +284,11 @@ namespace Imate.API.Business.Services.UserManagement
                 // Xóa ảnh cũ nếu có
                 if (!string.IsNullOrEmpty(account.AvatarUrl))
                 {
-                    //await _awsS3Service.DeleteFileAsync(account.AvatarUrl);
+                    await _awsS3Service.DeleteFileAsync(account.AvatarUrl);
                 }
 
                 // Upload ảnh mới
-                //account.AvatarUrl = await _awsS3Service.UploadFileAsync(request.AvatarFile, "avatars");
-                account.AvatarUrl = "HELLOWORLD";
+                account.AvatarUrl = await _awsS3Service.UploadFileAsync(request.AvatarFile, "avatars");
             }
 
             account.FullName = request.FullName;
