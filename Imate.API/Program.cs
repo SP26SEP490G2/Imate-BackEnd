@@ -3,6 +3,11 @@ using Imate.API.Middleware;
 using Imate.API.Infrastructure.Configurations;
 using Microsoft.Extensions.Configuration;
 
+using System.Text;
+
+// Fix Windows console encoding for Vietnamese characters
+Console.OutputEncoding = Encoding.UTF8;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

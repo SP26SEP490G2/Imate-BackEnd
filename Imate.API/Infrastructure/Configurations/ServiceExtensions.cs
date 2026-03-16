@@ -111,6 +111,10 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IUserCvRepository, UserCvRepository>();
             services.AddScoped<ICvService, CvService>();
 
+            // Practice Test History (UC-31, UC-32)
+            services.AddScoped<IPracticeTestSessionRepository, PracticeTestSessionRepository>();
+            services.AddScoped<IPracticeTestHistoryService, PracticeTestHistoryService>();
+
             // AWS S3 Storage Service
             services.Configure<AwsS3Config>(
                 configuration.GetSection(AwsS3Config.ConfigSectionName));

@@ -9,9 +9,22 @@ namespace Imate.AI.Module.Interfaces
         /// <summary>
         /// Lấy CV text content theo accountId và cvId
         /// </summary>
-        /// <param name="accountId">Account ID của người dùng (để validate quyền)</param>
-        /// <param name="cvId">CV ID trong database</param>
-        /// <returns>CV text content</returns>
         Task<string> GetCvTextAsync(int accountId, int cvId);
+
+        /// <summary>
+        /// Lấy kết quả phân tích đã cache (nếu có)
+        /// </summary>
+        /// <returns>JSON string kết quả phân tích, hoặc null nếu chưa có</returns>
+        Task<string?> GetCachedAnalysisAsync(int accountId, int cvId);
+
+        /// <summary>
+        /// Lưu kết quả phân tích vào database để cache cho lần sau
+        /// </summary>
+        Task SaveAnalysisResultAsync(int accountId, int cvId, string analysisJson);
+
+        /// <summary>
+        /// Xóa ScannedData đã cache để buộc re-extract từ file gốc
+        /// </summary>
+        Task ClearScannedDataAsync(int accountId, int cvId);
     }
 }

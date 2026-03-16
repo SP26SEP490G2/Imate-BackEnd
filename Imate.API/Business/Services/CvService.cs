@@ -29,7 +29,7 @@ namespace Imate.API.Business.Services
         /// <summary>
         /// Upload CV: validate → S3 upload → save entity to DB
         /// </summary>
-        public async Task<UserCv> UploadCvAsync(int accountId, IFormFile file)
+        public async Task<UserCv> UploadCvAsync(int accountId, IFormFile file, string fileName)
         {
             // 1. Validate file type and size
             ValidateFile(file);
@@ -37,11 +37,12 @@ namespace Imate.API.Business.Services
             // 2. Upload to S3
             var fileUrl = await _s3Storage.UploadFileAsync(file, "cv");
 
-            // 3. Create entity
+            // 3. Create entity — use user-provided fileName if available, fallback to original
+            var displayName = !string.IsNullOrWhiteSpace(fileName) ? fileName : file.FileName;
             var userCv = new UserCv
             {
                 AccountId = accountId,
-                FileName = file.FileName,
+                FileName = displayName,
                 FileUrl = fileUrl,
                 UploadDate = DateTimeOffset.UtcNow,
                 ScannedData = string.Empty, // Placeholder – AI Engine integration later

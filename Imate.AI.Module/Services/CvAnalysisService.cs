@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Imate.AI.Module.Interfaces;
 using Imate.AI.Module.Models.Requests;
 using Imate.AI.Module.Models.Responses;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Imate.AI.Module.Services
@@ -15,6 +16,7 @@ namespace Imate.AI.Module.Services
     {
         private readonly IGeminiService _geminiService;
         private readonly ICvDataProvider? _cvDataProvider;
+        private readonly IWebHostEnvironment _env;
         private readonly ILogger<CvAnalysisService> _logger;
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -22,46 +24,38 @@ namespace Imate.AI.Module.Services
             PropertyNameCaseInsensitive = true
         };
 
-        private const string SystemPrompt = @"Bạn là một chuyên gia tuyển dụng IT cấp cao với hơn 15 năm kinh nghiệm.
-Nhiệm vụ: Phân tích CV ứng viên IT và đưa ra đánh giá chi tiết.
-
-Yêu cầu:
-1. Đánh giá tổng thể CV trên thang 100 điểm
-2. Xác định vị trí công việc phù hợp nhất
-3. Đánh giá mức độ phù hợp với thị trường (""Cao"", ""Trung bình"", hoặc ""Thấp"")
-4. Liệt kê 3 điểm mạnh nổi bật (với mô tả ngắn gọn)
-5. Liệt kê 3 điểm cần cải thiện (với mô tả ngắn gọn)
-6. Gợi ý 4 câu hỏi phỏng vấn dựa trên CV, mỗi câu thuộc một danh mục khác nhau
-
-PHẢI trả về ĐÚNG JSON format sau (không markdown, không code block, không giải thích thêm, CHỈ JSON thuần):
-{
-  ""score"": <number 0-100>,
-  ""candidateName"": ""<tên ứng viên>"",
-  ""jobTitle"": ""<vị trí phù hợp>"",
-  ""marketFit"": ""<Cao|Trung bình|Thấp>"",
-  ""strengths"": [
-    { ""title"": ""<tiêu đề>"", ""description"": ""<mô tả>"" }
-  ],
-  ""improvements"": [
-    { ""title"": ""<tiêu đề>"", ""description"": ""<mô tả>"" }
-  ],
-  ""interviewQuestions"": [
-    { ""category"": ""<danh mục viết hoa>"", ""question"": ""<câu hỏi>"" }
-  ]
-}";
-
         public CvAnalysisService(
             IGeminiService geminiService,
+            IWebHostEnvironment env,
             ILogger<CvAnalysisService> logger,
             ICvDataProvider? cvDataProvider = null)
         {
             _geminiService = geminiService;
+            _env = env;
             _logger = logger;
             _cvDataProvider = cvDataProvider;
         }
 
         public async Task<CvAnalysisResponse> AnalyseCvAsync(int accountId, AnalyseCvRequest request)
         {
+            // 1. Check cache trước (chỉ khi có cvId và không force reanalyze)
+            if (request.CvId.HasValue && _cvDataProvider != null && !request.ForceReanalyze)
+            {
+                var cached = await _cvDataProvider.GetCachedAnalysisAsync(accountId, request.CvId.Value);
+                if (!string.IsNullOrWhiteSpace(cached))
+                {
+                    _logger.LogInformation("Returning cached CV analysis for account {AccountId}, cvId {CvId}", accountId, request.CvId.Value);
+                    return ParseGeminiResponse(cached);
+                }
+            }
+
+            // 2. Nếu force reanalyze, xóa cả ScannedData để re-extract từ file gốc
+            if (request.ForceReanalyze && request.CvId.HasValue && _cvDataProvider != null)
+            {
+                await _cvDataProvider.ClearScannedDataAsync(accountId, request.CvId.Value);
+            }
+
+            // 3. Lấy CV text
             string cvText = await GetCvTextAsync(accountId, request);
 
             if (string.IsNullOrWhiteSpace(cvText))
@@ -69,14 +63,71 @@ PHẢI trả về ĐÚNG JSON format sau (không markdown, không code block, kh
                 throw new ArgumentException("Không có nội dung CV để phân tích. Vui lòng cung cấp CvId hoặc CvText.");
             }
 
-            _logger.LogInformation("Starting CV analysis for account {AccountId}", accountId);
+            // 3. Đọc system prompt từ file
+            var systemPrompt = await LoadSystemPromptAsync();
+
+            // 4. Gọi Gemini AI
+            _logger.LogInformation("=== [CvAnalysis] CV Text to analyze ({Length} chars) ===", cvText.Length);
+            _logger.LogInformation("[CvAnalysis] CV Text preview:\n{Preview}", cvText.Substring(0, Math.Min(500, cvText.Length)));
             var userPrompt = $"Hãy phân tích CV sau đây và trả về kết quả dưới dạng JSON:\n\n{cvText}";
-            var rawResponse = await _geminiService.GenerateContentAsync(SystemPrompt, userPrompt);
+            var rawResponse = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
 
             var result = ParseGeminiResponse(rawResponse);
             _logger.LogInformation("CV analysis completed. Score: {Score}, Candidate: {Name}", result.Score, result.CandidateName);
 
+            // 5. Lưu cache vào DB (chỉ khi có cvId)
+            if (request.CvId.HasValue && _cvDataProvider != null)
+            {
+                try
+                {
+                    await _cvDataProvider.SaveAnalysisResultAsync(accountId, request.CvId.Value, rawResponse);
+                    _logger.LogInformation("Cached CV analysis result for cvId {CvId}", request.CvId.Value);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to cache CV analysis result for cvId {CvId}", request.CvId.Value);
+                }
+            }
+
             return result;
+        }
+
+        /// <summary>
+        /// Đọc system prompt từ file SystemMessages/analyse-cv-system.txt
+        /// Tìm file dựa trên vị trí assembly của AI module
+        /// </summary>
+        private async Task<string> LoadSystemPromptAsync()
+        {
+            // Tìm thư mục gốc của AI module dựa trên assembly location
+            var assemblyDir = Path.GetDirectoryName(typeof(CvAnalysisService).Assembly.Location)!;
+            var filePath = Path.Combine(assemblyDir, "SystemMessages", "analyse-cv-system.txt");
+
+            // Fallback: tìm trong ContentRootPath (cho development)
+            if (!File.Exists(filePath))
+            {
+                filePath = Path.Combine(_env.ContentRootPath, "..", "Imate.AI.Module", "SystemMessages", "analyse-cv-system.txt");
+            }
+
+            // Fallback 2: tìm trực tiếp trong ContentRootPath
+            if (!File.Exists(filePath))
+            {
+                filePath = Path.Combine(_env.ContentRootPath, "SystemMessages", "analyse-cv-system.txt");
+            }
+
+            if (!File.Exists(filePath))
+            {
+                _logger.LogError("System prompt file not found. Searched paths include assembly dir and ContentRootPath");
+                throw new FileNotFoundException($"System prompt file not found. Hãy tạo file SystemMessages/analyse-cv-system.txt trong Imate.AI.Module");
+            }
+
+            var content = await File.ReadAllTextAsync(filePath);
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                throw new InvalidOperationException("System prompt file is empty: " + filePath);
+            }
+
+            _logger.LogInformation("Loaded system prompt from file: {Path}", filePath);
+            return content;
         }
 
         private async Task<string> GetCvTextAsync(int accountId, AnalyseCvRequest request)

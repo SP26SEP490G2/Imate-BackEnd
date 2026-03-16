@@ -1,5 +1,6 @@
 using Imate.API.Business.Interfaces;
 using Imate.API.Common.Router;
+using Imate.API.Presentation.RequestModels.UserManagement;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -22,7 +23,7 @@ namespace Imate.API.Presentation.Controllers
         /// Upload CV file (PDF, DOC, DOCX - max 5MB)
         /// </summary>
         [HttpPost(APIConfig.CV.Upload)]
-        public async Task<IActionResult> UploadCv(IFormFile file)
+        public async Task<IActionResult> UploadCv([FromForm] UploadCvRequestModel request)
         {
             try
             {
@@ -30,7 +31,7 @@ namespace Imate.API.Presentation.Controllers
                 if (accountId == null)
                     return Unauthorized(new { message = "Không thể xác định thông tin người dùng." });
 
-                var cv = await _cvService.UploadCvAsync(accountId.Value, file);
+                var cv = await _cvService.UploadCvAsync(accountId.Value, request.File, request.FileName);
 
                 return Ok(new
                 {

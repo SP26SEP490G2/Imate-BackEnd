@@ -66,6 +66,10 @@ namespace Imate.API.DataAccess.ApplicationDbContext
         public DbSet<InterviewSession> InterviewSessions { get; set; }
         public DbSet<InterviewResponse> InterviewResponses { get; set; }
 
+        // ─── Practice Test ────────────────────────────────────────────────────────
+        public DbSet<PracticeTestSession> PracticeTestSessions { get; set; }
+        public DbSet<PracticeTestAnswer> PracticeTestAnswers { get; set; }
+
         // ─── Notifications & Config ───────────────────────────────────────────────
         public DbSet<SystemNotification> SystemNotifications { get; set; }
         public DbSet<SystemConfig> SystemConfigs { get; set; }

@@ -14,5 +14,10 @@ namespace Imate.AI.Module.Models.Requests
         /// Raw CV text trực tiếp (optional - dùng cho mock/testing)
         /// </summary>
         public string? CvText { get; set; }
+
+        /// <summary>
+        /// Nếu true, bỏ qua cache và phân tích lại từ đầu
+        /// </summary>
+        public bool ForceReanalyze { get; set; } = false;
     }
 }
