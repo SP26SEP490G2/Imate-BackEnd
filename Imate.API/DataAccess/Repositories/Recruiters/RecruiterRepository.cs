@@ -74,5 +74,15 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
                 .Where(j=>j.Id == jobId)
 				.AsNoTracking();
 		}
+
+		public IQueryable<Job> GetAllOpenJobs()
+		{
+            return _context.Jobs
+                .Include(j => j.JobSkills)
+                .Include(j => j.JobPositions)
+                .Include(j => j.Recruiter)
+                .ThenInclude(j=>j.Recruiter)
+                .AsNoTracking();
+		}
 	}
 }

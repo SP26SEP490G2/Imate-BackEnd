@@ -2,8 +2,10 @@ using Azure.Core;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.Common.Router;
+using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
+using Imate.API.Presentation.RequestModels.JobApplications;
 using Imate.API.Presentation.RequestModels.Recruiters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -171,5 +173,24 @@ namespace Imate.API.Presentation.Controllers.Recruiters
                 });
             }
         }
-    }
+		[AllowAnonymous]
+		[HttpGet("get-all-jobs")]
+		public async Task<IActionResult> GetAllOpenedJobs([FromQuery] JobPostingCandidateFilter filter)
+		{
+            try
+            {
+				var result = await _recruiterService.GetAllOpenedJobs(filter);
+				return Ok(new { data = result, message = "Lấy danh sách đơn đăng tuyển thành công." });
+			}
+            catch (Exception ex)
+            {
+				return BadRequest(new
+				{
+					message = ex.Message
+				});
+			}
+
+			
+		}
+	}
 }

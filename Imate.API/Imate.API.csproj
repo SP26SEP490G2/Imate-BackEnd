@@ -31,7 +31,6 @@
 
 	<ItemGroup>
 		<Folder Include="Common\Constants\" />
-		<Folder Include="Presentation\RequestModels\Recruiter\" />
 	</ItemGroup>
 
 </Project>

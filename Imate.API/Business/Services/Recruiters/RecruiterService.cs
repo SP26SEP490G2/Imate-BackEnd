@@ -1,3 +1,4 @@
+using System.Linq;
 using Amazon.Runtime.Internal;
 using Azure;
 using Azure.Core;
@@ -9,8 +10,10 @@ using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
+using Imate.API.Presentation.RequestModels.JobApplications;
 using Imate.API.Presentation.RequestModels.Recruiters;
 using Imate.API.Presentation.RequestModels.UserManagement;
+using Imate.API.Presentation.ResponseModels.JobApplications;
 using Imate.API.Presentation.ResponseModels.Recruiter;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
@@ -408,7 +411,7 @@ namespace Imate.API.Business.Services.Recruiters
 				var query = _unitOfWork.Recruiters.GetJobApplicationsListByJobId(jobId);
 				if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.SearchTerm))
 				{
-					query = query.Where(j => j.Candidate.FullName.Contains(filterRequest.SearchTerm) || j.Candidate.Email.Contains(filterRequest.SearchTerm));
+					query = query.Where(j => j.Candidate.FullName.ToLower().Contains(filterRequest.SearchTerm.ToLower()) || j.Candidate.Email.ToLower().Contains(filterRequest.SearchTerm.ToLower()));
 				}
 				var applications = query
 					.Select(application => new GetAppliedJobApplicationCandidateResponse
@@ -432,6 +435,71 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 
 
+		}
+
+		public async Task<PagedList<GetAllOpenedJobResponse>> GetAllOpenedJobs(JobPostingCandidateFilter filterRequest)
+		{
+			try
+			{
+				var query = _unitOfWork.Recruiters.GetAllOpenJobs();
+				if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.SearchTerm))
+				{
+					query = query.Where(j=>j.Title.ToLower().Contains(filterRequest.SearchTerm.ToLower()));
+				}
+
+				if (filterRequest.SkillIds?.Any() == true && filterRequest.SkillIds != null)
+				{
+					query = query.Where(j =>
+						j.JobSkills.Any(p => filterRequest.SkillIds.Contains(p.SkillId)));
+				}
+
+				if (filterRequest.PositionIds?.Any() == true || filterRequest.PositionIds != null)
+				{
+					query = query.Where(j =>
+						j.JobPositions.Any(p => filterRequest.PositionIds.Contains(p.PositionId)));
+				}
+				var jobs = query.Select(jobs => new GetAllOpenedJobResponse
+				{
+					Id = jobs.Id,
+					Title = jobs.Title,
+					JobDescription = jobs.JobDescription,
+					EmploymentType = jobs.EmploymentType,
+					Location = jobs.Location,
+					MinSalary = jobs.MinSalary,
+					MaxSalary = jobs.MaxSalary,
+					ApplicationDeadline = jobs.ApplicationDeadline,
+					JobSkills = jobs.JobSkills.Select(s => new JobSkillResponse
+					{
+						Id = s.SkillId,
+						SkillName = s.Skill.Name
+					}).ToList(),
+
+					JobPositions = jobs.JobPositions.Select(p => new JobPositionResponse
+					{
+						Id = p.PositionId,
+						PositionName = p.Position.Name
+					}).ToList(),
+					CompanyRecruiter = new ComapnyRecruitment
+					{
+						Email = jobs.Recruiter.Email,
+						CompanyName = jobs.Recruiter.Recruiter.CompanyName,
+						CompanyLogo = jobs.Recruiter.Recruiter.CompanyLogo,
+						Website = jobs.Recruiter.Recruiter.Website,
+						Industry = jobs.Recruiter.Recruiter.Industry,
+						CompanySize = jobs.Recruiter.Recruiter.CompanySize,
+						Address = jobs.Recruiter.Recruiter.Address,
+						Phone = jobs.Recruiter.Recruiter.Phone
+					},
+				});
+				return await PagedList<GetAllOpenedJobResponse>.CreateAsync(jobs, filterRequest.PageNumber, filterRequest.PageSize);
+
+			}
+			catch (Exception ex)
+			{
+				throw new ApplicationException("An error occurred while retrieving Jobs.", ex);
+			}
+
+			
 		}
 	}
 }
