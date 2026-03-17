@@ -13,6 +13,8 @@ namespace Imate.API.Presentation.ResponseModels.JobApplications
 		public string Location { get; set; } = string.Empty;
 		public long MinSalary { get; set; }
 		public long MaxSalary { get; set; }
+		[JsonConverter(typeof(JsonStringEnumConverter))]
+		public JobStatus Status { get; set; }
 		public DateTimeOffset ApplicationDeadline { get; set; }
 		public required ComapnyRecruitment CompanyRecruiter { get; set;}
 		public ICollection<JobSkillResponse> JobSkills { get; set; } = new List<JobSkillResponse>();

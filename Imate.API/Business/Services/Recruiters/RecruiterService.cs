@@ -509,8 +509,46 @@ namespace Imate.API.Business.Services.Recruiters
 			{
 				throw new ApplicationException("An error occurred while retrieving Jobs.", ex);
 			}
+		}
 
-			
+		public async Task<GetAllOpenedJobResponse> GetJobDetail(int jobId)
+		{
+			var query = _unitOfWork.Recruiters.GetAllOpenJobs();
+			var jobs = query.Where(j=>j.Id == jobId).Select(jobs => new GetAllOpenedJobResponse
+			{
+				Id = jobs.Id,
+				Title = jobs.Title,
+				JobDescription = jobs.JobDescription,
+				EmploymentType = jobs.EmploymentType,
+				Location = jobs.Location,
+				MinSalary = jobs.MinSalary,
+				MaxSalary = jobs.MaxSalary,
+				Status = jobs.Status,
+				ApplicationDeadline = jobs.ApplicationDeadline,
+				JobSkills = jobs.JobSkills.Select(s => new JobSkillResponse
+				{
+					Id = s.SkillId,
+					SkillName = s.Skill.Name
+				}).ToList(),
+
+				JobPositions = jobs.JobPositions.Select(p => new JobPositionResponse
+				{
+					Id = p.PositionId,
+					PositionName = p.Position.Name
+				}).ToList(),
+				CompanyRecruiter = new ComapnyRecruitment
+				{
+					Email = jobs.Recruiter.Email,
+					CompanyName = jobs.Recruiter.Recruiter.CompanyName,
+					CompanyLogo = jobs.Recruiter.Recruiter.CompanyLogo,
+					Website = jobs.Recruiter.Recruiter.Website,
+					Industry = jobs.Recruiter.Recruiter.Industry,
+					CompanySize = jobs.Recruiter.Recruiter.CompanySize,
+					Address = jobs.Recruiter.Recruiter.Address,
+					Phone = jobs.Recruiter.Recruiter.Phone
+				},
+			}).FirstOrDefaultAsync();
+			return await jobs;
 		}
 	}
 }

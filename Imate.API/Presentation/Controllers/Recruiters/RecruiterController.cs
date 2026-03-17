@@ -189,8 +189,31 @@ namespace Imate.API.Presentation.Controllers.Recruiters
 					message = ex.Message
 				});
 			}
-
-			
 		}
+
+        [AllowAnonymous]
+		[HttpGet("get-job-detail/{jobId}")]
+        public async Task<IActionResult> GetJobDetail(int jobId)
+        {
+            try
+            {
+				var result = await _recruiterService.GetJobDetail(jobId);
+                if (result.Status.Equals(JobStatus.Closed))
+                {
+					return Unauthorized(new { message = "Bạn không có quyển truy cập!" });
+				}
+				return Ok(new { data = result, message = "Lấy Job Detail thành công!" });
+			}
+            catch (Exception ex)
+            {
+
+				return BadRequest(new
+				{
+					message = ex.Message
+				});
+			}
+            
+            
+        }
 	}
 }
