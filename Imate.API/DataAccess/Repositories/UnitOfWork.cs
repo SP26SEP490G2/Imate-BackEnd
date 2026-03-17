@@ -4,12 +4,13 @@ using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
+using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces.UserManagement;
 using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.QuestionBank;
-using Imate.API.DataAccess.Repositories.UserManagement;
-using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.DataAccess.Repositories.Recruiters;
+using Imate.API.DataAccess.Repositories.UserManagement;
+using Imate.API.DataAccess.Interfaces.Applications;
 
 namespace Imate.API.DataAccess.Repositories
 {
@@ -30,7 +31,10 @@ namespace Imate.API.DataAccess.Repositories
             ISkillRepository skills,
             ICompanyRepository companies,
             ISlotRepository slots,
-            ITransactionRepository transactions)
+            ITransactionRepository transactions,
+            ISystemConfigRepository systemConfigs,
+            IApplicationRepository applications,
+            IMentorRecurringSlotRepository mentorRecurringSlots)
         {
             _repositoryContext = repositoryContext;
             Accounts = accounts;
@@ -45,7 +49,10 @@ namespace Imate.API.DataAccess.Repositories
             Companies = companies;
             Skills = skills;
             Slots = slots;
+            MentorRecurringSlots = mentorRecurringSlots;
             Transactions = transactions;
+            Applications = applications;
+            SystemConfigs = systemConfigs;
         }
         public IAccountRepository Accounts { get; private set; }
         public IMentorRepository Mentors { get; private set; }
@@ -59,7 +66,10 @@ namespace Imate.API.DataAccess.Repositories
         public ISkillRepository Skills { get; private set; }
         public ICompanyRepository Companies { get; private set; }
         public ISlotRepository Slots { get; private set; }
+        public IMentorRecurringSlotRepository MentorRecurringSlots { get; private set; }
+        public IApplicationRepository Applications { get; private set; }
         public ITransactionRepository Transactions { get; private set; }
+        public ISystemConfigRepository SystemConfigs { get; }
         public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();
         public Task SaveAsync() => _repositoryContext.SaveChangesAsync();
     }

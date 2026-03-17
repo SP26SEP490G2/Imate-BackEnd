@@ -8,6 +8,7 @@ using Imate.API.DataAccess.Repositories;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels;
 using Imate.API.Presentation.ResponseModels;
+using Imate.API.DataAccess.Interfaces.Applications;
 
 namespace Imate.API.DataAccess.Interfaces
 {
@@ -23,9 +24,14 @@ namespace Imate.API.DataAccess.Interfaces
         ICategoryRepository Categories { get; }
         IPositionRepository Positions { get; }
         ISkillRepository Skills { get; }
+        ICompanyRepository Companies { get; }
         ISlotRepository Slots { get; }
+        IMentorRecurringSlotRepository MentorRecurringSlots { get; }
         ITransactionRepository Transactions { get; }
         IRecruiterRepository Recruiters { get; }
+        IApplicationRepository Applications { get; }
+        ISystemConfigRepository SystemConfigs { get; }
+
         Task SaveChangesAsync();
         Task SaveAsync();
     }

@@ -80,14 +80,15 @@ namespace Imate.API.Business.Services.Mentors
 
             // 2. Financials
             int price = mentor.PricePerSession;
+            /* 
             if (candidateAccount.Balance < price)
             {
                 throw new BadRequestException("Insufficient balance to book this session.");
             }
 
-            // Deduct balance
+            // Deduct balance (tracked by EF, will save with SaveChangesAsync below)
             candidateAccount.Balance -= price;
-            await _unitOfWork.Accounts.UpdateAsync(candidateAccount);
+            */
 
             // Create Escrow Transaction
             var transaction = new Transaction
@@ -113,12 +114,11 @@ namespace Imate.API.Business.Services.Mentors
                 CreatedAt = DateTime.UtcNow
             };
 
+            // Link transaction to booking using navigation property for proper ID handling
+            booking.Transactions.Add(transaction);
+
             await _unitOfWork.Bookings.AddAsync(booking);
             
-            // Link transaction to booking
-            transaction.BookingId = booking.Id;
-            _unitOfWork.Transactions.Create(transaction);
-
             await _unitOfWork.SaveChangesAsync();
 
             return new BookingResponseModel
@@ -129,6 +129,174 @@ namespace Imate.API.Business.Services.Mentors
                 Price = booking.PriceAtBooking,
                 Status = booking.Status
             };
+        }
+
+        public async Task<List<MentorBookedSlotResponse>> GetBookedSlotsByMentorIdAsync(int mentorId)
+        {
+            var bookings = await _unitOfWork.Bookings.GetMentorUpcomingBookingsAsync(mentorId, DateTime.UtcNow, DateTime.UtcNow.AddDays(30));
+            
+            return bookings.Select(b => new MentorBookedSlotResponse
+            {
+                BookingId = b.Id,
+                CandidateId = b.CandidateId,
+                CandidateName = b.Candidate.FullName,
+                CandidateAvatarUrl = b.Candidate.AvatarUrl,
+                StartTime = b.StartTime,
+                BookDate = b.BookDate,
+                Status = b.Status
+            }).ToList();
+        }
+
+        public async Task<List<BookingDetailResponse>> GetCandidateBookingsAsync(int candidateId)
+        {
+            var bookings = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.CandidateId == candidateId)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.MentorId,
+                    b.CandidateId,
+                    ProfileName = b.Mentor.Account.FullName,
+                    ProfileAvatarUrl = b.Mentor.Account.AvatarUrl,
+                    b.StartTime,
+                    b.BookDate,
+                    b.Status,
+                    b.AgoraChannelName,
+                    b.PriceAtBooking
+                })
+                .ToListAsync();
+
+            var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
+            TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
+
+            return bookings.Select(b =>
+            {
+                var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(b.StartTime.DateTime, localTimeZone);
+                var timeOnly = TimeOnly.FromDateTime(localStartTime);
+                var slot = slots.FirstOrDefault(s => s.DayOfWeek == (int)b.BookDate.DayOfWeek && s.StartTime == timeOnly);
+                
+                DateTimeOffset endTime = b.StartTime.AddHours(1); // fallback
+                if (slot != null)
+                {
+                    endTime = b.StartTime.Add(slot.EndTime.ToTimeSpan() - slot.StartTime.ToTimeSpan());
+                }
+
+                return new BookingDetailResponse
+                {
+                    BookingId = b.Id,
+                    MentorId = b.MentorId,
+                    CandidateId = b.CandidateId,
+                    ProfileName = b.ProfileName,
+                    ProfileAvatarUrl = b.ProfileAvatarUrl,
+                    JobTitle = "Mentor",
+                    StartTime = b.StartTime,
+                    EndTime = endTime,
+                    BookDate = b.BookDate,
+                    Status = b.Status,
+                    MeetingRoomId = b.AgoraChannelName,
+                    Price = b.PriceAtBooking
+                };
+            }).ToList();
+        }
+
+        public async Task<List<BookingDetailResponse>> GetMentorBookingsAsync(int mentorId)
+        {
+            var bookings = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.MentorId == mentorId)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.MentorId,
+                    b.CandidateId,
+                    ProfileName = b.Candidate.FullName,
+                    ProfileAvatarUrl = b.Candidate.AvatarUrl,
+                    b.StartTime,
+                    b.BookDate,
+                    b.Status,
+                    b.AgoraChannelName,
+                    b.PriceAtBooking
+                })
+                .ToListAsync();
+
+            var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
+            TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
+
+            return bookings.Select(b =>
+            {
+                var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(b.StartTime.DateTime, localTimeZone);
+                var timeOnly = TimeOnly.FromDateTime(localStartTime);
+                var slot = slots.FirstOrDefault(s => s.DayOfWeek == (int)b.BookDate.DayOfWeek && s.StartTime == timeOnly);
+                
+                DateTimeOffset endTime = b.StartTime.AddHours(1); // fallback
+                if (slot != null)
+                {
+                    endTime = b.StartTime.Add(slot.EndTime.ToTimeSpan() - slot.StartTime.ToTimeSpan());
+                }
+
+                return new BookingDetailResponse
+                {
+                    BookingId = b.Id,
+                    MentorId = b.MentorId,
+                    CandidateId = b.CandidateId,
+                    ProfileName = b.ProfileName,
+                    ProfileAvatarUrl = b.ProfileAvatarUrl,
+                    JobTitle = "Candidate",
+                    StartTime = b.StartTime,
+                    EndTime = endTime,
+                    BookDate = b.BookDate,
+                    Status = b.Status,
+                    MeetingRoomId = b.AgoraChannelName,
+                    Price = b.PriceAtBooking
+                };
+            }).ToList();
+        }
+
+        public async Task CancelBookingAsync(int bookingId, int candidateId)
+        {
+            var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(bookingId)
+                ?? throw new NotFoundException("Booking not found.");
+
+            if (booking.CandidateId != candidateId)
+            {
+                throw new BadRequestException("You are not authorized to cancel this booking.");
+            }
+
+            if (booking.Status != BookingStatus.Confirmed)
+            {
+                throw new BadRequestException($"Cannot cancel booking with status {booking.Status}.");
+            }
+
+            // Cancellation deadline: at least 6 hours before StartTime
+            if (booking.StartTime < DateTime.UtcNow.AddHours(6))
+            {
+                throw new BadRequestException("You can only cancel bookings at least 6 hours before the start time.");
+            }
+
+            booking.Status = BookingStatus.Cancelled;
+            booking.UpdatedAt = DateTime.UtcNow;
+            // No need to call UpdateAsync as it's already tracked.
+
+            // Handle Point Refund
+            // Find the associated transaction
+            var transaction = await _unitOfWork.Transactions.GetBookingTransactionAsync(bookingId);
+
+            if (transaction != null && transaction.Status == TransactionStatus.Escrow)
+            {
+                transaction.Status = TransactionStatus.Cancelled;
+                transaction.UpdatedAt = DateTime.UtcNow;
+                // No need to call UpdateAsync as it's tracked and SaveChangesAsync will catch it.
+                // Using UpdateAsync(transaction) here would trigger the tracking conflict.
+
+                // Assuming points should be returned to candidate balance
+                var candidateAccount = await _unitOfWork.Accounts.GetByIdAsync(candidateId);
+                if (candidateAccount != null)
+                {
+                    candidateAccount.Balance += transaction.Amount;
+                    await _unitOfWork.Accounts.UpdateAsync(candidateAccount);
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 }

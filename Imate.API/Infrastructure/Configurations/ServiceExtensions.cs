@@ -1,46 +1,54 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Http;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Amazon.S3;
 using Imate.API.Business.Interfaces;
-using Imate.API.Business.Interfaces.ExternalServices;
-using Imate.API.Business.Interfaces.UserManagement;
+using Imate.API.Business.Interfaces.Applications;
 using Imate.API.Business.Interfaces.Classification;
+using Imate.API.Business.Interfaces.Comunity;
+using Imate.API.Business.Interfaces.ExternalServices;
+using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.Business.Interfaces.Payment;
-using Imate.API.Business.Services;
-using Imate.API.Business.Services.UserManagement;
+using Imate.API.Business.Interfaces.QuestionBank;
+using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.Business.Interfaces.Staff;
+using Imate.API.Business.Interfaces.UserManagement;
+using Imate.API.Business.Services;
+using Imate.API.Business.Services.Applications;
+using Imate.API.Business.Services.Classification;
+using Imate.API.Business.Services.Comunity;
+using Imate.API.Business.Services.ExternalServices;
+using Imate.API.Business.Services.Mentors;
+using Imate.API.Business.Services.Payment;
+using Imate.API.Business.Services.QuestionBank;
 using Imate.API.Business.Services.Recruiters;
 using Imate.API.Business.Services.Staff;
-using Imate.API.Business.Services.Classification;
-using Imate.API.Business.Services.Payment;
+using Imate.API.Business.Services.UserManagement;
 using Imate.API.DataAccess.Interfaces;
+using Imate.API.DataAccess.Interfaces.Applications;
+using Imate.API.DataAccess.Interfaces.Classification;
+using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.DataAccess.Interfaces.Mentors;
-using Imate.API.Business.Interfaces.Mentors;
-using Imate.API.Business.Services.Mentors;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
+using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces.UserManagement;
-using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Repositories;
+using Imate.API.DataAccess.Repositories.Applications;
+using Imate.API.DataAccess.Repositories.Classification;
+using Imate.API.DataAccess.Repositories.Comunity;
 using Imate.API.DataAccess.Repositories.Mentors;
 using Imate.API.DataAccess.Repositories.Payment;
 using Imate.API.DataAccess.Repositories.QuestionBank;
-using Imate.API.DataAccess.Repositories.UserManagement;
-using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.DataAccess.Repositories.Recruiters;
-using Imate.API.DataAccess.Repositories.Classification;
-using System.Text;
-using System.Reflection;
-using Imate.API.Business.Services.ExternalServices;
-using Imate.API.Business.Interfaces.Recruiters;
+using Imate.API.DataAccess.Repositories.UserManagement;
 using Imate.API.ExternalServices;
-using Amazon.S3;
-using Imate.API.Business.Interfaces.QuestionBank;
-using Imate.API.Business.Services.QuestionBank;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Reflection;
+using System.Text;
 
 
 
@@ -70,6 +78,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IRecruiterRepository, RecruiterRepository>();
             services.AddScoped<IBookingRepository, BookingRepository>();
             services.AddScoped<ISlotRepository, SlotRepository>();
+            services.AddScoped<IMentorRecurringSlotRepository, MentorRecurringSlotRepository>();
             services.AddScoped<ITransactionRepository, TransactionRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
 
@@ -88,7 +97,15 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IMentorRepository, MentorRepository>();
             services.AddScoped<IRecruiterRepository, RecruiterRepository>();
             services.AddScoped<IRecruiterService, RecruiterService>();
-            
+            services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+            services.AddScoped<ISystemConfigService, SystemConfigService>();
+            services.AddScoped<IVoteRepository, VoteRepository>();
+            services.AddScoped<ICommentRepository, CommentRepository>();
+            services.AddScoped<ICommentService, CommentService>();
+            services.AddScoped<IApplicationService, ApplicationService>();
+            services.AddScoped<IApplicationRepository, ApplicationRepository>();
+
+
 
             // Classification Services & Repositories
             services.AddScoped<ICategoryService, CategoryService>();
@@ -107,6 +124,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddHttpClient<Imate.API.Business.Services.ExternalServices.EmailService>();
             services.AddScoped<IEmailService, Imate.API.Business.Services.ExternalServices.EmailService>();
             services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IMentorSlotService, MentorSlotService>();
 
             services.AddScoped<IUserCvRepository, UserCvRepository>();
             services.AddScoped<ICvService, CvService>();

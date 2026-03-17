@@ -27,6 +27,10 @@ namespace Imate.API.Common.Router
             public const string GetPublicSystemQuestionBanks = "get-public-system-question-banks";
             public const string GetPublicContributedQuestionBanks = "get-public-contributed-question-banks";
             public const string ContributeQuestion = "contribute-question";
+            public const string ExportSystemQuestions = "export-system-questions";
+            public const string GetAllPendingContributedQuestionsForStaff = "get-all-pending-contributed-questions-for-staff";
+            public const string GetMyContributedQuestions = "get-my-contributed-questions";
+            public const string ChangeContributedQuestionStatusForStaff = "change-contributed-question-status-staff/{questionId}";
         }
         public class Position
         {
