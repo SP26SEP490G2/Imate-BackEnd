@@ -447,6 +447,16 @@ namespace Imate.API.Business.Services.Recruiters
 					query = query.Where(j=>j.Title.ToLower().Contains(filterRequest.SearchTerm.ToLower()));
 				}
 
+				if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.EmploymentType))
+				{
+					query = query.Where(j=>j.EmploymentType.ToLower().Contains(filterRequest.EmploymentType.ToLower()));
+				}
+
+				if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.Location))
+				{
+					query = query.Where(j=>j.Location.ToLower().Contains(filterRequest.Location.ToLower()));
+				}
+
 				if (filterRequest.SkillIds?.Any() == true && filterRequest.SkillIds != null)
 				{
 					query = query.Where(j =>
@@ -458,6 +468,7 @@ namespace Imate.API.Business.Services.Recruiters
 					query = query.Where(j =>
 						j.JobPositions.Any(p => filterRequest.PositionIds.Contains(p.PositionId)));
 				}
+				query = query.Where(j => j.Status.Equals(JobStatus.Open));
 				var jobs = query.Select(jobs => new GetAllOpenedJobResponse
 				{
 					Id = jobs.Id,
