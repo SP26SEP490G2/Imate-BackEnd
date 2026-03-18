@@ -37,5 +37,8 @@ namespace Imate.API.DataAccess.Interfaces
 
         Task SaveChangesAsync();
         Task SaveAsync();
+        Task BeginTransactionAsync();
+        Task CommitTransactionAsync();
+        Task RollbackTransactionAsync();
     }
 }
