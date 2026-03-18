@@ -11,6 +11,7 @@ using Imate.API.DataAccess.Repositories.QuestionBank;
 using Imate.API.DataAccess.Repositories.Recruiters;
 using Imate.API.DataAccess.Repositories.UserManagement;
 using Imate.API.DataAccess.Interfaces.Applications;
+using Imate.API.DataAccess.Interfaces.Notification;
 
 namespace Imate.API.DataAccess.Repositories
 {
@@ -34,7 +35,8 @@ namespace Imate.API.DataAccess.Repositories
             ITransactionRepository transactions,
             ISystemConfigRepository systemConfigs,
             IApplicationRepository applications,
-            IMentorRecurringSlotRepository mentorRecurringSlots)
+            IMentorRecurringSlotRepository mentorRecurringSlots,
+            ISystemNotificationRepository systemNotifications)
         {
             _repositoryContext = repositoryContext;
             Accounts = accounts;
@@ -53,6 +55,7 @@ namespace Imate.API.DataAccess.Repositories
             Transactions = transactions;
             Applications = applications;
             SystemConfigs = systemConfigs;
+            SystemNotifications = systemNotifications;
         }
         public IAccountRepository Accounts { get; private set; }
         public IMentorRepository Mentors { get; private set; }
@@ -70,6 +73,7 @@ namespace Imate.API.DataAccess.Repositories
         public IApplicationRepository Applications { get; private set; }
         public ITransactionRepository Transactions { get; private set; }
         public ISystemConfigRepository SystemConfigs { get; }
+        public ISystemNotificationRepository SystemNotifications { get; private set; }
         public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();
         public Task SaveAsync() => _repositoryContext.SaveChangesAsync();
     }
