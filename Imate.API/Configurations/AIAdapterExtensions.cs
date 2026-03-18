@@ -14,6 +14,9 @@ namespace Imate.API.Configurations
 
             // Đăng ký CvDataProvider (bridge giữa API và AI Module)
             services.AddScoped<ICvDataProvider, CvDataProvider>();
+
+            // Đăng ký QuestionDataProvider (bridge cho RAG Practice Test)
+            services.AddScoped<IQuestionDataProvider, QuestionDataProvider>();
         }
     }
 }
