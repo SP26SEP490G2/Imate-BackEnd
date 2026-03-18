@@ -127,7 +127,7 @@ namespace Imate.API.Presentation.Controllers.Recruiters
             }
         }
 
-        [HttpPut("update-job-applications")]
+        [HttpPut("update-job")]
         public async Task<IActionResult> UpdateJobPost([FromBody] CreateUpdateJobRequest request)
         {
             try
@@ -150,7 +150,7 @@ namespace Imate.API.Presentation.Controllers.Recruiters
                 });
             }
         }
-        [HttpPut("close-job-applications")]
+        [HttpPut("close-job")]
         public async Task<IActionResult> CloseJobPost([FromBody] int jobId)
         {
             try
@@ -173,6 +173,31 @@ namespace Imate.API.Presentation.Controllers.Recruiters
                 });
             }
         }
+
+        [HttpPut("update-job-application")]
+		public async Task<IActionResult> UpdateJobApplication([FromBody] UpdateJobApplicationRequest jobApplication)
+		{
+			try
+			{
+				var accountIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+					?? User.FindFirst("sub")?.Value
+					?? User.FindFirst("accountId")?.Value;
+
+				if (accountIdClaim == null || !int.TryParse(accountIdClaim, out int accountId))
+					return Unauthorized(new { message = "Không thể xác định thông tin người dùng." });
+
+				var newjob = await _recruiterService.UpdateJobApplication(accountId, jobApplication);
+				return Ok(new { message = "Update JobApplication thành công" });
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new
+				{
+					message = ex.Message
+				});
+			}
+		}
+
 		[AllowAnonymous]
 		[HttpGet("get-all-jobs")]
 		public async Task<IActionResult> GetAllOpenedJobs([FromQuery] JobPostingCandidateFilter filter)

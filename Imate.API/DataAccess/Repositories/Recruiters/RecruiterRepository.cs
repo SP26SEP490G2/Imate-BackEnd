@@ -84,5 +84,19 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
                 .ThenInclude(j=>j.Recruiter)
                 .AsNoTracking();
 		}
+
+		public async Task<JobApplication> UpdateJobApplicationStatus(JobApplication jobApplication)
+		{
+			_context.JobApplications.Update(jobApplication);
+			return jobApplication;
+		}
+
+		public async Task<JobApplication> GetJobApplicationById(int jobApplicationId)
+		{
+			return await _context.JobApplications
+                .Include(a => a.Candidate)
+                .Include(a=>a.Job)
+				.FirstOrDefaultAsync(j=>j.Id==jobApplicationId);
+		}
 	}
 }
