@@ -71,5 +71,16 @@ namespace Imate.API.ExternalServices
                 // Log effectively or handle according to requirements
             }
         }
+
+        public async Task<byte[]> DownloadFileAsync(string fileUrl)
+        {
+            var uri = new Uri(fileUrl);
+            var key = uri.AbsolutePath.TrimStart('/');
+
+            var response = await _s3Client.GetObjectAsync(_config.BucketName, key);
+            using var memoryStream = new MemoryStream();
+            await response.ResponseStream.CopyToAsync(memoryStream);
+            return memoryStream.ToArray();
+        }
     }
 }

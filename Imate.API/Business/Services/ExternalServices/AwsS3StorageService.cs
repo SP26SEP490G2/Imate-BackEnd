@@ -148,6 +148,35 @@ namespace Peppo.API.Business.Services.ExternalServices
                 Console.WriteLine($"Không thể xóa file từ AWS S3: {ex.Message}");
             }
         }
+
+        public async Task<byte[]> DownloadFileAsync(string fileUrl)
+        {
+            if (string.IsNullOrEmpty(fileUrl))
+            {
+                throw new ArgumentException("File URL không hợp lệ.");
+            }
+
+            try
+            {
+                var uri = new Uri(fileUrl);
+                var keyName = string.Join("/", uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries));
+
+                var getRequest = new GetObjectRequest
+                {
+                    BucketName = _config.BucketName,
+                    Key = keyName
+                };
+
+                using var response = await _s3Client.GetObjectAsync(getRequest);
+                using var memoryStream = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(memoryStream);
+                return memoryStream.ToArray();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Không thể download file từ AWS S3: {ex.Message}", ex);
+            }
+        }
     }
 }
 

@@ -35,6 +35,7 @@ namespace Imate.API.Models.Entities
         public ICollection<UserSubscription> UserSubscriptions { get; set; } = new List<UserSubscription>();
         public ICollection<UserCv> UserCvs { get; set; } = new List<UserCv>();
         public ICollection<InterviewSession> InterviewSessions { get; set; } = new List<InterviewSession>();
+        public ICollection<PracticeTestSession> PracticeTestSessions { get; set; } = new List<PracticeTestSession>();
         public ICollection<SystemNotification> ReceivedNotifications { get; set; } = new List<SystemNotification>();
         public ICollection<SystemNotification> TriggeredNotifications { get; set; } = new List<SystemNotification>();
         public ICollection<Job> PostedJobs { get; set; } = new List<Job>();
