@@ -45,7 +45,6 @@ namespace Imate.API.Configurations
         public static void ConfigureExternalServices(this IServiceCollection services)
         {
             services.AddScoped<Imate.API.Business.Interfaces.ExternalServices.IAwsS3StorageService, AwsS3StorageService>();
-            services.AddScoped<EmailService>();
             // OpenAIService removed - replaced by GeminiService in AIAdapterExtensions
             services.AddScoped<PayOSService>();
         }
