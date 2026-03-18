@@ -9,6 +9,14 @@ namespace Imate.API.Models.Enums
         Refund,
         Commission,
         Penalty,
-        PointDeposit
+        PointDeposit,
+        PointBookingFee,
+        PointBookingPayout,
+        PointRefund,
+        PointSubscriptionFee,
+        MoneyWithdrawal,
+        MoneyDeposit,
+        PointPenalty,
+        PointInterviewFee
     }
 }

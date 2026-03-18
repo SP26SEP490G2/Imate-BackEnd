@@ -83,6 +83,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ISlotRepository, SlotRepository>();
             services.AddScoped<IMentorRecurringSlotRepository, MentorRecurringSlotRepository>();
             services.AddScoped<ITransactionRepository, TransactionRepository>();
+            services.AddScoped<ITransactionService, TransactionService>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
 
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
@@ -109,8 +110,6 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IApplicationRepository, ApplicationRepository>();
             services.AddScoped<ISystemNotificationRepository, SystemNotificationRepository>();
             services.AddScoped<ISystemNotificationService, SystemNotificationService>();
-
-
 
             // Classification Services & Repositories
             services.AddScoped<ICategoryService, CategoryService>();
