@@ -1,5 +1,7 @@
+using Imate.API.DataAccess.Interfaces.Applications;
 using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Interfaces.Mentors;
+using Imate.API.DataAccess.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.DataAccess.Interfaces.Recruiters;
@@ -8,7 +10,6 @@ using Imate.API.DataAccess.Repositories;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels;
 using Imate.API.Presentation.ResponseModels;
-using Imate.API.DataAccess.Interfaces.Applications;
 
 namespace Imate.API.DataAccess.Interfaces
 {
@@ -31,6 +32,8 @@ namespace Imate.API.DataAccess.Interfaces
         IRecruiterRepository Recruiters { get; }
         IApplicationRepository Applications { get; }
         ISystemConfigRepository SystemConfigs { get; }
+        ISystemNotificationRepository SystemNotifications { get; }
+
 
         Task SaveChangesAsync();
         Task SaveAsync();

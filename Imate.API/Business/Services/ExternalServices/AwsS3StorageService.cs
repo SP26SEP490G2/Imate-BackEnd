@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Infrastructure.Configurations;
 
-namespace Peppo.API.Business.Services.ExternalServices
+namespace Imate.API.Business.Services.ExternalServices
 {
     public class AwsS3StorageService : IAwsS3StorageService
     {
@@ -124,8 +124,8 @@ namespace Peppo.API.Business.Services.ExternalServices
             try
             {
                 // Extract key từ URL
-                // VD: https://bucket-name.s3.ap-southeast-1.amazonaws.com/peppo-recordings/usercv/abc-123.pdf
-                // => keyName = peppo-recordings/usercv/abc-123.pdf
+                // VD: https://bucket-name.s3.ap-southeast-1.amazonaws.com/Imate-recordings/usercv/abc-123.pdf
+                // => keyName = Imate-recordings/usercv/abc-123.pdf
 
                 var uri = new Uri(fileUrl);
                 var pathSegments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
