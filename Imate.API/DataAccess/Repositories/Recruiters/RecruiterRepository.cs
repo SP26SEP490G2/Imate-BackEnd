@@ -16,7 +16,7 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
 
         }
 
-        public  IQueryable<Job> GetJobsByRecruiterId(int recruiterAccountId)
+        public IQueryable<Job> GetJobsByRecruiterId(int recruiterAccountId)
         {
             return  _context.Jobs
                 .Include(j => j.JobSkills)
@@ -65,5 +65,38 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
                 .FirstOrDefaultAsync(j=>j.Id == jobId);
 
         }
-    }
+
+		public IQueryable<JobApplication> GetJobApplicationsListByJobId(int jobId)
+		{
+			return  _context.JobApplications
+                .Include(a=>a.Candidate)
+                .Include (b=>b.Cv)
+                .Where(j=>j.Id == jobId)
+				.AsNoTracking();
+		}
+
+		public IQueryable<Job> GetAllOpenJobs()
+		{
+            return _context.Jobs
+                .Include(j => j.JobSkills)
+                .Include(j => j.JobPositions)
+                .Include(j => j.Recruiter)
+                .ThenInclude(j=>j.Recruiter)
+                .AsNoTracking();
+		}
+
+		public async Task<JobApplication> UpdateJobApplicationStatus(JobApplication jobApplication)
+		{
+			_context.JobApplications.Update(jobApplication);
+			return jobApplication;
+		}
+
+		public async Task<JobApplication> GetJobApplicationById(int jobApplicationId)
+		{
+			return await _context.JobApplications
+                .Include(a => a.Candidate)
+                .Include(a=>a.Job)
+				.FirstOrDefaultAsync(j=>j.Id==jobApplicationId);
+		}
+	}
 }

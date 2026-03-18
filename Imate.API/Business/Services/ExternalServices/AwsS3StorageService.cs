@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Infrastructure.Configurations;
 
-namespace Peppo.API.Business.Services.ExternalServices
+namespace Imate.API.Business.Services.ExternalServices
 {
     public class AwsS3StorageService : IAwsS3StorageService
     {
@@ -124,8 +124,8 @@ namespace Peppo.API.Business.Services.ExternalServices
             try
             {
                 // Extract key từ URL
-                // VD: https://bucket-name.s3.ap-southeast-1.amazonaws.com/peppo-recordings/usercv/abc-123.pdf
-                // => keyName = peppo-recordings/usercv/abc-123.pdf
+                // VD: https://bucket-name.s3.ap-southeast-1.amazonaws.com/Imate-recordings/usercv/abc-123.pdf
+                // => keyName = Imate-recordings/usercv/abc-123.pdf
 
                 var uri = new Uri(fileUrl);
                 var pathSegments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -146,6 +146,35 @@ namespace Peppo.API.Business.Services.ExternalServices
             {
                 // Log error nhưng không throw để không ảnh hưởng flow update
                 Console.WriteLine($"Không thể xóa file từ AWS S3: {ex.Message}");
+            }
+        }
+
+        public async Task<byte[]> DownloadFileAsync(string fileUrl)
+        {
+            if (string.IsNullOrEmpty(fileUrl))
+            {
+                throw new ArgumentException("File URL không hợp lệ.");
+            }
+
+            try
+            {
+                var uri = new Uri(fileUrl);
+                var keyName = string.Join("/", uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries));
+
+                var getRequest = new GetObjectRequest
+                {
+                    BucketName = _config.BucketName,
+                    Key = keyName
+                };
+
+                using var response = await _s3Client.GetObjectAsync(getRequest);
+                using var memoryStream = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(memoryStream);
+                return memoryStream.ToArray();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Không thể download file từ AWS S3: {ex.Message}", ex);
             }
         }
     }

@@ -3,6 +3,11 @@ using Imate.API.Middleware;
 using Imate.API.Infrastructure.Configurations;
 using Microsoft.Extensions.Configuration;
 
+using System.Text;
+
+// Fix Windows console encoding for Vietnamese characters
+Console.OutputEncoding = Encoding.UTF8;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -17,10 +22,12 @@ builder.Services.RegisterAIAdapters();
 
 builder.Services.AddFirebaseAdmin();
 builder.Services.AddMyServices(builder.Configuration);
+builder.Services.AddSignalR();
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddApplicationPart(typeof(Imate.AI.Module.Controllers.CvAnalysisController).Assembly);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

@@ -8,6 +8,7 @@ namespace Imate.API.Models.Entities
         public string FileName { get; set; } = string.Empty;
         public DateTimeOffset UploadDate { get; set; }
         public string ScannedData { get; set; } = string.Empty;
+        public string? AnalysisData { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset? UpdatedAt { get; set; }
 

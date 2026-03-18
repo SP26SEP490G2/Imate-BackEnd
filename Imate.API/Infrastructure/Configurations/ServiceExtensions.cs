@@ -5,9 +5,9 @@ using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Business.Interfaces.Comunity;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.Business.Interfaces.Payment;
 using Imate.API.Business.Interfaces.QuestionBank;
-using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.Business.Interfaces.Staff;
 using Imate.API.Business.Interfaces.UserManagement;
@@ -17,6 +17,7 @@ using Imate.API.Business.Services.Classification;
 using Imate.API.Business.Services.Comunity;
 using Imate.API.Business.Services.ExternalServices;
 using Imate.API.Business.Services.Mentors;
+using Imate.API.Business.Services.Notification;
 using Imate.API.Business.Services.Payment;
 using Imate.API.Business.Services.QuestionBank;
 using Imate.API.Business.Services.Recruiters;
@@ -27,6 +28,7 @@ using Imate.API.DataAccess.Interfaces.Applications;
 using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.DataAccess.Interfaces.Mentors;
+using Imate.API.DataAccess.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.DataAccess.Interfaces.Recruiters;
@@ -36,6 +38,7 @@ using Imate.API.DataAccess.Repositories.Applications;
 using Imate.API.DataAccess.Repositories.Classification;
 using Imate.API.DataAccess.Repositories.Comunity;
 using Imate.API.DataAccess.Repositories.Mentors;
+using Imate.API.DataAccess.Repositories.Notification;
 using Imate.API.DataAccess.Repositories.Payment;
 using Imate.API.DataAccess.Repositories.QuestionBank;
 using Imate.API.DataAccess.Repositories.Recruiters;
@@ -80,6 +83,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ISlotRepository, SlotRepository>();
             services.AddScoped<IMentorRecurringSlotRepository, MentorRecurringSlotRepository>();
             services.AddScoped<ITransactionRepository, TransactionRepository>();
+            services.AddScoped<ITransactionService, TransactionService>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
 
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
@@ -104,8 +108,8 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ICommentService, CommentService>();
             services.AddScoped<IApplicationService, ApplicationService>();
             services.AddScoped<IApplicationRepository, ApplicationRepository>();
-
-
+            services.AddScoped<ISystemNotificationRepository, SystemNotificationRepository>();
+            services.AddScoped<ISystemNotificationService, SystemNotificationService>();
 
             // Classification Services & Repositories
             services.AddScoped<ICategoryService, CategoryService>();
@@ -127,6 +131,11 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IMentorSlotService, MentorSlotService>();
 
             services.AddScoped<IUserCvRepository, UserCvRepository>();
+            services.AddScoped<ICvService, CvService>();
+
+            // Practice Test History (UC-31, UC-32)
+            services.AddScoped<IPracticeTestSessionRepository, PracticeTestSessionRepository>();
+            services.AddScoped<IPracticeTestHistoryService, PracticeTestHistoryService>();
 
             // AWS S3 Storage Service
             services.Configure<AwsS3Config>(
@@ -146,7 +155,7 @@ namespace Imate.API.Infrastructure.Configurations
                 });
             }
 
-            services.AddScoped<IAwsS3StorageService, AwsS3StorageService>();
+            services.AddScoped<IAwsS3StorageService, Imate.API.Business.Services.ExternalServices.AwsS3StorageService>();
 
 
             services.Configure<FormOptions>(options =>

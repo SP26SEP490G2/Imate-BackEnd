@@ -73,5 +73,11 @@ namespace Imate.API.Common.Router
             public const string GetSubscriptionOverview = "subscription-packages/overview";
             public const string UpdateSubscriptionPackagePrice = "subscription-packages/{id}/price";
         }
+        public class CV
+        {
+            public const string Upload = "cv/upload";
+            public const string GetList = "cv/list";
+            public const string Delete = "cv/{cvId}";
+        }
     }
 }

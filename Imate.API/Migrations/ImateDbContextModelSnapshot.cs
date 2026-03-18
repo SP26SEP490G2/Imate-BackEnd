@@ -933,6 +933,121 @@ namespace Imate.API.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Imate.API.Models.Entities.PracticeTestAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CorrectAnswer")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Explanation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OptionsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PracticeTestSessionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuestionNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("QuestionText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserAnswer")
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PracticeTestSessionId");
+
+                    b.ToTable("PracticeTestAnswers", (string)null);
+                });
+
+            modelBuilder.Entity("Imate.API.Models.Entities.PracticeTestSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AiFeedback")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AiImprovements")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AiStrengths")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("CompletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("CorrectAnswers")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int?>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("LogicalScore")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("OptimizationScore")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TechnicalScore")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TestTitle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("TestType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("TimeLimitMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("PracticeTestSessions", (string)null);
+                });
+
             modelBuilder.Entity("Imate.API.Models.Entities.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -1565,6 +1680,9 @@ namespace Imate.API.Migrations
                     b.Property<int>("AccountId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AnalysisData")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -1995,6 +2113,28 @@ namespace Imate.API.Migrations
                     b.Navigation("Skill");
                 });
 
+            modelBuilder.Entity("Imate.API.Models.Entities.PracticeTestAnswer", b =>
+                {
+                    b.HasOne("Imate.API.Models.Entities.PracticeTestSession", "PracticeTestSession")
+                        .WithMany("Answers")
+                        .HasForeignKey("PracticeTestSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PracticeTestSession");
+                });
+
+            modelBuilder.Entity("Imate.API.Models.Entities.PracticeTestSession", b =>
+                {
+                    b.HasOne("Imate.API.Models.Entities.Account", "Account")
+                        .WithMany("PracticeTestSessions")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+                });
+
             modelBuilder.Entity("Imate.API.Models.Entities.Question", b =>
                 {
                     b.HasOne("Imate.API.Models.Entities.ContributedDetail", "ContributedDetail")
@@ -2272,6 +2412,8 @@ namespace Imate.API.Migrations
 
                     b.Navigation("PostedJobs");
 
+                    b.Navigation("PracticeTestSessions");
+
                     b.Navigation("Questions");
 
                     b.Navigation("ReceivedNotifications");
@@ -2373,6 +2515,11 @@ namespace Imate.API.Migrations
                     b.Navigation("MentorPositions");
 
                     b.Navigation("QuestionPositions");
+                });
+
+            modelBuilder.Entity("Imate.API.Models.Entities.PracticeTestSession", b =>
+                {
+                    b.Navigation("Answers");
                 });
 
             modelBuilder.Entity("Imate.API.Models.Entities.Question", b =>
