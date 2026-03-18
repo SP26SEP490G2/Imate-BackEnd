@@ -111,6 +111,7 @@ namespace Imate.API.Business.Services.Mentors
                 BookDate = request.BookDate,
                 PriceAtBooking = price,
                 Status = BookingStatus.Confirmed,
+                AgoraChannelName = "temp", // Temporary value, will be updated to booking.Id
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -119,6 +120,10 @@ namespace Imate.API.Business.Services.Mentors
 
             await _unitOfWork.Bookings.AddAsync(booking);
             
+            await _unitOfWork.SaveChangesAsync();
+
+            // Setup Agora channel using generated ID
+            booking.AgoraChannelName = booking.Id.ToString();
             await _unitOfWork.SaveChangesAsync();
 
             return new BookingResponseModel
