@@ -22,6 +22,7 @@ builder.Services.RegisterAIAdapters();
 
 builder.Services.AddFirebaseAdmin();
 builder.Services.AddMyServices(builder.Configuration);
+builder.Services.AddSignalR();
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 
