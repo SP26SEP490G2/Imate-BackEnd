@@ -50,6 +50,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using PayOS;
 using System.Reflection;
 using System.Text;
 
@@ -64,6 +65,7 @@ namespace Imate.API.Infrastructure.Configurations
             // 1. Cấu hình Options Pattern 
             services.Configure<JwtSettings>(
                 configuration.GetSection(JwtSettings.SectionName));
+            ConfigurePayos(services, configuration);
             // 2. Cấu hình JWT Authentication 
             ConfigureJwtAuthentication(services, configuration);
             // 3 Cấu hình Swagger
@@ -110,6 +112,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IApplicationRepository, ApplicationRepository>();
             services.AddScoped<ISystemNotificationRepository, SystemNotificationRepository>();
             services.AddScoped<ISystemNotificationService, SystemNotificationService>();
+
 
             // Classification Services & Repositories
             services.AddScoped<ICategoryService, CategoryService>();
@@ -262,6 +265,26 @@ namespace Imate.API.Infrastructure.Configurations
                     Type = "string",
                     Format = "binary"
                 });
+            });
+        }
+
+        private static void ConfigurePayos(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddSingleton(sp =>
+            {
+                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                var logger = loggerFactory.CreateLogger<PayOSClient>();
+
+                var options = new PayOSOptions
+                {
+                    ClientId = configuration["PayOS:ClientId"]!,
+                    ApiKey = configuration["PayOS:ApiKey"]!,
+                    ChecksumKey = configuration["PayOS:ChecksumKey"]!,
+                    LogLevel = LogLevel.Debug,
+                    Logger = logger
+                };
+
+                return new PayOSClient(options);
             });
         }
     }
