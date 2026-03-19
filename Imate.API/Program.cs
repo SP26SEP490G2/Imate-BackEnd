@@ -1,8 +1,8 @@
 using Imate.API.Configurations;
-using Imate.API.Middleware;
 using Imate.API.Infrastructure.Configurations;
+using Imate.API.Middleware;
 using Microsoft.Extensions.Configuration;
-
+using PayOS;
 using System.Text;
 
 // Fix Windows console encoding for Vietnamese characters
@@ -19,7 +19,7 @@ builder.Services.ConfigureServices();
 builder.Services.ConfigureExternalServices();
 builder.Services.ConfigureBackgroundServices();
 builder.Services.RegisterAIAdapters();
-
+builder.Services.AddScoped<PayOSClient>();
 builder.Services.AddFirebaseAdmin();
 builder.Services.AddMyServices(builder.Configuration);
 builder.Services.AddSignalR();
