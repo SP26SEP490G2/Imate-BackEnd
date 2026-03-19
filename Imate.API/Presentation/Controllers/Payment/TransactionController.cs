@@ -89,7 +89,7 @@ namespace Imate.API.Presentation.Controllers.Payment
         [HttpPost("deposit")]
         public async Task<ActionResult<TransactionResponse>> CreateDeposit([FromBody] DepositRequest depositRequest)
         {
-            var accountId = GetCurrentAccountId();
+            var accountId = 1;
             if (accountId == null)
             {
                 return Unauthorized("Không thể xác định tài khoản.");
@@ -98,7 +98,7 @@ namespace Imate.API.Presentation.Controllers.Payment
             try
             {
                 var response = await _service
-                    .CreateDepositAsync(accountId.Value, depositRequest);
+                    .CreateDepositAsync(1, depositRequest);
 
                 return Ok(response);
             }
