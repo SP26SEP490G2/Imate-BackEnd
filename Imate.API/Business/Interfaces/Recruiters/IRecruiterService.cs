@@ -23,6 +23,8 @@ namespace Imate.API.Business.Interfaces.Recruiters
         Task<PagedList<GetAllOpenedJobResponse>> GetAllOpenedJobs(JobPostingCandidateFilter filterRequest);
         Task<GetAllOpenedJobResponse> GetJobDetail(int jobId);
         Task<JobApplication> UpdateJobApplication(int accountId, UpdateJobApplicationRequest request);
+        Task<PagedList<GetCandidateAppliedJobResponse>> GetCandidateAppliedJob(int accountId, AppliedApplicationCandidateFilterRequest request);
 
+        Task<JobApplication> CreateJobApplication(int accountId, CreateJobApplicationRequest request);
 	}
 }

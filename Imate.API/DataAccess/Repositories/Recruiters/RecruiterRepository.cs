@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.DataAccess.Repositories.Recruiters
 {
-    public class RecruiterRepository : RepositoryBase<Recruiter>, IRecruiterRepository
+	public class RecruiterRepository : RepositoryBase<Recruiter>, IRecruiterRepository
     {
         private readonly ImateDbContext _context;
 
@@ -71,7 +71,7 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
 			return  _context.JobApplications
                 .Include(a=>a.Candidate)
                 .Include (b=>b.Cv)
-                .Where(j=>j.Id == jobId)
+                .Where(j=>j.Job.Id == jobId)
 				.AsNoTracking();
 		}
 
@@ -85,18 +85,38 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
                 .AsNoTracking();
 		}
 
-		public async Task<JobApplication> UpdateJobApplicationStatus(JobApplication jobApplication)
+		public async Task<JobApplication> UpdateJobApplicationStatusAsync(JobApplication jobApplication)
 		{
 			_context.JobApplications.Update(jobApplication);
 			return jobApplication;
 		}
 
-		public async Task<JobApplication> GetJobApplicationById(int jobApplicationId)
+		public async Task<JobApplication> GetJobApplicationByIdAsync(int jobApplicationId)
 		{
 			return await _context.JobApplications
                 .Include(a => a.Candidate)
                 .Include(a=>a.Job)
 				.FirstOrDefaultAsync(j=>j.Id==jobApplicationId);
+		}
+
+		public IQueryable<JobApplication> GetCandidateAppliedJob(int candidateId)
+		{
+			return _context.JobApplications
+				.Include(j => j.Job)
+				.Include(ja => ja.Candidate)
+				.Where(j => j.CandidateId == candidateId)
+				.AsNoTracking();
+		}
+
+		public async Task<JobApplication> CreateJobApplicationAsync(JobApplication jobApplication)
+		{
+			_context.JobApplications.Add(jobApplication);
+            return jobApplication;
+		}
+
+		public IQueryable<JobApplication> GetAllJobApplication()
+		{
+			return _context.JobApplications.AsNoTracking();
 		}
 	}
 }

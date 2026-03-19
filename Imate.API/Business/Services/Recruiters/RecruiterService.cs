@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json.Serialization;
 using Amazon.Runtime.Internal;
 using Azure;
 using Azure.Core;
@@ -450,7 +451,7 @@ namespace Imate.API.Business.Services.Recruiters
 				{
 					query = query.Where(j => j.Candidate.FullName.ToLower().Contains(filterRequest.SearchTerm.ToLower()) || j.Candidate.Email.ToLower().Contains(filterRequest.SearchTerm.ToLower()));
 				}
-				if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.Status.ToString()))
+				if (filterRequest != null && filterRequest.Status.HasValue)
 				{
 					query = query.Where(j => j.Status.Equals(filterRequest.Status));
 				}
@@ -467,6 +468,7 @@ namespace Imate.API.Business.Services.Recruiters
 						CandidateFileUrl = application.Cv.FileUrl,
 						CandidateScannedData = application.Cv.ScannedData,
 						Status = application.Status,
+
 					});
 				return await PagedList<GetAppliedJobApplicationCandidateResponse>.CreateAsync(applications, filterRequest.PageNumber, filterRequest.PageSize);
 			}
@@ -605,7 +607,7 @@ namespace Imate.API.Business.Services.Recruiters
 		{
 			try
 			{
-				var jobApplication = await _unitOfWork.Recruiters.GetJobApplicationById(request.Id);
+				var jobApplication = await _unitOfWork.Recruiters.GetJobApplicationByIdAsync(request.Id);
 				var oldData = new
 				{
 					jobApplication.Status,
@@ -627,7 +629,7 @@ namespace Imate.API.Business.Services.Recruiters
 					throw new BadRequestException("Chỉ tài khoản Recruiter mới có thể cập nhật Job.");
 				}
 				jobApplication.Status = request.Status;
-				var result = await _unitOfWork.Recruiters.UpdateJobApplicationStatus(jobApplication);
+				var result = await _unitOfWork.Recruiters.UpdateJobApplicationStatusAsync(jobApplication);
 				var newData = new
 				{
 					jobApplication.Status,
@@ -683,6 +685,93 @@ namespace Imate.API.Business.Services.Recruiters
 
 			}
 
+		}
+
+		public async Task<PagedList<GetCandidateAppliedJobResponse>> GetCandidateAppliedJob(int accountId, AppliedApplicationCandidateFilterRequest filterRequest)
+		{
+			try
+			{
+				var query = _unitOfWork.Recruiters.GetCandidateAppliedJob(accountId);
+				if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.SearchTerm))
+				{
+					query = query.Where(j => j.Job.Title.ToLower().Contains(filterRequest.SearchTerm.ToLower()));
+				}
+				if (filterRequest != null && !string.IsNullOrEmpty(filterRequest.Status.ToString()))
+				{
+					query = query.Where(j => j.Status.Equals(filterRequest.Status));
+				}
+				var result = query.Select(job => new GetCandidateAppliedJobResponse
+				{
+					Id = job.Id,
+					Title = job.Job.Title,
+					CompanyName = job.Job.Recruiter.Recruiter.CompanyName,
+					CompanyLogo = job.Job.Recruiter.Recruiter.CompanyLogo,
+					EmploymentType = job.Job.EmploymentType,
+					Location = job.Job.Location,
+					MinSalary = job.Job.MinSalary,
+					MaxSalary = job.Job.MaxSalary,
+					Status = job.Status,
+					AppliedDate = job.AppliedDate,
+					Feedback = job.RecruiterFeedback
+
+				});
+				return await PagedList<GetCandidateAppliedJobResponse>.CreateAsync(result, filterRequest.PageNumber, filterRequest.PageSize);
+
+			}
+			catch (Exception ex)
+			{
+				throw new ApplicationException($"An error occurred while retrieving Job.", ex);
+
+			}
+
+		}
+
+		public async Task<JobApplication> CreateJobApplication(int accountId, CreateJobApplicationRequest request)
+		{
+			try
+			{
+				if (request == null)
+					throw new BadRequestException("Dữ liệu hồ sơ Đăng tuyển không hợp lệ.");
+
+				var account = await _unitOfWork.Accounts.GetByIdAsync(accountId)
+					?? throw new NotFoundException("Không tìm thấy tài khoản.");
+
+				var job = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(request.JobId)
+					?? throw new NotFoundException("Không tìm thấy công việc.");
+
+				var existingApplication = _unitOfWork.Recruiters.GetAllJobApplication()
+				.Where(x => x.CandidateId == accountId && x.JobId == request.JobId)
+				.OrderByDescending(x => x.AppliedDate) // lấy bản mới nhất
+				.FirstOrDefault();
+
+				if (job.ApplicationDeadline < DateTime.UtcNow)
+					throw new Exception("Công việc đã hết hạn ứng tuyển");
+
+				if (existingApplication != null && existingApplication.Status != JobApplicationStatus.Rejected)
+				{
+					throw new Exception("Bạn đã ứng tuyển công việc này rồi");
+				}
+				var jobApplication = new JobApplication
+				{
+					CandidateId = accountId,
+					JobId = request.JobId,
+					CvId = request.CVId,
+					AppliedDate = DateTime.UtcNow,
+					Status = JobApplicationStatus.Waiting
+				};
+				var result = await _unitOfWork.Recruiters.CreateJobApplicationAsync(jobApplication);
+
+				var (oldChanges, newChanges) = AuditHelper.GetChanges(new { }, jobApplication);
+
+				await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Create, "JobApplication", result.Id, oldChanges, newChanges);
+				await _unitOfWork.SaveChangesAsync();
+				return result;
+			}
+			catch (Exception ex)
+			{
+				throw new ApplicationException($"An error occurred while Apply.", ex);
+
+			}
 		}
 	}
 }
