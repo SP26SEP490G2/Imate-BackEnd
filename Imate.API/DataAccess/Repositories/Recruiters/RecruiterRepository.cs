@@ -1,6 +1,7 @@
 using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.Models.Entities;
+using Imate.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.DataAccess.Repositories.Recruiters
@@ -117,6 +118,14 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
 		public IQueryable<JobApplication> GetAllJobApplication()
 		{
 			return _context.JobApplications.AsNoTracking();
+		}
+
+		public async Task<List<Job>> GetJobsToCloseAsync()
+		{
+			return await _context.Jobs
+				.Where(j => j.ApplicationDeadline < DateTime.UtcNow
+						 && j.Status != JobStatus.Closed)
+				.ToListAsync();
 		}
 	}
 }

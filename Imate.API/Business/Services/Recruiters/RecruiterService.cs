@@ -266,7 +266,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException("An error occurred while Creating Job.", ex);
+				throw new Exception($"{ex.Message}", ex);
 
 			}
 		}
@@ -380,7 +380,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException("An error occurred while Updating Job.", ex);
+				throw new Exception($"{ex.Message}", ex);
 
 			}
 		}
@@ -435,7 +435,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException("An error occurred while Updating Job.", ex);
+				throw new Exception($"{ex.Message}", ex);
 
 			}
 
@@ -474,7 +474,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException($"An error occurred while retrieving Candidates. {ex.Message}", ex);
+				throw new Exception($"{ex.Message}", ex);
 			}
 
 
@@ -550,7 +550,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException("An error occurred while retrieving Jobs.", ex);
+				throw new Exception($"{ex.Message}", ex);
 			}
 		}
 
@@ -597,7 +597,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException("An error occurred while retrieving Job detail.", ex);
+				throw new Exception($"{ex.Message}", ex);
 
 			}
 
@@ -681,7 +681,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException("An error occurred while Updating JobApplication.", ex);
+				throw new Exception($"{ex.Message}", ex);
 
 			}
 
@@ -720,7 +720,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException($"An error occurred while retrieving Job.", ex);
+				throw new Exception($"{ex.Message}", ex);
 
 			}
 
@@ -745,11 +745,11 @@ namespace Imate.API.Business.Services.Recruiters
 				.FirstOrDefault();
 
 				if (job.ApplicationDeadline < DateTime.UtcNow)
-					throw new Exception("Công việc đã hết hạn ứng tuyển");
+					throw new ApplicationException("Công việc đã hết hạn ứng tuyển");
 
 				if (existingApplication != null && existingApplication.Status != JobApplicationStatus.Rejected)
 				{
-					throw new Exception("Bạn đã ứng tuyển công việc này rồi");
+					throw new ApplicationException("Bạn đã ứng tuyển công việc này rồi");
 				}
 				var jobApplication = new JobApplication
 				{
@@ -769,7 +769,7 @@ namespace Imate.API.Business.Services.Recruiters
 			}
 			catch (Exception ex)
 			{
-				throw new ApplicationException($"An error occurred while Apply.", ex);
+				throw new Exception($"{ex.Message}", ex);
 
 			}
 		}

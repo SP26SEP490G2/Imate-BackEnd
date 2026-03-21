@@ -1,3 +1,4 @@
+using Imate.API.Business.Services.Recruiters;
 using Imate.API.Configurations;
 using Imate.API.Infrastructure.Configurations;
 using Imate.API.Middleware;
@@ -23,6 +24,7 @@ builder.Services.AddScoped<PayOSClient>();
 builder.Services.AddFirebaseAdmin();
 builder.Services.AddMyServices(builder.Configuration);
 builder.Services.AddSignalR();
+builder.Services.AddHostedService<AutoCloseJobServices>();
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 

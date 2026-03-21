@@ -18,5 +18,6 @@ namespace Imate.API.DataAccess.Interfaces.Recruiters
 
         Task<JobApplication> CreateJobApplicationAsync(JobApplication jobApplication);
         IQueryable<JobApplication> GetAllJobApplication();
+        Task<List<Job>> GetJobsToCloseAsync();
 	}
 }

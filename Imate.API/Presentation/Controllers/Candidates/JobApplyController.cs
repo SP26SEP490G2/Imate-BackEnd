@@ -11,6 +11,7 @@ namespace Imate.API.Presentation.Controllers.Candidates
 {
 	[Route("api")]
 	[ApiController]
+	[Authorize]
 	public class JobApplyController : ControllerBase
 	{
 		private readonly IRecruiterService _recruiterService;
@@ -32,7 +33,9 @@ namespace Imate.API.Presentation.Controllers.Candidates
 
 				if (accountIdClaim == null || !int.TryParse(accountIdClaim, out int accountId))
 					return Unauthorized(new { message = "Không thể xác định thông tin người dùng." });
+
 				var result = await _recruiterService.CreateJobApplication(accountId, request);
+
 				return Ok(new {message = "Apply Đơn Đăng tuyển thành công" });
 			}
 			catch (Exception ex)
@@ -44,8 +47,7 @@ namespace Imate.API.Presentation.Controllers.Candidates
 			}
 		}
 
-		[AllowAnonymous]
-		[HttpGet("get-applied-job")]
+		[HttpGet("get-applied-jobs")]
 		public async Task<IActionResult> GetAppliedJob([FromQuery] AppliedApplicationCandidateFilterRequest request)
 		{
 			try
