@@ -50,5 +50,14 @@ namespace Imate.API.Presentation.Controllers.Mentors
             await _bookingService.CancelBookingAsync(bookingId, candidateId);
             return Ok(new { message = "Booking cancelled successfully." });
         }
+
+        [HttpPost("{bookingId}/rate")]
+        [Authorize(Roles = "Candidate")]
+        public async Task<IActionResult> RateMentor(int bookingId, [FromBody] RateMentorRequest request)
+        {
+            var candidateId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await _bookingService.RateMentorAsync(bookingId, candidateId, request);
+            return Ok(new { message = "Mentor rated successfully." });
+        }
     }
 }
