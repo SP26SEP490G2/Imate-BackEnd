@@ -1,11 +1,12 @@
 ﻿using DocumentFormat.OpenXml.Spreadsheet;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces.Payment;
 using Imate.API.Business.Services.Payment;
 using Imate.API.Presentation.RequestModels.Payment;
 using Imate.API.Presentation.ResponseModels.Payment;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using static Google.Apis.Requests.BatchRequest;
 using SystemStatisticsResponse = Imate.API.Presentation.ResponseModels.Payment.SystemStatisticsResponse;
@@ -14,6 +15,7 @@ namespace Imate.API.Presentation.Controllers.Payment
 {
     [ApiController]
     [Route("api")]
+    [Authorize]
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionService _service;
@@ -89,7 +91,7 @@ namespace Imate.API.Presentation.Controllers.Payment
         [HttpPost("deposit")]
         public async Task<ActionResult<TransactionResponse>> CreateDeposit([FromBody] DepositRequest depositRequest)
         {
-            var accountId = 1;
+            var accountId = GetCurrentAccountId();
             if (accountId == null)
             {
                 return Unauthorized("Không thể xác định tài khoản.");
@@ -98,7 +100,7 @@ namespace Imate.API.Presentation.Controllers.Payment
             try
             {
                 var response = await _service
-                    .CreateDepositAsync(1, depositRequest);
+                    .CreateDepositAsync(accountId.Value, depositRequest);
 
                 return Ok(response);
             }
@@ -409,12 +411,15 @@ namespace Imate.API.Presentation.Controllers.Payment
         }
         private int? GetCurrentAccountId()
         {
-            var accountIdString = User.FindFirstValue(ClaimTypes.NameIdentifier); // Hoặc claim type tùy chỉnh của bạn
-            if (int.TryParse(accountIdString, out int accountId))
+            var accountIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst("accountId")?.Value;
+
+            if (accountIdClaim == null || !int.TryParse(accountIdClaim, out int accountId))
             {
-                return accountId;
+                return null;
             }
-            return null;
+            return accountId;
         }
     }
 }

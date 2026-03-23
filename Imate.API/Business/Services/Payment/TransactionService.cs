@@ -201,7 +201,9 @@ namespace Imate.API.Business.Services.Payment
                     Amount = depositRequestDto.Amount,
                     TransactionType = TransactionType.MoneyDeposit,
                     Status = TransactionStatus.Pending,
-                    Reason = "Deposit Imateints",
+                    Reason = "Nạp imCoin",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 };
                 await _unitOfWork.Transactions.AddAsync(newTransaction);
                 await _unitOfWork.SaveChangesAsync(); // Lưu để lấy ID
@@ -408,7 +410,7 @@ namespace Imate.API.Business.Services.Payment
                     _logger.LogWarning("Webhook: Transaction {TransactionId} thất bại/hủy (Code: {Code}, Description: {Description})", 
                         transactionId, verifiedData.Code, verifiedData.Description);
                     
-                    transaction.Status = TransactionStatus.Failed;
+                    transaction.Status = TransactionStatus.Cancelled;
                     await _unitOfWork.Transactions.UpdateAsync(transaction);
                     
                     // Log thông tin webhook để debug
@@ -455,7 +457,7 @@ namespace Imate.API.Business.Services.Payment
             if (string.IsNullOrEmpty(transaction.ExternalTransactionCode))
             {
                 // Nếu chưa có PaymentLinkId, chỉ cần cập nhật status
-                transaction.Status = TransactionStatus.Failed;
+                transaction.Status = TransactionStatus.Cancelled;
                 await _unitOfWork.Transactions.UpdateAsync(transaction);
                 await _unitOfWork.SaveChangesAsync();
                 _logger.LogInformation("Transaction {TransactionId} đã được hủy (không có PaymentLinkId)", transactionId);
@@ -478,7 +480,7 @@ namespace Imate.API.Business.Services.Payment
             }
 
             // Cập nhật status thành Failed
-            transaction.Status = TransactionStatus.Failed;
+            transaction.Status = TransactionStatus.Cancelled;
             await _unitOfWork.Transactions.UpdateAsync(transaction);
             await _unitOfWork.SaveChangesAsync();
             
