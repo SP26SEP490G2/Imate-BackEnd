@@ -1,6 +1,7 @@
 using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Presentation.ResponseModels.Mentors;
+using Imate.API.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 
@@ -54,6 +55,57 @@ namespace Imate.API.Business.Services.Mentors
             };
 
             return response;
+        }
+
+        public async Task<IEnumerable<SlotDetailResponse>> GetAllSlotsAsync()
+        {
+            var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
+            return slots.Select(s => new SlotDetailResponse
+            {
+                Id = s.Id,
+                DayOfWeek = s.DayOfWeek,
+                DayOfWeekName = s.StartTime.ToString("HH:mm") + " - " + s.EndTime.ToString("HH:mm"),
+                StartTime = s.StartTime,
+                EndTime = s.EndTime
+            });
+        }
+        public async Task<bool> AddMentorRecurringSlotsAsync(int mentorId, List<int> slotIds)
+        {
+            var existingSlots = await _unitOfWork.MentorRecurringSlots.GetByMentorIdAsync(mentorId);
+            var existingSlotIds = existingSlots.Select(s => s.SlotId).ToHashSet();
+
+            var newSlotIds = slotIds.Where(id => !existingSlotIds.Contains(id)).Distinct();
+
+            foreach (var slotId in newSlotIds)
+            {
+                var mentorSlot = new MentorRecurringSlot
+                {
+                    MentorId = mentorId,
+                    SlotId = slotId,
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+                _unitOfWork.MentorRecurringSlots.Create(mentorSlot);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteMentorRecurringSlotAsync(int mentorId, int mentorRecurringSlotId)
+        {
+            var slot = await _unitOfWork.MentorRecurringSlots
+                .FindByCondition(s => s.Id == mentorRecurringSlotId && s.MentorId == mentorId, true)
+                .FirstOrDefaultAsync();
+
+            if (slot == null) return false;
+
+            slot.IsActive = false;
+            slot.UpdatedAt = DateTimeOffset.UtcNow;
+            _unitOfWork.MentorRecurringSlots.Update(slot);
+
+            await _unitOfWork.SaveChangesAsync();
+            return true;
         }
     }
 }
