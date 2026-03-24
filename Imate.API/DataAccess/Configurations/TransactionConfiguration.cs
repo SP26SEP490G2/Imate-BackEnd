@@ -47,10 +47,9 @@ namespace Imate.API.DataAccess.Configurations
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(e => e.UserSubscription)
-                .WithMany(u => u.Transactions)
-                .HasForeignKey(e => e.UserSubscriptionId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Restrict);
+               .WithOne(u => u.Transaction)
+               .HasForeignKey<Transaction>(e => e.UserSubscriptionId)
+               .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(e => e.Application)
                 .WithMany(a => a.Transactions)

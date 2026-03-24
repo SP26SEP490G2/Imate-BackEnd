@@ -38,7 +38,8 @@ namespace Imate.API.DataAccess.Repositories
             ISystemConfigRepository systemConfigs,
             IApplicationRepository applications,
             IMentorRecurringSlotRepository mentorRecurringSlots,
-            ISystemNotificationRepository systemNotifications)
+            ISystemNotificationRepository systemNotifications,
+            ISubscriptionPackageRepository subscriptionPackages)
         {
             _repositoryContext = repositoryContext;
             Accounts = accounts;
@@ -58,6 +59,7 @@ namespace Imate.API.DataAccess.Repositories
             Applications = applications;
             SystemConfigs = systemConfigs;
             SystemNotifications = systemNotifications;
+            SubscriptionPackages = subscriptionPackages;
         }
         public IAccountRepository Accounts { get; private set; }
         public IMentorRepository Mentors { get; private set; }
@@ -74,6 +76,7 @@ namespace Imate.API.DataAccess.Repositories
         public IMentorRecurringSlotRepository MentorRecurringSlots { get; private set; }
         public IApplicationRepository Applications { get; private set; }
         public ITransactionRepository Transactions { get; private set; }
+        public ISubscriptionPackageRepository SubscriptionPackages { get; private set; }
         public ISystemConfigRepository SystemConfigs { get; }
         public ISystemNotificationRepository SystemNotifications { get; private set; }
         public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();

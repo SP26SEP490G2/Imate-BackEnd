@@ -33,6 +33,11 @@ namespace Imate.API.DataAccess.Repositories.Payment
             _context.SubscriptionPackages.Update(package);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<SubscriptionPackage> GetSubscriptionPackageByIdAsync(int id)
+        {
+            return await _context.SubscriptionPackages.FindAsync(id);
+        }
     }
 }
 
