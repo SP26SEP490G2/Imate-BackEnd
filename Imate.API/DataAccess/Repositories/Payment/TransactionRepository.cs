@@ -116,7 +116,7 @@ namespace Imate.API.DataAccess.Repositories.Payment
         public async Task<Transaction?> GetTransactionByBookingIdAsync(int bookingId)
         {
             return await _context.Transactions
-                .Where(t => t.BookingId == bookingId && t.TransactionType == TransactionType.PointDeposit)
+                .Where(t => t.BookingId == bookingId && t.TransactionType == TransactionType.Deposit)
                 .OrderByDescending(t => t.CreatedAt)
                 .FirstOrDefaultAsync();
         }

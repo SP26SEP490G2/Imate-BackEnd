@@ -1303,7 +1303,7 @@ namespace Imate.API.Business.Services.QuestionBank
                         var transaction = new Transaction
                         {
                             TargetAccountId = questionToUpdate.CreatorId,
-                            TransactionType = TransactionType.PointDeposit,
+                            TransactionType = TransactionType.Deposit,
                             Amount = rewardPoints,
                             Status = TransactionStatus.Completed,
                             Reason = $"Phần thưởng đóng góp câu hỏi (Question #{questionId})",

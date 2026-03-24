@@ -59,10 +59,10 @@ namespace Imate.API.Business.Services.Payment
 
             // 2. Tính toán tổng nạp và tổng rút (có thể chạy song song)
             var totalDeposit = await _unitOfWork.Transactions
-                .GetTotalAmountAsync(accountId, TransactionType.MoneyDeposit, TransactionStatus.Completed, isTarget: true);
+                .GetTotalAmountAsync(accountId, TransactionType.Deposit, TransactionStatus.Completed, isTarget: true);
 
             var totalWithdrawal = await _unitOfWork.Transactions
-                .GetTotalAmountAsync(accountId, TransactionType.MoneyWithdrawal, TransactionStatus.Completed, isTarget: false);
+                .GetTotalAmountAsync(accountId, TransactionType.Withdrawal, TransactionStatus.Completed, isTarget: false);
 
             // 3. Đóng gói DTO để trả về
             var summary = new BalanceSummaryResponse
@@ -199,7 +199,7 @@ namespace Imate.API.Business.Services.Payment
                 {
                     TargetAccountId = accountId,
                     Amount = depositRequestDto.Amount,
-                    TransactionType = TransactionType.MoneyDeposit,
+                    TransactionType = TransactionType.Deposit,
                     Status = TransactionStatus.Pending,
                     Reason = "Nạp imCoin",
                     CreatedAt = DateTime.UtcNow,
@@ -602,7 +602,7 @@ namespace Imate.API.Business.Services.Payment
                     SourceAccountId = accountId,
                     TargetAccountId = null,
                     Amount = withdrawRequestDto.Amount,
-                    TransactionType = TransactionType.MoneyWithdrawal,
+                    TransactionType = TransactionType.Withdrawal,
                     Status = TransactionStatus.Pending,
                     Reason = "Yêu cầu rút tiền",
                     CreatedAt = DateTime.UtcNow,
@@ -717,7 +717,7 @@ namespace Imate.API.Business.Services.Payment
                     throw new KeyNotFoundException($"Không tìm thấy giao dịch với ID {transactionId}.");
                 }
 
-                if (transaction.TransactionType != TransactionType.MoneyWithdrawal)
+                if (transaction.TransactionType != TransactionType.Withdrawal)
                 {
                     throw new ArgumentException("Chỉ có thể duyệt các giao dịch rút tiền.");
                 }
@@ -782,7 +782,7 @@ namespace Imate.API.Business.Services.Payment
                     throw new KeyNotFoundException($"Không tìm thấy giao dịch với ID {transactionId}.");
                 }
 
-                if (transaction.TransactionType != TransactionType.MoneyWithdrawal)
+                if (transaction.TransactionType != TransactionType.Withdrawal)
                 {
                     throw new ArgumentException("Chỉ có thể từ chối các giao dịch rút tiền.");
                 }
@@ -851,11 +851,11 @@ namespace Imate.API.Business.Services.Payment
         {
             // Tính tổng tiền nạp vào (MoneyDeposit Completed)
             var totalDeposit = await _unitOfWork.Transactions
-                .GetSystemTotalAmountAsync(TransactionType.MoneyDeposit, TransactionStatus.Completed);
+                .GetSystemTotalAmountAsync(TransactionType.Deposit, TransactionStatus.Completed);
 
             // Tính tổng tiền rút ra (MoneyWithdrawal Completed)
             var totalWithdrawal = await _unitOfWork.Transactions
-                .GetSystemTotalAmountAsync(TransactionType.MoneyWithdrawal, TransactionStatus.Completed);
+                .GetSystemTotalAmountAsync(TransactionType.Withdrawal, TransactionStatus.Completed);
 
             // Lãi ròng = Tiền vào - Tiền ra
             var netProfit = totalDeposit - totalWithdrawal;
@@ -919,7 +919,7 @@ namespace Imate.API.Business.Services.Payment
                 }
 
                 // 2. Validate transaction type and status
-                if (bookingFeeTransaction.TransactionType != TransactionType.PointBookingFee)
+                if (bookingFeeTransaction.TransactionType != TransactionType.BookingFee)
                 {
                     throw new ArgumentException("Chỉ có thể xử lý payout cho giao dịch booking fee.");
                 }
@@ -1024,7 +1024,7 @@ namespace Imate.API.Business.Services.Payment
                 {
                     SourceAccountId = null, // System payout
                     TargetAccountId = mentorAccount.Id,
-                    TransactionType = TransactionType.PointBookingPayout,
+                    TransactionType = TransactionType.BookingPayout,
                     Amount = payoutAmount,
                     BookingId = bookingFeeTransaction.BookingId,
                     Status = TransactionStatus.Completed,
@@ -1120,10 +1120,10 @@ namespace Imate.API.Business.Services.Payment
             //    - Always anchor to payouts created inside the window
             //    - Include in result if no filter or filter is PointBookingPayout
             int mentorCommission = 0;
-            if (!filterType.HasValue || filterType.Value == TransactionType.PointBookingPayout)
+            if (!filterType.HasValue || filterType.Value == TransactionType.BookingPayout)
             {
                 var payouts = await baseQuery
-                    .Where(t => t.TransactionType == TransactionType.PointBookingPayout && t.BookingId.HasValue)
+                    .Where(t => t.TransactionType == TransactionType.BookingPayout && t.BookingId.HasValue)
                     .Select(t => new { t.BookingId, t.Amount })
                     .ToListAsync();
 
@@ -1138,7 +1138,7 @@ namespace Imate.API.Business.Services.Payment
                     // Fetch booking fees for those bookings regardless of month (but Completed only)
                     var fees = await _unitOfWork.Transactions.GetAllTransactionsQueryable()
                         .Where(t => t.Status == TransactionStatus.Completed
-                                    && t.TransactionType == TransactionType.PointBookingFee
+                                    && t.TransactionType == TransactionType.BookingFee
                                     && t.BookingId.HasValue
                                     && bookingIds.Contains(t.BookingId.Value))
                         .Select(t => new { t.BookingId, t.Amount })
@@ -1170,35 +1170,35 @@ namespace Imate.API.Business.Services.Payment
             int refundSum = 0;
             int depositSum = 0;
 
-            if (!filterType.HasValue || filterType.Value == TransactionType.PointSubscriptionFee)
+            if (!filterType.HasValue || filterType.Value == TransactionType.Subscription)
             {
                 subscriptionSum = await baseQuery
-                    .Where(t => t.TransactionType == TransactionType.PointSubscriptionFee)
+                    .Where(t => t.TransactionType == TransactionType.Subscription)
                     .SumAsync(t => (int?)t.Amount) ?? 0;
             }
 
-            if (!filterType.HasValue || filterType.Value == TransactionType.PointPenalty)
+            if (!filterType.HasValue || filterType.Value == TransactionType.Penalty)
             {
                 penaltySum = await baseQuery
-                    .Where(t => t.TransactionType == TransactionType.PointPenalty)
+                    .Where(t => t.TransactionType == TransactionType.Penalty)
                     .SumAsync(t => (int?)t.Amount) ?? 0;
             }
 
-            if (!filterType.HasValue || filterType.Value == TransactionType.PointInterviewFee)
+            if (!filterType.HasValue || filterType.Value == TransactionType.InterviewFee)
             {
                 interviewSum = await baseQuery
-                    .Where(t => t.TransactionType == TransactionType.PointInterviewFee)
+                    .Where(t => t.TransactionType == TransactionType.InterviewFee)
                     .SumAsync(t => (int?)t.Amount) ?? 0;
             }
 
-            if (!filterType.HasValue || filterType.Value == TransactionType.PointRefund)
+            if (!filterType.HasValue || filterType.Value == TransactionType.Refund)
             {
                 // Tính các refund dựa trên refund rate từ config
                 // Doanh thu = (100 - refundRate)% còn lại (phần hệ thống giữ)
                 var refundRate = await _systemConfigService.GetCancellationRefundRateAsync();
                 var systemKeepRate = (100 - refundRate) / 100m; // Tỷ lệ hệ thống giữ
                 var refunds = await baseQuery
-                    .Where(t => t.TransactionType == TransactionType.PointRefund)
+                    .Where(t => t.TransactionType == TransactionType.Refund)
                     .ToListAsync();
                 // Filter refunds có chứa refund rate trong reason (để tương thích với cả transaction cũ và mới)
                 var refundRateString = $"{refundRate}%";
@@ -1207,10 +1207,10 @@ namespace Imate.API.Business.Services.Payment
                     .Sum(t => (int)(t.Amount * systemKeepRate / (refundRate / 100m))); // Tính doanh thu từ refund amount
             }
 
-            if (!filterType.HasValue || filterType.Value == TransactionType.PointDeposit)
+            if (!filterType.HasValue || filterType.Value == TransactionType.Deposit)
             {
                 depositSum = await baseQuery
-                    .Where(t => t.TransactionType == TransactionType.PointDeposit)
+                    .Where(t => t.TransactionType == TransactionType.Deposit)
                     .SumAsync(t => (int?)t.Amount) ?? 0;
             }
 
@@ -1257,12 +1257,12 @@ namespace Imate.API.Business.Services.Payment
             // Define revenue-related transaction types
             var revenueTypes = new[]
             {
-                TransactionType.PointBookingPayout,
-                TransactionType.PointSubscriptionFee,
-                TransactionType.PointPenalty,
-                TransactionType.PointInterviewFee,
-                TransactionType.PointRefund,
-                TransactionType.PointDeposit
+                TransactionType.BookingPayout,
+                TransactionType.Subscription,
+                TransactionType.Penalty,
+                TransactionType.InterviewFee,
+                TransactionType.Refund,
+                TransactionType.Deposit
             };
 
             // Get all Completedful transactions in the specified year/month
@@ -1281,8 +1281,8 @@ namespace Imate.API.Business.Services.Payment
             var refundRate = await _systemConfigService.GetCancellationRefundRateAsync();
             var refundRateString = $"{refundRate}%";
             query = query.Where(t => 
-                t.TransactionType != TransactionType.PointRefund || 
-                (t.TransactionType == TransactionType.PointRefund && t.Reason != null && t.Reason.Contains(refundRateString))
+                t.TransactionType != TransactionType.Refund || 
+                (t.TransactionType == TransactionType.Refund && t.Reason != null && t.Reason.Contains(refundRateString))
             );
 
             // Filter by transaction type if specified
@@ -1337,7 +1337,7 @@ namespace Imate.API.Business.Services.Payment
             // - Các loại khác (PointSubscriptionFee, PointPenalty, PointInterviewFee): Amount (lợi nhuận)
             
             var payoutDtos = dtos
-                .Where(d => d.BookingId.HasValue && d.TransactionType == TransactionType.PointBookingPayout.ToString())
+                .Where(d => d.BookingId.HasValue && d.TransactionType == TransactionType.BookingPayout.ToString())
                 .ToList();
 
             if (payoutDtos.Count > 0)
@@ -1347,7 +1347,7 @@ namespace Imate.API.Business.Services.Payment
                 // Lấy tổng fee theo booking (Completed, có thể ở tháng khác)
                 var fees = await _unitOfWork.Transactions.GetAllTransactionsQueryable()
                     .Where(t => t.Status == TransactionStatus.Completed
-                                && t.TransactionType == TransactionType.PointBookingFee
+                                && t.TransactionType == TransactionType.BookingFee
                                 && t.BookingId.HasValue
                                 && bookingIds.Contains(t.BookingId.Value))
                     .GroupBy(t => t.BookingId!.Value)
@@ -1367,12 +1367,12 @@ namespace Imate.API.Business.Services.Payment
             // Tính profit cho các giao dịch khác
             foreach (var dto in dtos)
             {
-                if (dto.TransactionType == TransactionType.PointDeposit.ToString())
+                if (dto.TransactionType == TransactionType.Deposit.ToString())
                 {
                     // PointDeposit: lợi nhuận âm (chi phí)
                     dto.Profit = -dto.Amount;
                 }
-                else if (dto.TransactionType == TransactionType.PointRefund.ToString())
+                else if (dto.TransactionType == TransactionType.Refund.ToString())
                 {
                     // PointRefund: tính doanh thu dựa trên refund rate từ config
                     // Sử dụng refundRate và refundRateString đã được khai báo ở trên
@@ -1387,7 +1387,7 @@ namespace Imate.API.Business.Services.Payment
                         dto.Profit = 0; // 100% refund hoặc refund không khớp với config không tính
                     }
                 }
-                else if (dto.TransactionType != TransactionType.PointBookingPayout.ToString())
+                else if (dto.TransactionType != TransactionType.BookingPayout.ToString())
                 {
                     // PointSubscriptionFee, PointPenalty, PointInterviewFee: lợi nhuận = số tiền
                     dto.Profit = dto.Amount;
