@@ -410,7 +410,7 @@ namespace Imate.API.Business.Services.Payment
                     _logger.LogWarning("Webhook: Transaction {TransactionId} thất bại/hủy (Code: {Code}, Description: {Description})", 
                         transactionId, verifiedData.Code, verifiedData.Description);
                     
-                    transaction.Status = TransactionStatus.Cancelled;
+                    transaction.Status = TransactionStatus.Failed;
                     await _unitOfWork.Transactions.UpdateAsync(transaction);
                     
                     // Log thông tin webhook để debug

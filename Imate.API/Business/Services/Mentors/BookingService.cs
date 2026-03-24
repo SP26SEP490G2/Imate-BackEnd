@@ -95,7 +95,7 @@ namespace Imate.API.Business.Services.Mentors
             {
                 SourceAccountId = candidateId,
                 TargetAccountId = request.MentorId,
-                TransactionType = TransactionType.Booking,
+                TransactionType = TransactionType.BookingFee,
                 Amount = price,
                 Status = TransactionStatus.Escrow,
                 EscrowDeadline = startUtc.AddHours(24), // Auto-release 24h after start if no complaints (example logic)

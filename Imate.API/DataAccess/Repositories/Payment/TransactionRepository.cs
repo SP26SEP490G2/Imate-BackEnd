@@ -124,7 +124,7 @@ namespace Imate.API.DataAccess.Repositories.Payment
         public async Task<Transaction?> GetBookingTransactionAsync(int bookingId)
         {
             return await _context.Transactions
-                .FirstOrDefaultAsync(t => t.BookingId == bookingId && t.TransactionType == TransactionType.Booking);
+                .FirstOrDefaultAsync(t => t.BookingId == bookingId && t.TransactionType == TransactionType.BookingFee);
         }
 
         public async Task<PagedList<Transaction>> GetAllTransactionsAsync(TransactionQueryParameters paginationParams)
@@ -181,7 +181,7 @@ namespace Imate.API.DataAccess.Repositories.Payment
             var now = DateTime.UtcNow;
             
             IQueryable<Transaction> query = _context.Transactions
-                .Where(t => t.TransactionType == TransactionType.Booking
+                .Where(t => t.TransactionType == TransactionType.BookingFee
                          && t.Status == TransactionStatus.Escrow
                          && t.EscrowDeadline.HasValue
                          && t.EscrowDeadline.Value <= now)
@@ -221,6 +221,15 @@ namespace Imate.API.DataAccess.Repositories.Payment
                 .Include(t => t.TargetAccount)
                 .Include(t => t.Booking)
                 .AsNoTracking();
+        }
+
+        public async Task<List<Transaction>> GetPendingTimeoutTransactions(DateTime timeoutTime)
+        {
+            return await _context.Transactions
+                .Where(t => t.Status == TransactionStatus.Pending
+                         && t.CreatedAt <= timeoutTime
+                         && t.TransactionType == TransactionType.Deposit)
+                .ToListAsync();
         }
     }
 }
