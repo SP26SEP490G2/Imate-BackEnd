@@ -7,5 +7,6 @@ namespace Imate.API.DataAccess.Interfaces.Payment
         Task<IEnumerable<SubscriptionPackage>> GetActivePackagesOrderedByPriceAsync();
         Task<SubscriptionPackage?> GetByIdAsync(int id);
         Task UpdateAsync(SubscriptionPackage package);
+        Task<SubscriptionPackage> GetSubscriptionPackageByIdAsync(int id);
     }
 }

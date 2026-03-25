@@ -20,7 +20,7 @@ namespace Imate.API.DataAccess.Interfaces
         IUserSubscriptionRepository UserSubscriptions { get; }
         IQuestionRepository Questions { get; }
         ISavedQuestionRepository SavedQuestions { get; }
-
+        ISubscriptionPackageRepository SubscriptionPackages { get; }
         IMentorRepository Mentors { get; }
         ICategoryRepository Categories { get; }
         IPositionRepository Positions { get; }

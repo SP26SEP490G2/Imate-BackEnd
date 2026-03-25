@@ -4,6 +4,7 @@ using Imate.API.DataAccess.ApplicationDbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Imate.API.Migrations
 {
     [DbContext(typeof(ImateDbContext))]
-    partial class ImateDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324143648_UpdateSubscriptionPackage")]
+    partial class UpdateSubscriptionPackage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1676,9 +1679,7 @@ namespace Imate.API.Migrations
 
                     b.HasIndex("TargetAccountId");
 
-                    b.HasIndex("UserSubscriptionId")
-                        .IsUnique()
-                        .HasFilter("[UserSubscriptionId] IS NOT NULL");
+                    b.HasIndex("UserSubscriptionId");
 
                     b.ToTable("Transactions", (string)null);
                 });
@@ -2329,8 +2330,8 @@ namespace Imate.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Imate.API.Models.Entities.UserSubscription", "UserSubscription")
-                        .WithOne("Transaction")
-                        .HasForeignKey("Imate.API.Models.Entities.Transaction", "UserSubscriptionId")
+                        .WithMany("Transactions")
+                        .HasForeignKey("UserSubscriptionId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Application");
@@ -2589,8 +2590,7 @@ namespace Imate.API.Migrations
 
             modelBuilder.Entity("Imate.API.Models.Entities.UserSubscription", b =>
                 {
-                    b.Navigation("Transaction")
-                        .IsRequired();
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }
