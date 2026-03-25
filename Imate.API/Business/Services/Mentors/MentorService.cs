@@ -22,21 +22,51 @@ namespace Imate.API.Business.Services.Mentors
             try
             {
                 var query = _unitOfWork.Mentors.FindAll(trackChanges: false)
-                    .Where(m => m.Account.Status == Models.Enums.AccountStatus.Active)
-                    .Select(m => new MentorResponse.ListPreviewMentor
-                    {
-                        AccountId = m.AccountId,
-                        FullName = m.Account.FullName,
-                        Position = m.MentorPositions.FirstOrDefault() != null ? m.MentorPositions.FirstOrDefault().Position.Name : string.Empty,
-                        Yoe = m.Yoe,
-                        Company = m.MentorCompanies.FirstOrDefault() != null ? m.MentorCompanies.FirstOrDefault().Company.Name : string.Empty,
-                        AvgRatings = m.AvgRatings,
-                        TotalRatingCount = m.TotalRatingCount
-                    });
+                    .Where(m => m.Account.Status == Models.Enums.AccountStatus.Active);
 
-                // Có thể thêm SearchTerm / SortBy sau nếu cần
+                if (mentorParams.PositionId.HasValue)
+                {
+                    query = query.Where(m => m.MentorPositions.Any(mp => mp.PositionId == mentorParams.PositionId.Value));
+                }
+
+                if (!string.IsNullOrEmpty(mentorParams.PositionName))
+                {
+                    query = query.Where(m => m.MentorPositions.Any(mp => mp.Position.Name.Contains(mentorParams.PositionName)));
+                }
+
+                if (!string.IsNullOrEmpty(mentorParams.SkillName))
+                {
+                    query = query.Where(m => m.MentorSkills.Any(ms => ms.Skill.Name.Contains(mentorParams.SkillName)));
+                }
+
+                if (!string.IsNullOrEmpty(mentorParams.CompanyName))
+                {
+                    query = query.Where(m => m.MentorCompanies.Any(mc => mc.Company.Name.Contains(mentorParams.CompanyName)));
+                }
+
+                if (!string.IsNullOrEmpty(mentorParams.SearchTerm))
+                {
+                    query = query.Where(m => 
+                        m.Account.FullName.Contains(mentorParams.SearchTerm) || 
+                        m.Bio.Contains(mentorParams.SearchTerm) ||
+                        m.MentorPositions.Any(mp => mp.Position.Name.Contains(mentorParams.SearchTerm)) ||
+                        m.MentorSkills.Any(ms => ms.Skill.Name.Contains(mentorParams.SearchTerm))
+                    );
+                }
+
+                var resultQuery = query.Select(m => new MentorResponse.ListPreviewMentor
+                {
+                    AccountId = m.AccountId,
+                    FullName = m.Account.FullName,
+                    Position = m.MentorPositions.FirstOrDefault() != null ? m.MentorPositions.FirstOrDefault().Position.Name : string.Empty,
+                    Yoe = m.Yoe,
+                    Company = m.MentorCompanies.FirstOrDefault() != null ? m.MentorCompanies.FirstOrDefault().Company.Name : string.Empty,
+                    AvgRatings = m.AvgRatings,
+                    TotalRatingCount = m.TotalRatingCount
+                });
+
                 return await PagedList<MentorResponse.ListPreviewMentor>.CreateAsync(
-                    query,
+                    resultQuery,
                     mentorParams.PageNumber,
                     mentorParams.PageSize
                 );
