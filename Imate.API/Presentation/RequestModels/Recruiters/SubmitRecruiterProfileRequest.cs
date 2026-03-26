@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Imate.API.Presentation.RequestModels.Recruiters
 {
     public class SubmitRecruiterProfileRequest
