@@ -168,7 +168,7 @@ namespace Imate.API.Presentation.Controllers.UserManagement
         }
 
         [HttpPut(APIConfig.Account.RecruiterProfile)]
-        public async Task<IActionResult> UpdateMyRecruiterProfile([FromBody] UpdateRecruiterProfileRequest request)
+        public async Task<IActionResult> UpdateMyRecruiterProfile([FromForm] UpdateRecruiterProfileRequest request)
         {
             var accountId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             await _recruiterService.UpdataRecruiterrProfileAsync(accountId, request);
