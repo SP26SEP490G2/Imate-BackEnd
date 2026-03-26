@@ -7,14 +7,11 @@ namespace Imate.API.Business.Helper
     /// </summary>
     public static class TransactionExtensions
     {
-        /// <summary>
-        /// Set ExternalTransactionCode nếu chưa có, sử dụng format PEPPAY-{ID}
-        /// </summary>
         public static void EnsureExternalTransactionCode(this Transaction transaction)
         {
             if (string.IsNullOrWhiteSpace(transaction.ExternalTransactionCode) && transaction.Id > 0)
             {
-                transaction.ExternalTransactionCode = $"PEPPAY-{transaction.Id}";
+                transaction.ExternalTransactionCode = $"IMATEPAY-{transaction.Id}";
             }
         }
     }

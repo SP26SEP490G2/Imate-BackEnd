@@ -5,9 +5,9 @@ using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Business.Interfaces.Comunity;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.Business.Interfaces.Payment;
 using Imate.API.Business.Interfaces.QuestionBank;
-using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.Business.Interfaces.Recruiters;
 using Imate.API.Business.Interfaces.Staff;
 using Imate.API.Business.Interfaces.UserManagement;
@@ -17,6 +17,7 @@ using Imate.API.Business.Services.Classification;
 using Imate.API.Business.Services.Comunity;
 using Imate.API.Business.Services.ExternalServices;
 using Imate.API.Business.Services.Mentors;
+using Imate.API.Business.Services.Notification;
 using Imate.API.Business.Services.Payment;
 using Imate.API.Business.Services.QuestionBank;
 using Imate.API.Business.Services.Recruiters;
@@ -27,6 +28,7 @@ using Imate.API.DataAccess.Interfaces.Applications;
 using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.DataAccess.Interfaces.Mentors;
+using Imate.API.DataAccess.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces.QuestionBank;
 using Imate.API.DataAccess.Interfaces.Recruiters;
@@ -36,6 +38,7 @@ using Imate.API.DataAccess.Repositories.Applications;
 using Imate.API.DataAccess.Repositories.Classification;
 using Imate.API.DataAccess.Repositories.Comunity;
 using Imate.API.DataAccess.Repositories.Mentors;
+using Imate.API.DataAccess.Repositories.Notification;
 using Imate.API.DataAccess.Repositories.Payment;
 using Imate.API.DataAccess.Repositories.QuestionBank;
 using Imate.API.DataAccess.Repositories.Recruiters;
@@ -47,6 +50,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using PayOS;
 using System.Reflection;
 using System.Text;
 
@@ -61,6 +65,7 @@ namespace Imate.API.Infrastructure.Configurations
             // 1. Cấu hình Options Pattern 
             services.Configure<JwtSettings>(
                 configuration.GetSection(JwtSettings.SectionName));
+            ConfigurePayos(services, configuration);
             // 2. Cấu hình JWT Authentication 
             ConfigureJwtAuthentication(services, configuration);
             // 3 Cấu hình Swagger
@@ -80,6 +85,7 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ISlotRepository, SlotRepository>();
             services.AddScoped<IMentorRecurringSlotRepository, MentorRecurringSlotRepository>();
             services.AddScoped<ITransactionRepository, TransactionRepository>();
+            services.AddScoped<ITransactionService, TransactionService>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
 
             services.AddScoped<Business.Interfaces.UserManagement.IAccountService, Business.Services.UserManagement.AccountService>();
@@ -104,7 +110,10 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ICommentService, CommentService>();
             services.AddScoped<IApplicationService, ApplicationService>();
             services.AddScoped<IApplicationRepository, ApplicationRepository>();
-
+            services.AddScoped<ISystemNotificationRepository, SystemNotificationRepository>();
+            services.AddScoped<ISystemNotificationService, SystemNotificationService>();
+            services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
+            services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
 
 
             // Classification Services & Repositories
@@ -151,7 +160,7 @@ namespace Imate.API.Infrastructure.Configurations
                 });
             }
 
-            services.AddScoped<IAwsS3StorageService, AwsS3StorageService>();
+            services.AddScoped<IAwsS3StorageService, Imate.API.Business.Services.ExternalServices.AwsS3StorageService>();
 
 
             services.Configure<FormOptions>(options =>
@@ -258,6 +267,26 @@ namespace Imate.API.Infrastructure.Configurations
                     Type = "string",
                     Format = "binary"
                 });
+            });
+        }
+
+        private static void ConfigurePayos(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddSingleton(sp =>
+            {
+                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                var logger = loggerFactory.CreateLogger<PayOSClient>();
+
+                var options = new PayOSOptions
+                {
+                    ClientId = configuration["PayOS:ClientId"]!,
+                    ApiKey = configuration["PayOS:ApiKey"]!,
+                    ChecksumKey = configuration["PayOS:ChecksumKey"]!,
+                    LogLevel = LogLevel.Debug,
+                    Logger = logger
+                };
+
+                return new PayOSClient(options);
             });
         }
     }

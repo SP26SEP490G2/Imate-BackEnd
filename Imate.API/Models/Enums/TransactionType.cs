@@ -4,11 +4,11 @@ namespace Imate.API.Models.Enums
     {
         Deposit,
         Withdrawal,
-        Booking,
         Subscription,
         Refund,
-        Commission,
         Penalty,
-        PointDeposit
+        BookingFee,
+        BookingPayout,
+        InterviewFee
     }
 }

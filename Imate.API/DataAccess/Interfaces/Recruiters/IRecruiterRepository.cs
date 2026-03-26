@@ -10,5 +10,14 @@ namespace Imate.API.DataAccess.Interfaces.Recruiters
         Task<Job> CreateJobPostAsync(Job job);
         Task<Job> UpdateJobPostAsync(Job job);
         Task<Job> GetPostedJobByIdAsync(int jobId);
-    }
+		IQueryable<JobApplication> GetJobApplicationsListByJobId(int jobId);
+        IQueryable<Job> GetAllOpenJobs();
+        Task<JobApplication> UpdateJobApplicationStatusAsync(JobApplication jobApplication);
+        Task<JobApplication> GetJobApplicationByIdAsync(int jobApplicationId);
+        IQueryable<JobApplication> GetCandidateAppliedJob(int candidateId);
+
+        Task<JobApplication> CreateJobApplicationAsync(JobApplication jobApplication);
+        IQueryable<JobApplication> GetAllJobApplication();
+        Task<List<Job>> GetJobsToCloseAsync();
+	}
 }

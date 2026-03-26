@@ -95,7 +95,7 @@ namespace Imate.API.Business.Services.Mentors
             {
                 SourceAccountId = candidateId,
                 TargetAccountId = request.MentorId,
-                TransactionType = TransactionType.Booking,
+                TransactionType = TransactionType.BookingFee,
                 Amount = price,
                 Status = TransactionStatus.Escrow,
                 EscrowDeadline = startUtc.AddHours(24), // Auto-release 24h after start if no complaints (example logic)
@@ -111,6 +111,7 @@ namespace Imate.API.Business.Services.Mentors
                 BookDate = request.BookDate,
                 PriceAtBooking = price,
                 Status = BookingStatus.Confirmed,
+                AgoraChannelName = "temp", // Temporary value, will be updated to booking.Id
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -119,6 +120,10 @@ namespace Imate.API.Business.Services.Mentors
 
             await _unitOfWork.Bookings.AddAsync(booking);
             
+            await _unitOfWork.SaveChangesAsync();
+
+            // Setup Agora channel using generated ID
+            booking.AgoraChannelName = booking.Id.ToString();
             await _unitOfWork.SaveChangesAsync();
 
             return new BookingResponseModel
@@ -294,6 +299,48 @@ namespace Imate.API.Business.Services.Mentors
                     candidateAccount.Balance += transaction.Amount;
                     await _unitOfWork.Accounts.UpdateAsync(candidateAccount);
                 }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task RateMentorAsync(int bookingId, int candidateId, RateMentorRequest request)
+        {
+            var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(bookingId)
+                ?? throw new NotFoundException("Booking not found.");
+
+            if (booking.CandidateId != candidateId)
+            {
+                throw new BadRequestException("You are not authorized to rate this booking.");
+            }
+
+            if (booking.Status != BookingStatus.Completed)
+            {
+                throw new BadRequestException("Only completed bookings can be rated.");
+            }
+
+            if (booking.RatingCreatedAt != null)
+            {
+                throw new BadRequestException("This booking has already been rated.");
+            }
+
+            // Update booking with rating
+            booking.RatingScore = request.RatingScore;
+            booking.ReviewText = request.ReviewText;
+            booking.RatingCreatedAt = DateTime.UtcNow;
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            // Recalculate Mentor's average rating
+            var mentor = await _unitOfWork.Mentors.GetByIdAsync(booking.MentorId)
+                ?? throw new NotFoundException("Mentor not found.");
+
+            var completedBookings = await _unitOfWork.Bookings.GetMentorCompletedBookingsAsync(booking.MentorId);
+            var ratedBookings = completedBookings.Where(b => b.RatingScore.HasValue || b.Id == bookingId).ToList();
+
+            if (ratedBookings.Any())
+            {
+                mentor.TotalRatingCount = ratedBookings.Count;
+                mentor.AvgRatings = (decimal)ratedBookings.Average(b => b.Id == bookingId ? request.RatingScore : b.RatingScore!.Value);
             }
 
             await _unitOfWork.SaveChangesAsync();

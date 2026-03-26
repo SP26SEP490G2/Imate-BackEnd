@@ -1468,6 +1468,9 @@ namespace Imate.API.Migrations
                     b.Property<string>("Benefits")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("DailyInterviewLimit")
+                        .HasColumnType("int");
+
                     b.Property<int?>("DurationDays")
                         .HasColumnType("int");
 
@@ -1486,6 +1489,12 @@ namespace Imate.API.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("Rank")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TotalInterviewLimit")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.ToTable("SubscriptionPackages", (string)null);
@@ -1498,7 +1507,8 @@ namespace Imate.API.Migrations
                             IsActive = true,
                             IsRecommended = false,
                             Name = "Free",
-                            Price = 0m
+                            Price = 0m,
+                            Rank = 0
                         },
                         new
                         {
@@ -1508,7 +1518,8 @@ namespace Imate.API.Migrations
                             IsActive = true,
                             IsRecommended = true,
                             Name = "Premium",
-                            Price = 199000m
+                            Price = 199000m,
+                            Rank = 0
                         },
                         new
                         {
@@ -1518,7 +1529,8 @@ namespace Imate.API.Migrations
                             IsActive = true,
                             IsRecommended = false,
                             Name = "Enterprise",
-                            Price = 499000m
+                            Price = 499000m,
+                            Rank = 0
                         });
                 });
 
@@ -1664,7 +1676,9 @@ namespace Imate.API.Migrations
 
                     b.HasIndex("TargetAccountId");
 
-                    b.HasIndex("UserSubscriptionId");
+                    b.HasIndex("UserSubscriptionId")
+                        .IsUnique()
+                        .HasFilter("[UserSubscriptionId] IS NOT NULL");
 
                     b.ToTable("Transactions", (string)null);
                 });
@@ -2315,8 +2329,8 @@ namespace Imate.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Imate.API.Models.Entities.UserSubscription", "UserSubscription")
-                        .WithMany("Transactions")
-                        .HasForeignKey("UserSubscriptionId")
+                        .WithOne("Transaction")
+                        .HasForeignKey("Imate.API.Models.Entities.Transaction", "UserSubscriptionId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Application");
@@ -2575,7 +2589,8 @@ namespace Imate.API.Migrations
 
             modelBuilder.Entity("Imate.API.Models.Entities.UserSubscription", b =>
                 {
-                    b.Navigation("Transactions");
+                    b.Navigation("Transaction")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

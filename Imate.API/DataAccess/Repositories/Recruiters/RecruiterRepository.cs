@@ -1,11 +1,12 @@
 using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.Models.Entities;
+using Imate.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.DataAccess.Repositories.Recruiters
 {
-    public class RecruiterRepository : RepositoryBase<Recruiter>, IRecruiterRepository
+	public class RecruiterRepository : RepositoryBase<Recruiter>, IRecruiterRepository
     {
         private readonly ImateDbContext _context;
 
@@ -16,7 +17,7 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
 
         }
 
-        public  IQueryable<Job> GetJobsByRecruiterId(int recruiterAccountId)
+        public IQueryable<Job> GetJobsByRecruiterId(int recruiterAccountId)
         {
             return  _context.Jobs
                 .Include(j => j.JobSkills)
@@ -65,5 +66,66 @@ namespace Imate.API.DataAccess.Repositories.Recruiters
                 .FirstOrDefaultAsync(j=>j.Id == jobId);
 
         }
-    }
+
+		public IQueryable<JobApplication> GetJobApplicationsListByJobId(int jobId)
+		{
+			return  _context.JobApplications
+                .Include(a=>a.Candidate)
+                .Include (b=>b.Cv)
+                .Where(j=>j.Job.Id == jobId)
+				.AsNoTracking();
+		}
+
+		public IQueryable<Job> GetAllOpenJobs()
+		{
+            return _context.Jobs
+                .Include(j => j.JobSkills)
+                .Include(j => j.JobPositions)
+                .Include(j => j.Recruiter)
+                .ThenInclude(j=>j.Recruiter)
+                .AsNoTracking();
+		}
+
+		public async Task<JobApplication> UpdateJobApplicationStatusAsync(JobApplication jobApplication)
+		{
+			_context.JobApplications.Update(jobApplication);
+			return jobApplication;
+		}
+
+		public async Task<JobApplication> GetJobApplicationByIdAsync(int jobApplicationId)
+		{
+			return await _context.JobApplications
+                .Include(a => a.Candidate)
+                .Include(a=>a.Job)
+				.FirstOrDefaultAsync(j=>j.Id==jobApplicationId);
+		}
+
+		public IQueryable<JobApplication> GetCandidateAppliedJob(int candidateId)
+		{
+			return _context.JobApplications
+				.Include(j => j.Job)
+				.Include(ja => ja.Candidate)
+				.Where(j => j.CandidateId == candidateId)
+				.AsNoTracking();
+		}
+
+		public async Task<JobApplication> CreateJobApplicationAsync(JobApplication jobApplication)
+		{
+			_context.JobApplications.Add(jobApplication);
+            return jobApplication;
+		}
+
+		public IQueryable<JobApplication> GetAllJobApplication()
+		{
+			return _context.JobApplications.AsNoTracking();
+		}
+
+		public async Task<List<Job>> GetJobsToCloseAsync()
+		{
+			return await _context.Jobs
+				.Where(j => j.ApplicationDeadline < DateTime.UtcNow
+						 && j.Status != JobStatus.Closed)
+				.ToListAsync();
+		}
+	}
 }

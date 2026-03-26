@@ -16,6 +16,6 @@ namespace Imate.API.Models.Entities
         // Navigation properties
         public Account Candidate { get; set; } = null!;
         public SubscriptionPackage Package { get; set; } = null!;
-        public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+        public virtual Transaction Transaction { get; set; }
     }
 }

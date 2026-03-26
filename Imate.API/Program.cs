@@ -1,8 +1,10 @@
+using Imate.API.Business.Services.Payment;
+using Imate.API.Business.Services.Recruiters;
 using Imate.API.Configurations;
-using Imate.API.Middleware;
 using Imate.API.Infrastructure.Configurations;
+using Imate.API.Middleware;
 using Microsoft.Extensions.Configuration;
-
+using PayOS;
 using System.Text;
 
 // Fix Windows console encoding for Vietnamese characters
@@ -19,9 +21,13 @@ builder.Services.ConfigureServices();
 builder.Services.ConfigureExternalServices();
 builder.Services.ConfigureBackgroundServices();
 builder.Services.RegisterAIAdapters();
-
+builder.Services.AddScoped<PayOSClient>();
 builder.Services.AddFirebaseAdmin();
 builder.Services.AddMyServices(builder.Configuration);
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<AutoCloseJobServices>();
+builder.Services.AddHostedService<TransactionTimeoutService>();
+builder.Services.AddHostedService<SubscriptionExpirationService>();
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 

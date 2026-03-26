@@ -6,6 +6,7 @@ namespace Imate.API.Presentation.ResponseModels.Payment
         decimal Price,
         string Duration,
         List<string> Benefits,
-        bool IsRecommended
+        bool IsRecommended,
+        int Rank
     );
 }

@@ -64,3 +64,4 @@ diff_vs_main.patch
 # OS
 .DS_Store
 Thumbs.db
+Imate.API/appsettings.json
