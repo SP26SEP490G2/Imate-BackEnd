@@ -112,6 +112,8 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<IApplicationRepository, ApplicationRepository>();
             services.AddScoped<ISystemNotificationRepository, SystemNotificationRepository>();
             services.AddScoped<ISystemNotificationService, SystemNotificationService>();
+            services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
+            services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
 
 
             // Classification Services & Repositories

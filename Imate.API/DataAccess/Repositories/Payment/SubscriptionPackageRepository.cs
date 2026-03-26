@@ -38,6 +38,14 @@ namespace Imate.API.DataAccess.Repositories.Payment
         {
             return await _context.SubscriptionPackages.FindAsync(id);
         }
+
+        public async Task<SubscriptionPackage> GetLowestRankPackageAsync()
+        {
+            return await _context.SubscriptionPackages
+                .Where(p => p.IsActive)
+                .OrderBy(p => p.Rank)
+                .FirstAsync();
+        }
     }
 }
 
