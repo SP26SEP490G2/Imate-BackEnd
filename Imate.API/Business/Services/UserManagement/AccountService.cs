@@ -334,7 +334,7 @@ namespace Imate.API.Business.Services.UserManagement
                     Bio = request.Bio,
                     Phone = request.Phone,
                     BirthDate = birthDate,
-                    Yoe = 0,
+                    Yoe = request.Yoe ?? 0,
                     CvUrl = null,
                     CertificateUrl = null,
                     PricePerSession = request.PricePerSession ?? 0,
@@ -342,8 +342,17 @@ namespace Imate.API.Business.Services.UserManagement
                     BankAccountNumber = request.BankAccountNumber,
                     BankCode = request.BankCode,
                     AvgRatings = null,
-                    TotalRatingCount = null
+                    TotalRatingCount = null,
+                    VerificationStatus = VerificationStatus.Pending
                 };
+
+                // Add many-to-many
+                if (request.PositionIds?.Any() == true)
+                    mentor.MentorPositions = request.PositionIds.Select(id => new MentorPosition { MentorId = account.Id, PositionId = id }).ToList();
+                if (request.SkillIds?.Any() == true)
+                    mentor.MentorSkills = request.SkillIds.Select(id => new MentorSkill { MentorId = account.Id, SkillId = id }).ToList();
+                if (request.CompanyIds?.Any() == true)
+                    mentor.MentorCompanies = request.CompanyIds.Select(id => new MentorCompany { MentorId = account.Id, CompanyId = id }).ToList();
 
                 _unitOfWork.Mentors.Create(mentor);
             }
@@ -357,6 +366,32 @@ namespace Imate.API.Business.Services.UserManagement
                 account.Mentor.BankAccountNumber = request.BankAccountNumber;
                 account.Mentor.BankCode = request.BankCode;
                 account.Mentor.VerificationStatus = VerificationStatus.Pending;
+                account.Mentor.Yoe = request.Yoe ?? account.Mentor.Yoe;
+
+                // Update many-to-many: Clear and re-add
+                account.Mentor.MentorPositions?.Clear();
+                if (request.PositionIds?.Any() == true)
+                {
+                    if (account.Mentor.MentorPositions == null) account.Mentor.MentorPositions = new List<MentorPosition>();
+                    foreach (var id in request.PositionIds)
+                        account.Mentor.MentorPositions.Add(new MentorPosition { MentorId = account.Id, PositionId = id });
+                }
+
+                account.Mentor.MentorSkills?.Clear();
+                if (request.SkillIds?.Any() == true)
+                {
+                    if (account.Mentor.MentorSkills == null) account.Mentor.MentorSkills = new List<MentorSkill>();
+                    foreach (var id in request.SkillIds)
+                        account.Mentor.MentorSkills.Add(new MentorSkill { MentorId = account.Id, SkillId = id });
+                }
+
+                account.Mentor.MentorCompanies?.Clear();
+                if (request.CompanyIds?.Any() == true)
+                {
+                    if (account.Mentor.MentorCompanies == null) account.Mentor.MentorCompanies = new List<MentorCompany>();
+                    foreach (var id in request.CompanyIds)
+                        account.Mentor.MentorCompanies.Add(new MentorCompany { MentorId = account.Id, CompanyId = id });
+                }
 
                 _unitOfWork.Mentors.Update(account.Mentor);
             }
