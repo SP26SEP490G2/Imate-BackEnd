@@ -42,6 +42,25 @@ appsettings.json
 *.log
 logs/
 
+# Build output directories
+temp_api_build/
+temp_build/
+
+# Build logs & temp files
+build.log
+build.txt
+build_errors.log
+build_result.txt
+full_build.log
+msbuild.log
+crash.log
+crash2.log
+crash3.log
+err.txt
+errors_only.txt
+update_log.txt
+diff_vs_main.patch
+
 # OS
 .DS_Store
 Thumbs.db
