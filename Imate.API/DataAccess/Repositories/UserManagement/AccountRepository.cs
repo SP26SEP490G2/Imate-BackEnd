@@ -80,6 +80,11 @@ namespace Imate.API.DataAccess.Repositories.UserManagement
         {
             return await _context.Accounts
                 .Include(a => a.Mentor)
+                    .ThenInclude(m => m.MentorSkills)
+                .Include(a => a.Mentor)
+                    .ThenInclude(m => m.MentorPositions)
+                .Include(a => a.Mentor)
+                    .ThenInclude(m => m.MentorCompanies)
                 .Include(a => a.AccountRoles)
                     .ThenInclude(ar => ar.Role)
                 .FirstOrDefaultAsync(a => a.Id == id);
