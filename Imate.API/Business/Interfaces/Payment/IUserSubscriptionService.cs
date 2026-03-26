@@ -10,5 +10,6 @@ namespace Imate.API.Business.Interfaces.Payment
         Task CancelSubscriptionAsync(int accountId);
         Task<CancelPreviewResponse> GetCancelPreviewAsync(int accountId);
         Task<UserSubscriptionHistoryResponse> GetUserSubscriptionHistoryAsync(int accountId);
+        Task<CurrentPackageResponse> GetCurrentPackageAsync(int accountId);
     }
 }

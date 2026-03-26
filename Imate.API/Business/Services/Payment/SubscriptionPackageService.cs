@@ -32,7 +32,8 @@ namespace Imate.API.Business.Services.Payment
                 package.Price,
                 FormatDuration(package.DurationDays),
                 ParseBenefits(package.Benefits),
-                package.IsRecommended
+                package.IsRecommended,
+                package.Rank
             ));
         }
 
