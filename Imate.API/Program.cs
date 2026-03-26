@@ -27,6 +27,7 @@ builder.Services.AddMyServices(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddHostedService<AutoCloseJobServices>();
 builder.Services.AddHostedService<TransactionTimeoutService>();
+builder.Services.AddHostedService<SubscriptionExpirationService>();
 // Middleware
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 
