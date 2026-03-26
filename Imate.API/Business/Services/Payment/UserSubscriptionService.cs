@@ -46,11 +46,11 @@ namespace Imate.API.Business.Services.Payment
 
                 decimal amountToCharge = newPackage.Price; // Mặc định là giá đầy đủ
                 decimal remainingValue = 0;
-
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
                 // 2a. Tìm gói đang hoạt động (active) CŨ của user
                 var existingActiveSub = await _unitOfWork.UserSubscriptions
                     .GetUserSubscriptions()
-                    .Where(s => s.CandidateId == accountId && s.IsActive)
+                    .Where(s => s.CandidateId == accountId && s.IsActive && (s.EndDate == null || s.EndDate >= today))
                     .FirstOrDefaultAsync();
 
                 if (existingActiveSub != null)
@@ -70,8 +70,6 @@ namespace Imate.API.Business.Services.Payment
                             throw new BadRequestException("Không thể hạ cấp hoặc mua lại gói tương đương. Vui lòng chọn gói cao cấp hơn.");
                         }
 
-                        // 2d. TÍNH GIÁ TRỊ CÒN LẠI (nếu gói cũ vẫn còn hạn)
-                        var today = DateOnly.FromDateTime(DateTime.UtcNow);
                         if (existingActiveSub.EndDate > today && oldPackage.DurationDays > 0 && oldPackage.Price > 0)
                         {
                             // Tính giá mỗi ngày của gói cũ
@@ -95,7 +93,7 @@ namespace Imate.API.Business.Services.Payment
 
                 if (userAccount.Balance < amountToCharge)
                 {
-                    throw new BadRequestException("Số dư điểm không đủ để thanh toán.");
+                    throw new BadRequestException("Số dư không đủ để thanh toán.");
                 }
 
                 // === 5. NGHIỆP VỤ USER SUBSCRIPTION (Tạo mới / Vô hiệu hóa cũ) ===
@@ -200,11 +198,13 @@ namespace Imate.API.Business.Services.Payment
                 IsEligible = true,
                 HasActiveSubscription = false
             };
-
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
             // === 2. LOGIC TÍNH TOÁN (Giống hệt hàm Activate...) ===
             var existingActiveSub = await _unitOfWork.UserSubscriptions
                 .GetUserSubscriptions()
-                .Where(s => s.CandidateId == accountId && s.IsActive)
+                .Where(s => s.CandidateId == accountId
+                     && s.IsActive
+                     && (s.EndDate == null || s.EndDate >= today))
                 .FirstOrDefaultAsync();
 
             if (existingActiveSub != null)
@@ -220,11 +220,10 @@ namespace Imate.API.Business.Services.Payment
                     if (newPackage.Rank <= oldPackage.Rank)
                     {
                         // Ném Exception, middleware của bạn sẽ bắt lỗi này
-                        throw new BadRequestException("Không thể hạ cấp hoặc mua lại gói tương đương. Vui lòng chọn gói cao cấp hơn.");
+                        throw new BadRequestException("Không thể hạ cấp hoặc mua lại gói tương đương. Vui lòng chọn gói cao cấp hơn hoặc hủy gói hiện tại để chọn gói cấp thấp hơn.");
                     }
 
                     // 2d. TÍNH GIÁ TRỊ CÒN LẠI
-                    var today = DateOnly.FromDateTime(DateTime.UtcNow);
                     if (existingActiveSub.EndDate.HasValue && existingActiveSub.EndDate.Value > today && oldPackage.DurationDays > 0 && oldPackage.Price > 0)
                     {
                         decimal oldPricePerDay = oldPackage.Price / (decimal)oldPackage.DurationDays;
@@ -252,18 +251,21 @@ namespace Imate.API.Business.Services.Payment
             {
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-                // 1. Tìm gói active và thông tin gói
+
+                var currentPackage = await GetCurrentPackageAsync(accountId);
+                var lowestPackage = await _unitOfWork.SubscriptionPackages.GetLowestRankPackageAsync();
+
+                if (currentPackage.Rank == lowestPackage.Rank)
+                {
+                    throw new BadRequestException($"Bạn đang sử dụng {currentPackage.PackageName}, không thể hủy.");
+                }
                 var activeSub = await _unitOfWork.UserSubscriptions
                     .GetUserSubscriptions()
-                    .Include(s => s.Package) // <-- Quan trọng: Lấy thông tin gói
-                    .Where(s => s.CandidateId == accountId && s.IsActive)
+                    .Include(s => s.Package)
+                    .Where(s => s.CandidateId == accountId
+                         && s.IsActive
+                         && (s.EndDate == null || s.EndDate >= today))
                     .FirstOrDefaultAsync();
-
-                // 2. Kiểm tra xem có gì để hủy không?
-                if (activeSub == null || activeSub.Package.Name == "Gói Thường")
-                {
-                    throw new BadRequestException("Bạn đang sử dụng Gói Thường, không thể hủy.");
-                }
 
                 // 3. Tính toán số tiền hoàn lại (Prorated Refund)
                 decimal refundAmount = 0;
@@ -493,6 +495,37 @@ namespace Imate.API.Business.Services.Payment
             return response;
         }
 
+        public async Task<CurrentPackageResponse> GetCurrentPackageAsync(int accountId)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
+            var activeSub = await _unitOfWork.UserSubscriptions
+                .GetUserSubscriptions()
+                .Include(us => us.Package)
+                .Where(us => us.CandidateId == accountId
+                          && us.IsActive
+                          && (us.EndDate == null || us.EndDate >= today))
+                .OrderByDescending(us => us.StartDate)
+                .FirstOrDefaultAsync();
+
+            SubscriptionPackage package;
+
+            if (activeSub != null)
+            {
+                package = activeSub.Package;
+            }
+            else
+            {
+                package = await _unitOfWork.SubscriptionPackages.GetLowestRankPackageAsync();
+            }
+
+            return new CurrentPackageResponse
+            {
+                PackageId = package.Id,
+                PackageName = package.Name,
+                Rank = package.Rank,
+                Price = package.Price
+            };
+        }
     }
 }
