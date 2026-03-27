@@ -261,12 +261,8 @@ namespace Imate.API.Infrastructure.Configurations
                     }
                 });
 
-                // Handle IFormFile for file uploads in Swagger
-                options.MapType<IFormFile>(() => new OpenApiSchema
-                {
-                    Type = "string",
-                    Format = "binary"
-                });
+                // Use full type names for schema IDs to prevent conflicts
+                options.CustomSchemaIds(x => x.FullName);
             });
         }
 

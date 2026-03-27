@@ -8,11 +8,11 @@ namespace Imate.API.Presentation.Controllers.Mentors
 {
     [Route("api/bookings")]
     [ApiController]
-    public class BookingController : ControllerBase
+    public class MentorsBookingController : ControllerBase
     {
         private readonly IBookingService _bookingService;
 
-        public BookingController(IBookingService bookingService)
+        public MentorsBookingController(IBookingService bookingService)
         {
             _bookingService = bookingService;
         }

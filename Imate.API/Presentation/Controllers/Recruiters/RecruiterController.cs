@@ -55,7 +55,8 @@ namespace Imate.API.Presentation.Controllers.Recruiters
         }
 
         [HttpPost(APIConfig.Recruiter.UploadLogo)]
-        public async Task<IActionResult> UploadLogo([FromForm(Name = "file")] IFormFile file)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadLogo(IFormFile file)
         {
             try
             {
