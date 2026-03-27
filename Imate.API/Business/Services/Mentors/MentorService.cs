@@ -138,5 +138,23 @@ namespace Imate.API.Business.Services.Mentors
 
             return response;
         }
+
+        public async Task UpdateMentorPriceAsync(int accountId, int newPrice)
+        {
+            var mentor = await _unitOfWork.Mentors.GetMentorByIdAsync(accountId);
+            if (mentor == null)
+            {
+                throw new NotFoundException($"Không tìm thấy mentor với AccountId {accountId}.");
+            }
+
+            // Optional: Cooldown logic
+            // if (mentor.PriceLastUpdatedDate.HasValue && mentor.PriceLastUpdatedDate.Value.AddMonths(1) > DateTime.UtcNow) ...
+
+            mentor.PricePerSession = newPrice;
+            mentor.PriceLastUpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.Mentors.Update(mentor);
+            await _unitOfWork.SaveAsync();
+        }
     }
 }

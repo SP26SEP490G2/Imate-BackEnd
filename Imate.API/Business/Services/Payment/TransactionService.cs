@@ -1,4 +1,4 @@
-﻿using Imate.API.Business.Helper;
+using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces;
@@ -108,6 +108,7 @@ namespace Imate.API.Business.Services.Payment
                 summary.CurrentEscrowBookings = escrowCount;
                 summary.RequiredBalanceForOneBooking = (int)(guaranteePerNewBooking);
                 summary.MaxBookingsCanReceive = maxBookingsCanReceive;
+                summary.GuaranteeDepositRate = guaranteeDepositRate;
             }
 
             return summary;
