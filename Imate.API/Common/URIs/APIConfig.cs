@@ -5,6 +5,7 @@ namespace Imate.API.Common.Router
         public class Mentor
         {
             public const string GetListPreviewMentors = "get-list-preview-mentors";
+            public const string GetMyCandidateRatings = "mentor/my-candidate-ratings";
         }
 
         public class Recruiter
