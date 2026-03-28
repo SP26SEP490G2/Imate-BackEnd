@@ -1,6 +1,7 @@
 using Imate.AI.Module.Extensions;
 using Imate.AI.Module.Interfaces;
 using Imate.API.Business.Services;
+using Imate.API.Business.Services.ExternalServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Imate.API.Configurations
@@ -17,6 +18,19 @@ namespace Imate.API.Configurations
 
             // Đăng ký QuestionDataProvider (bridge cho RAG Practice Test)
             services.AddScoped<IQuestionDataProvider, QuestionDataProvider>();
+
+            // Đăng ký InterviewSessionDataProvider (bridge cho UC-35 Mock Interview)
+            services.AddScoped<IInterviewSessionDataProvider, InterviewSessionDataProvider>();
+
+            // Đăng ký Gemini Speech TTS (thay thế Azure)
+            services.AddScoped<ISpeechSynthesisService, GeminiSpeechSynthesisService>();
+
+            // HttpClient cho Gemini TTS
+            services.AddHttpClient();
+
+            // MemoryCache cho TTS caching
+            services.AddMemoryCache();
         }
     }
 }
+
