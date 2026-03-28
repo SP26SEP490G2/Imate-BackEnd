@@ -10,7 +10,7 @@
         public string ApplicationType { get; set; }
 
         // Cột "Ngày gửi" (Lấy từ BaseEntity.CreatedAt)
-        public DateOnly DateSent { get; set; }
+        public DateOnly CreatedAt { get; set; }
         public string Title { get; set; }
 
         // Cột "Nội dung" (Có thể cắt ngắn nếu cần)

@@ -100,8 +100,7 @@ namespace Imate.API.Business.Services
             {
                 var searchTerm = auditLogParams.SearchTerm.ToLower().Trim();
 
-                Enum.TryParse<AuditAction>(searchTerm, true, out var actionEnum);
-                var isAction = Enum.IsDefined(typeof(AuditAction), actionEnum);
+				var isAction = Enum.TryParse<AuditAction>(searchTerm, true, out var actionEnum);
 
                 int.TryParse(searchTerm, out var entityId);
                 var isEntityId = int.TryParse(searchTerm, out entityId);
@@ -196,6 +195,8 @@ namespace Imate.API.Business.Services
                 StaffName = auditLog.User?.FullName ?? "Unknown",
                 StaffEmail = auditLog.User?.Email ?? "Unknown",
                 Action = auditLog.Action.ToString(),
+                OldValue = auditLog.OldValue,
+                NewValue = auditLog.NewValue,
                 EntityType = auditLog.EntityType,
                 ActionTime = auditLog.ActionTime.DateTime
             };
