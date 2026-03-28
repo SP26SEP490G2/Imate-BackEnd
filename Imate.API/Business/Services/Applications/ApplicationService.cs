@@ -70,9 +70,12 @@ namespace Imate.API.Business.Services.Applications
             }
             // --- 2. LOGIC LỌC (FILTER) ---
             // Dùng Status
-            if (appParams.Status.HasValue)
+            if (!string.IsNullOrWhiteSpace(appParams.Status))
             {
-                query = query.Where(a => a.Status == appParams.Status.Value);
+                if (Enum.TryParse<ApplicationStatus>(appParams.Status, true, out var parsedStatus))
+                {
+                    query = query.Where(a => a.Status == parsedStatus);
+                }
             }
             // ReviewId
             if (appParams.ReviewId != null)
@@ -80,9 +83,12 @@ namespace Imate.API.Business.Services.Applications
                 query = query.Where(a => a.ReviewerId == appParams.ReviewId);
             }
             // Type
-            if (appParams.Type.HasValue)
+            if (!string.IsNullOrWhiteSpace(appParams.Type))
             {
-                query = query.Where(a => a.ApplicationType == appParams.Type.Value);
+                if (Enum.TryParse<ApplicationType>(appParams.Type, true, out var parsedType))
+                {
+                    query = query.Where(a => a.ApplicationType == parsedType);
+                }
             }
             // --- 3. LOGIC SẮP XẾP (SORT) ---
             // Dùng SortBy và SortOrder
@@ -114,11 +120,11 @@ namespace Imate.API.Business.Services.Applications
                 Title = a.Title,
                 Content = a.Content, // Dùng Title (hoặc Content tùy bạn)
                 ResponseNote = a.Response,
-                DateSent = DateOnly.FromDateTime(a.CreatedAt.DateTime),
+                CreatedAt = DateOnly.FromDateTime(a.CreatedAt.DateTime),
 
                 // Dùng helper để chuyển Enum sang chuỗi Tiếng Việt
-                ApplicationType = GetApplicationTypeString(a.ApplicationType),
-                Status = GetApplicationStatusString(a.Status),
+                ApplicationType = a.ApplicationType.ToString(),
+                Status = a.Status.ToString(),
 
                 // Ánh xạ nested DTO, BẮT BUỘC kiểm tra Reviewer null
                 Reviewer = (a.Reviewer == null) ? null : new ReviewerInfoResponse
@@ -205,7 +211,7 @@ namespace Imate.API.Business.Services.Applications
                 Id = newApplication.Id,
                 Content = newApplication.Content,
                 DateSent = DateOnly.FromDateTime(newApplication.CreatedAt.DateTime),
-                Status = GetApplicationStatusString(newApplication.Status),
+                Status = newApplication.Status.ToString(),
                 Attachments = urls
 
             };
@@ -320,7 +326,7 @@ namespace Imate.API.Business.Services.Applications
                 Id = newApplication.Id,
                 Content = newApplication.Content,
                 DateSent = DateOnly.FromDateTime(newApplication.CreatedAt.DateTime),
-                Status = GetApplicationStatusString(newApplication.Status), // (Helper)
+                Status = newApplication.Status.ToString(),
                 Attachments = urls
 
             };
@@ -344,17 +350,23 @@ namespace Imate.API.Business.Services.Applications
 
             // --- 2. LOGIC LỌC (FILTER) ---
             // (Giữ nguyên logic cũ)
-            if (appParams.Status.HasValue)
+            if (!string.IsNullOrWhiteSpace(appParams.Status))
             {
-                query = query.Where(a => a.Status == appParams.Status.Value);
+                if (Enum.TryParse<ApplicationStatus>(appParams.Status, true, out var parsedStatus))
+                {
+                    query = query.Where(a => a.Status == parsedStatus);
+                }
+            }
+            if (!string.IsNullOrWhiteSpace(appParams.Type))
+            {
+                if (Enum.TryParse<ApplicationType>(appParams.Type, true, out var parsedType))
+                {
+                    query = query.Where(a => a.ApplicationType == parsedType);
+                }
             }
             if (appParams.UserId != null)
             {
                 query = query.Where(a => a.UserId == appParams.UserId);
-            }
-            if (appParams.Type.HasValue)
-            {
-                query = query.Where(a => a.ApplicationType == appParams.Type.Value);
             }
 
             // --- 3. LOGIC SẮP XẾP (SORT) ---
@@ -390,9 +402,9 @@ namespace Imate.API.Business.Services.Applications
                 FullName = a.User.FullName,
 
                 // Lấy thông tin từ Application
-                Status = a.Status,
-                ApplicationType = a.ApplicationType,
-                CreatedAt = a.CreatedAt,
+                Status = a.Status.ToString(),
+                ApplicationType = a.ApplicationType.ToString(),
+                CreatedAt = DateOnly.FromDateTime(a.CreatedAt.DateTime),
                 UpdatedAt = a.UpdatedAt, // Giả định 'a.Application' có 'UpdatedAt'
                 Title = a.Title,
                 Content = a.Content,
@@ -481,9 +493,9 @@ namespace Imate.API.Business.Services.Applications
                     FullName = a.User.FullName,
 
                     // Lấy thông tin từ Application
-                    Status = GetApplicationStatusString(a.Status),
-                    ApplicationType = GetApplicationTypeString(a.ApplicationType),
-                    CreatedAt = a.CreatedAt,
+                    Status = a.Status.ToString(),
+                    ApplicationType = a.ApplicationType,
+                    CreatedAt = DateOnly.FromDateTime(a.CreatedAt.DateTime),
                     UpdatedAt = a.UpdatedAt, // Giả định 'a.Application' có 'UpdatedAt'
                     Title = a.Title,
                     Content = a.Content,
@@ -537,9 +549,9 @@ namespace Imate.API.Business.Services.Applications
                     FullName = a.User.FullName,
 
                     // Lấy thông tin từ Application
-                    Status = GetApplicationStatusString(a.Status),
-                    ApplicationType = GetApplicationTypeString(a.ApplicationType),
-                    CreatedAt = a.CreatedAt,
+                    Status = a.Status.ToString(),
+                    ApplicationType = a.ApplicationType,
+                    CreatedAt = DateOnly.FromDateTime(a.CreatedAt.DateTime),
                     UpdatedAt = a.UpdatedAt, // Giả định 'a.Application' có 'UpdatedAt'
                     Title = a.Title,
                     Content = a.Content,
@@ -599,9 +611,9 @@ namespace Imate.API.Business.Services.Applications
                     FullName = a.User.FullName,
 
                     // Lấy thông tin từ Application
-                    Status = GetApplicationStatusString(a.Status),
-                    ApplicationType = GetApplicationTypeString(a.ApplicationType),
-                    CreatedAt = a.CreatedAt,
+                    Status = a.Status.ToString(),
+                    ApplicationType = a.ApplicationType.ToString(),
+                    CreatedAt = DateOnly.FromDateTime(a.CreatedAt.DateTime),
                     UpdatedAt = a.UpdatedAt, // Giả định 'a.Application' có 'UpdatedAt'
                     Title = a.Title,
                     Content = a.Content,
@@ -620,17 +632,6 @@ namespace Imate.API.Business.Services.Applications
 
             // 4. Trả về kết quả
             return techDetails;
-        }
-        private static string GetApplicationStatusString(ApplicationStatus status)
-        {
-            return status switch
-            {
-                ApplicationStatus.Pending => "Chưa xử lý",
-                ApplicationStatus.InReview => "Đang xử lý",
-                ApplicationStatus.Approved => "Đã xử lý",
-                ApplicationStatus.Rejected => "Đã từ chối", // Hoặc "Đã xử lý" tùy UI
-                _ => status.ToString()
-            };
         }
 
         public async Task<ApplicationDetailResponse> CreateReportCommentApplicationAsync(CreateReportCommentRequest request, int userId)
@@ -705,7 +706,7 @@ namespace Imate.API.Business.Services.Applications
                 Id = newApplication.Id,
                 Content = newApplication.Content,
                 DateSent = DateOnly.FromDateTime(newApplication.CreatedAt.DateTime),
-                Status = GetApplicationStatusString(newApplication.Status),
+                Status = newApplication.Status.ToString(),
                 Attachments = urls
             };
         }
@@ -1013,30 +1014,39 @@ namespace Imate.API.Business.Services.Applications
         }
         public async Task<IEnumerable<ApplicationNeedProcessSummaryResponse>> GetPendingSummaryAsync()
         {
+            var reportTypes = new List<ApplicationType>
+                {
+                    ApplicationType.TechnicalError,
+                    ApplicationType.ReportMentor,
+                    ApplicationType.ReportRating,
+                    ApplicationType.ReportContent,
+                    ApplicationType.ReportComment
+                };
             var summaries = await _unitOfWork.Applications
                 .GetAllApplications()
                 .Where(a => a.Status == ApplicationStatus.Pending)
                 .GroupBy(a => a.ApplicationType)
                 .Select(g => new ApplicationNeedProcessSummaryResponse
                 {
-                    Type = g.Key,
+                    Type = g.Key.ToString(),
                     TotalNeedProcess = g.Count()
                 })
                 .ToListAsync();
 
-            foreach (var type in Enum.GetValues<ApplicationType>())
+
+            foreach (var type in reportTypes)
             {
-                if (!summaries.Any(s => s.Type == type))
+                if (!summaries.Any(s => s.Type == type.ToString()))
                 {
                     summaries.Add(new ApplicationNeedProcessSummaryResponse
                     {
-                        Type = type,
+                        Type = type.ToString(),
                         TotalNeedProcess = 0
                     });
                 }
             }
 
-            return summaries.OrderBy(s => s.Type).ToList();
+            return summaries.ToList();
         }
 
         private static string GetReportReasonString(ReportReason reason)
@@ -1054,18 +1064,6 @@ namespace Imate.API.Business.Services.Applications
                 ReportReason.InappropriateLanguage => "Ngôn ngữ không phù hợp",
                 ReportReason.Other => "Lý do khác",
                 _ => reason.ToString()
-            };
-        }
-
-        private static string GetApplicationTypeString(ApplicationType type)
-        {
-            return type switch
-            {
-                ApplicationType.ReportRating => "Đơn Tố Cáo Rating",
-                ApplicationType.ReportMentor => "Đơn Tố Cáo Mentor",
-                ApplicationType.TechnicalError => "Đơn Lỗi Kỹ Thuật",
-                ApplicationType.ReportComment => "Đơn Tố Cáo Comment",
-                _ => type.ToString()
             };
         }
     }
