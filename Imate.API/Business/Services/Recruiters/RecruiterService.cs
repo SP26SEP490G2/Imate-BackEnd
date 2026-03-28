@@ -171,9 +171,36 @@ namespace Imate.API.Business.Services.Recruiters
 			{
 				var recruiter = await _unitOfWork.Recruiters.GetRecruiterByIdAsync(accountId)
 					?? throw new NotFoundException("Không tìm thấy hồ sơ Recruiter.");
+				if (request.CompanyLogo != null)
+				{
+					if (request.CompanyLogo.Length == 0)
+					{
+						throw new BadRequestException("File ảnh không được rỗng.");
+					}
+
+					var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+					var extension = Path.GetExtension(request.CompanyLogo.FileName).ToLowerInvariant();
+
+					if (!request.CompanyLogo.ContentType.StartsWith("image/") || !allowedExtensions.Contains(extension))
+					{
+						throw new BadRequestException($"File không hợp lệ. Chỉ chấp nhận các định dạng ảnh: {string.Join(", ", allowedExtensions)}.");
+					}
+
+					const long maxFileSize = 5 * 1024 * 1024; // 5MB
+					if (request.CompanyLogo.Length > maxFileSize)
+					{
+						throw new BadRequestException("Dung lượng ảnh quá lớn. Vui lòng tải lên ảnh nhỏ hơn 5MB.");
+					}
+
+					if (!string.IsNullOrEmpty(recruiter.CompanyLogo))
+					{
+						await _s3StorageService.DeleteFileAsync(recruiter.CompanyLogo);
+					}
+					recruiter.CompanyLogo = await _s3StorageService.UploadFileAsync(request.CompanyLogo, "company-logos");
+
+				}
 
 				recruiter.CompanyName = request.CompanyName;
-				recruiter.CompanyLogo = request.CompanyLogo;
 				recruiter.Website = request.Website;
 				recruiter.Industry = request.Industry;
 				recruiter.CompanySize = request.CompanySize;
