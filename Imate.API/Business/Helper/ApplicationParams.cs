@@ -7,8 +7,8 @@ namespace Imate.API.Business.Helper
         public string? SortBy { get; set; } // "content", "createdAt", "updatedAt"
         public string? SortOrder { get; set; } = "asc"; // "asc" hoặc "desc"
         public int? ReviewId { get; set; }
-        public ApplicationStatus? Status { get; set; }
-        public ApplicationType? Type { get; set; }
+        public string? Status { get; set; }
+        public string? Type { get; set; }
 
     }
 }
