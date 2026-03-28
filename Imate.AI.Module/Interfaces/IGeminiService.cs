@@ -1,3 +1,5 @@
+using Imate.AI.Module.Models.Responses;
+
 namespace Imate.AI.Module.Interfaces
 {
     /// <summary>
@@ -9,5 +11,7 @@ namespace Imate.AI.Module.Interfaces
         /// Gọi Gemini API với system prompt và user prompt
         /// </summary>
         Task<string> GenerateContentAsync(string systemPrompt, string userPrompt);
+        Task<CommentModerationResult> ModerateCommentAsync(string commentContent);
+
     }
 }
