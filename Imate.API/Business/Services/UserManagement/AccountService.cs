@@ -318,6 +318,10 @@ namespace Imate.API.Business.Services.UserManagement
             {
                 if (DateOnly.TryParse(request.BirthDate, out var parsed))
                 {
+                    if (parsed > DateOnly.FromDateTime(DateTime.UtcNow))
+                    {
+                        throw new BadRequestException("Ngày sinh không được ở trong tương lai.");
+                    }
                     birthDate = parsed;
                 }
                 else

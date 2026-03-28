@@ -100,6 +100,23 @@ namespace Imate.API.Business.Services.Mentors
             mentor.BankAccountHolderName = request.BankAccountHolderName;
             mentor.BankAccountNumber = request.BankAccountNumber;
             mentor.BankCode = request.BankCode;
+            mentor.Yoe = request.Yoe ?? mentor.Yoe;
+
+            if (!string.IsNullOrWhiteSpace(request.BirthDate))
+            {
+                if (DateOnly.TryParse(request.BirthDate, out var parsed))
+                {
+                    if (parsed > DateOnly.FromDateTime(DateTime.UtcNow))
+                    {
+                        throw new BadRequestException("Ngày sinh không được ở trong tương lai.");
+                    }
+                    mentor.BirthDate = parsed;
+                }
+                else
+                {
+                    throw new BadRequestException("Định dạng ngày sinh không hợp lệ. Vui lòng sử dụng định dạng yyyy-MM-dd.");
+                }
+            }
 
             await _unitOfWork.Mentors.UpdateMentorAsync(mentor);
             await _unitOfWork.SaveChangesAsync();
