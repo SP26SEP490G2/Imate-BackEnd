@@ -5,6 +5,8 @@ using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels.Comunity;
 using Imate.API.DataAccess.ApplicationDbContext;
+using Imate.AI.Module.Interfaces;
+using Imate.API.Business.Exceptions;
 
 namespace Imate.API.Business.Services.Comunity
 {
@@ -13,39 +15,42 @@ namespace Imate.API.Business.Services.Comunity
         private readonly ICommentRepository _commentRepository;
         private readonly IVoteRepository _voteRepository;
         private readonly ImateDbContext _context;
+        private readonly IGeminiService _geminiService;
 
         public CommentService(
             ICommentRepository commentRepository, 
             IVoteRepository voteRepository,
-            ImateDbContext context)
+            ImateDbContext context,
+            IGeminiService geminiService)
         {
             _commentRepository = commentRepository;
             _voteRepository = voteRepository;
             _context = context;
+            _geminiService = geminiService;
         }
 
         public async Task<int> CreateCommentAsync(int userId, CreateCommentRequestModel request)
         {
             // Kiểm duyệt comment trước khi tạo
-            //try
-            //{
-            //    var moderationResult = await _openAIService.ModerateCommentAsync(request.Content);
-                
-            //    if (!moderationResult.IsSafe)
-            //    {
-            //        throw new BadRequestException("Nội dung không phù hợp. Vui lòng điều chỉnh nội dung.");
-            //    }
-            //}
-            //catch (BadRequestException)
-            //{
-            //    throw; // Re-throw BadRequestException as is
-            //}
-            //catch (Exception ex)
-            //{
-            //    // Nếu có lỗi khi kiểm duyệt (ví dụ: OpenAI API lỗi), vẫn cho phép tạo comment
-            //    // để tránh block người dùng khi service kiểm duyệt gặp sự cố
-            //    // Có thể log lỗi ở đây để theo dõi
-            //}
+            try
+            {
+                var moderationResult = await _geminiService.ModerateCommentAsync(request.Content);
+
+                if (!moderationResult.IsSafe)
+                {
+                    throw new BadRequestException("Nội dung không phù hợp. Vui lòng điều chỉnh nội dung.");
+                }
+            }
+            catch (BadRequestException)
+            {
+                throw; // Re-throw BadRequestException as is
+            }
+            catch (Exception ex)
+            {
+                // Nếu có lỗi khi kiểm duyệt (ví dụ: OpenAI API lỗi), vẫn cho phép tạo comment
+                // để tránh block người dùng khi service kiểm duyệt gặp sự cố
+                // Có thể log lỗi ở đây để theo dõi
+            }
 
             var now = DateTime.UtcNow;
 
