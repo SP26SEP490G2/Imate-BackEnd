@@ -70,7 +70,6 @@ namespace Imate.AI.Module.Services
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
             _logger.LogInformation("Calling Gemini API...");
-
             var response = await _httpClient.PostAsync(requestUrl, content);
             var responseBody = await response.Content.ReadAsStringAsync();
 
@@ -117,7 +116,97 @@ namespace Imate.AI.Module.Services
             return resultText;
         }
 
-    public async Task<CommentModerationResult> ModerateCommentAsync(string commentContent)
+        public async Task<string> GenerateContentForCommentAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
+        {
+            var requestUrl = $"{_apiUrl}?key={_apiKey}";
+
+            var requestBody = new
+            {
+                systemInstruction = new
+                {
+                    parts = new[] { new { text = systemPrompt } }
+                },
+                contents = new[]
+                {
+                    new
+                    {
+                        role = "user",
+                        parts = new[] { new { text = userPrompt } }
+                    }
+                },
+                generationConfig = new
+                {
+                    temperature = _temperature,
+                    topP = _topP,
+                    thinkingConfig = new
+                    {
+                        includeThoughts = true,
+                        thinkingBudget = _thinkingBudget
+                    }
+                }
+            };
+
+            var jsonContent = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            _logger.LogInformation("Calling Gemini API...");
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            try
+            {
+                var response = await _httpClient.PostAsync(requestUrl, content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Gemini API error {StatusCode}: {Body}", response.StatusCode, responseBody);
+                    throw new Exception($"Gemini API error: {response.StatusCode}");
+                }
+
+                // Parse response - Gemini 2.5 Pro with thinking trả về nhiều parts
+                using var doc = JsonDocument.Parse(responseBody);
+                var parts = doc.RootElement
+                    .GetProperty("candidates")[0]
+                    .GetProperty("content")
+                    .GetProperty("parts");
+
+                // Tìm part chứa response text (không phải thought)
+                string? resultText = null;
+                foreach (var part in parts.EnumerateArray())
+                {
+                    if (part.TryGetProperty("thought", out var thought) && thought.GetBoolean())
+                        continue;
+
+                    if (part.TryGetProperty("text", out var text))
+                    {
+                        resultText = text.GetString();
+                        break;
+                    }
+                }
+
+                // Fallback: lấy part cuối cùng
+                if (string.IsNullOrEmpty(resultText))
+                {
+                    var lastPart = parts[parts.GetArrayLength() - 1];
+                    resultText = lastPart.GetProperty("text").GetString();
+                }
+
+                if (string.IsNullOrEmpty(resultText))
+                {
+                    throw new Exception("Không nhận được phản hồi từ Gemini AI");
+                }
+
+                _logger.LogInformation("Gemini API response received ({Length} chars)", resultText.Length);
+                return resultText;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("API Gemini bị timeout hoặc bị hủy bởi người dùng.");
+                throw new Exception("Yêu cầu quá thời gian xử lý, vui lòng thử lại.");
+            }
+        }
+
+        public async Task<CommentModerationResult> ModerateCommentAsync(string commentContent)
         {
             var systemPrompt = "Bạn là Một AI Mod Cấp Cao (Senior AI Content Moderator) của một diễn đàn cộng đồng lớn. Sứ mệnh của bạn là đảm bảo một môi trường thảo luận an toàn, văn minh và tích cực. Bạn hành động một cách nhất quán, khách quan và không thiên vị.";
 
@@ -167,7 +256,7 @@ Bạn PHẢI trả lời bằng định dạng JSON chính xác sau. KHÔNG thê
             string? responseMessage = null;
             try
             {
-                responseMessage = await GenerateContentAsync(systemPrompt, userPrompt);
+                responseMessage = await GenerateContentForCommentAsync(systemPrompt, userPrompt);
 
                 // Clean response - remove markdown code blocks if present
                 var cleanedResponse = responseMessage.Trim();
