@@ -207,7 +207,8 @@ namespace Imate.API.Business.Services.UserManagement
                     BankCode = account.Mentor.BankCode,
                     Skills = account.Mentor.MentorSkills.Select(ms => ms.Skill.Name),
                     Positions = account.Mentor.MentorPositions.Select(mp => mp.Position.Name),
-                    Companies = account.Mentor.MentorCompanies.Select(mc => mc.Company.Name)
+                    Companies = account.Mentor.MentorCompanies.Select(mc => mc.Company.Name),
+                    VerificationStatus = account.Mentor.VerificationStatus.ToString()
                 };
             }
 
@@ -229,6 +230,7 @@ namespace Imate.API.Business.Services.UserManagement
                     Website = account.Recruiter?.Website,
                     Industry = account.Recruiter?.Industry,
                     Phone = account.Recruiter?.Phone,
+                    VerificationStatus = account.Recruiter?.VerificationStatus.ToString()
                 };
             } else
             {

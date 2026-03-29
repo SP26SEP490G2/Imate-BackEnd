@@ -146,7 +146,8 @@ namespace Imate.API.DataAccess.Repositories.UserManagement
                     .ThenInclude(m => m.MentorCompanies)
                         .ThenInclude(mc => mc.Company)
                 .Where(a => a.Status == Models.Enums.AccountStatus.PendingVerification
-                    && a.AccountRoles.Any(ar => ar.Role.Name == Models.Enums.RoleName.Mentor))
+                    && a.AccountRoles.Any(ar => ar.Role.Name == Models.Enums.RoleName.Mentor)
+                    && a.Mentor != null && a.Mentor.VerificationStatus == Models.Enums.VerificationStatus.Pending)
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -156,7 +157,8 @@ namespace Imate.API.DataAccess.Repositories.UserManagement
         {
             var baseQuery = _context.Accounts.AsNoTracking()
                 .Where(a => a.Status == Models.Enums.AccountStatus.PendingVerification
-                    && a.AccountRoles.Any(ar => ar.Role.Name == Models.Enums.RoleName.Mentor));
+                    && a.AccountRoles.Any(ar => ar.Role.Name == Models.Enums.RoleName.Mentor)
+                    && a.Mentor != null && a.Mentor.VerificationStatus == Models.Enums.VerificationStatus.Pending);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -204,7 +206,8 @@ namespace Imate.API.DataAccess.Repositories.UserManagement
                     .ThenInclude(ar => ar.Role)
                 .Include(a => a.Recruiter)
                 .Where(a => a.Status == Models.Enums.AccountStatus.PendingVerification 
-                    && a.AccountRoles.Any(ar => ar.Role.Name == Models.Enums.RoleName.Recruiter))
+                    && a.AccountRoles.Any(ar => ar.Role.Name == Models.Enums.RoleName.Recruiter)
+                    && a.Recruiter != null && a.Recruiter.VerificationStatus == Models.Enums.VerificationStatus.Pending)
                 .AsNoTracking()
                 .ToListAsync();
         }
