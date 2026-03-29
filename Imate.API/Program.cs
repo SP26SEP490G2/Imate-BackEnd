@@ -35,7 +35,7 @@ builder.Services.AddControllers()
     .AddApplicationPart(typeof(Imate.AI.Module.Controllers.CvAnalysisController).Assembly);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 

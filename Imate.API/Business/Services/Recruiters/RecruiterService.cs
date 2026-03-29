@@ -28,12 +28,14 @@ namespace Imate.API.Business.Services.Recruiters
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IAuditLogService _auditLogService;
 		private readonly IEmailService _emailService;
+		private readonly IAwsS3StorageService _s3StorageService;
 
-		public RecruiterService(IUnitOfWork unitOfWork, IAuditLogService auditLogService, IEmailService emailService)
+		public RecruiterService(IUnitOfWork unitOfWork, IAuditLogService auditLogService, IEmailService emailService, IAwsS3StorageService s3StorageService)
 		{
 			_unitOfWork = unitOfWork;
 			_auditLogService = auditLogService;
 			_emailService = emailService;
+			_s3StorageService = s3StorageService;
 		}
 
 		public async Task<PagedList<GetJobRecruiterResponse>> GetListJobRecruiterAsync(int accountId, RecruiterJobSearchFilterRequest filterRequest)
@@ -130,6 +132,7 @@ namespace Imate.API.Business.Services.Recruiters
 					Industry = request.Industry?.Trim() ?? "General",
 					CompanySize = request.CompanySize?.Trim(),
 					Website = request.CompanyWebsite?.Trim(),
+					CompanyLogo = request.CompanyLogo,
 					Address = request.CompanyAddress?.Trim(),
 					Phone = request.Phone.Trim(),
 					VerificationStatus = VerificationStatus.Pending
@@ -144,6 +147,7 @@ namespace Imate.API.Business.Services.Recruiters
 				account.Recruiter.Industry = request.Industry?.Trim() ?? account.Recruiter.Industry;
 				account.Recruiter.CompanySize = request.CompanySize?.Trim() ?? account.Recruiter.CompanySize;
 				account.Recruiter.Website = request.CompanyWebsite?.Trim();
+				account.Recruiter.CompanyLogo = request.CompanyLogo ?? account.Recruiter.CompanyLogo;
 				account.Recruiter.Address = request.CompanyAddress?.Trim();
 				account.Recruiter.Phone = request.Phone.Trim();
 				account.Recruiter.VerificationStatus = VerificationStatus.Pending;
@@ -167,9 +171,36 @@ namespace Imate.API.Business.Services.Recruiters
 			{
 				var recruiter = await _unitOfWork.Recruiters.GetRecruiterByIdAsync(accountId)
 					?? throw new NotFoundException("Không tìm thấy hồ sơ Recruiter.");
+				if (request.CompanyLogo != null)
+				{
+					if (request.CompanyLogo.Length == 0)
+					{
+						throw new BadRequestException("File ảnh không được rỗng.");
+					}
+
+					var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+					var extension = Path.GetExtension(request.CompanyLogo.FileName).ToLowerInvariant();
+
+					if (!request.CompanyLogo.ContentType.StartsWith("image/") || !allowedExtensions.Contains(extension))
+					{
+						throw new BadRequestException($"File không hợp lệ. Chỉ chấp nhận các định dạng ảnh: {string.Join(", ", allowedExtensions)}.");
+					}
+
+					const long maxFileSize = 5 * 1024 * 1024; // 5MB
+					if (request.CompanyLogo.Length > maxFileSize)
+					{
+						throw new BadRequestException("Dung lượng ảnh quá lớn. Vui lòng tải lên ảnh nhỏ hơn 5MB.");
+					}
+
+					if (!string.IsNullOrEmpty(recruiter.CompanyLogo))
+					{
+						await _s3StorageService.DeleteFileAsync(recruiter.CompanyLogo);
+					}
+					recruiter.CompanyLogo = await _s3StorageService.UploadFileAsync(request.CompanyLogo, "company-logos");
+
+				}
 
 				recruiter.CompanyName = request.CompanyName;
-				recruiter.CompanyLogo = request.CompanyLogo;
 				recruiter.Website = request.Website;
 				recruiter.Industry = request.Industry;
 				recruiter.CompanySize = request.CompanySize;
@@ -772,6 +803,24 @@ namespace Imate.API.Business.Services.Recruiters
 				throw new Exception($"{ex.Message}", ex);
 
 			}
+		}
+
+		public async Task<string> UploadCompanyLogoAsync(IFormFile file)
+		{
+			if (file == null || file.Length == 0)
+				throw new BadRequestException("Vui lòng chọn file logo.");
+
+			// Validate file type (Images only)
+			var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+			var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+			if (!allowedExtensions.Contains(extension))
+				throw new BadRequestException("Vui lòng tải lên file ảnh (jpg, jpeg, png, gif, webp).");
+
+			// Max size 2MB
+			if (file.Length > 2 * 1024 * 1024)
+				throw new BadRequestException("Kích thước tệp logo không được vượt quá 2MB.");
+
+			return await _s3StorageService.UploadFileAsync(file, "company-logos");
 		}
 	}
 }

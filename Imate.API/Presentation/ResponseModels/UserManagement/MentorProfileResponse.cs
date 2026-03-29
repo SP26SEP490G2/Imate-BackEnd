@@ -1,4 +1,4 @@
-﻿namespace Imate.API.Presentation.ResponseModels.UserManagement
+namespace Imate.API.Presentation.ResponseModels.UserManagement
 {
     public class MentorProfileResponse : UserProfileResponse
     {
@@ -17,5 +17,6 @@
         public IEnumerable<string> Skills { get; set; } = new List<string>();
         public IEnumerable<string> Positions { get; set; } = new List<string>();
         public IEnumerable<string> Companies { get; set; } = new List<string>();
+        public string? VerificationStatus { get; set; }
     }
 }

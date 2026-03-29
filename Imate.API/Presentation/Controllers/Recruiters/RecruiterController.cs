@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Azure.Core;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Recruiters;
@@ -50,6 +51,21 @@ namespace Imate.API.Presentation.Controllers.Recruiters
                     data = (object?)null,
                     message = ex.Message
                 });
+            }
+        }
+
+        [HttpPost(APIConfig.Recruiter.UploadLogo)]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadLogo(IFormFile file)
+        {
+            try
+            {
+                var logoUrl = await _recruiterService.UploadCompanyLogoAsync(file);
+                return Ok(new { data = logoUrl, message = "Upload logo thành công." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
         [HttpGet("recruiter-job-applications")]

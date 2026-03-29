@@ -135,7 +135,16 @@ namespace Imate.API.Business.Services.Staff
             if (account.Status != AccountStatus.PendingVerification)
                 throw new BadRequestException("Tài khoản không ở trạng thái chờ duyệt.");
 
-            account.Status = isApproved ? AccountStatus.Active : AccountStatus.Suspended;
+            if (isApproved)
+            {
+                account.Status = AccountStatus.Active;
+            }
+
+            var mentor = await _unitOfWork.Mentors.GetMentorByIdAsync(accountId);
+            if (mentor != null)
+            {
+                mentor.VerificationStatus = isApproved ? VerificationStatus.Verified : VerificationStatus.Rejected;
+            }
 
             if (staffId > 0)
             {
@@ -155,15 +164,15 @@ namespace Imate.API.Business.Services.Staff
             if (account.Status != AccountStatus.PendingVerification)
                 throw new BadRequestException("Tài khoản không ở trạng thái chờ duyệt.");
 
-            account.Status = isApproved ? AccountStatus.Active : AccountStatus.Suspended;
+            if (isApproved)
+            {
+                account.Status = AccountStatus.Active;
+            }
             
             if (account.Recruiter != null)
             {
                 account.Recruiter.VerificationStatus = isApproved ? VerificationStatus.Verified : VerificationStatus.Rejected;
-                _unitOfWork.Recruiters.Update(account.Recruiter);
             }
-
-            await _unitOfWork.Accounts.UpdateAsync(account);
 
             if (staffId > 0)
             {

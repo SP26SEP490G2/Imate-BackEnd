@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces.Applications;
@@ -151,6 +151,24 @@ namespace Imate.API.Presentation.Controllers.Applications
             var details = await _applicationService.GetTechnicalDetails(applicationId);
             return Ok(details);
 
+        }
+
+        [HttpGet("application/{applicationId}/report-comment-details")]
+        public async Task<IActionResult> GetReportCommentDetails(int applicationId)
+        {
+            try
+            {
+                var details = await _applicationService.GetReportCommentDetails(applicationId);
+                return Ok(details);
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Không thể lấy chi tiết đơn.", error = ex.Message });
+            }
         }
 
         [HttpPut("application/{applicationId}/approve")]

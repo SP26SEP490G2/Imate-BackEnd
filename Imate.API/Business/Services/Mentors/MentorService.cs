@@ -100,6 +100,23 @@ namespace Imate.API.Business.Services.Mentors
             mentor.BankAccountHolderName = request.BankAccountHolderName;
             mentor.BankAccountNumber = request.BankAccountNumber;
             mentor.BankCode = request.BankCode;
+            mentor.Yoe = request.Yoe ?? mentor.Yoe;
+
+            if (!string.IsNullOrWhiteSpace(request.BirthDate))
+            {
+                if (DateOnly.TryParse(request.BirthDate, out var parsed))
+                {
+                    if (parsed > DateOnly.FromDateTime(DateTime.UtcNow))
+                    {
+                        throw new BadRequestException("Ngày sinh không được ở trong tương lai.");
+                    }
+                    mentor.BirthDate = parsed;
+                }
+                else
+                {
+                    throw new BadRequestException("Định dạng ngày sinh không hợp lệ. Vui lòng sử dụng định dạng yyyy-MM-dd.");
+                }
+            }
 
             await _unitOfWork.Mentors.UpdateMentorAsync(mentor);
             await _unitOfWork.SaveChangesAsync();
@@ -137,6 +154,24 @@ namespace Imate.API.Business.Services.Mentors
             };
 
             return response;
+        }
+
+        public async Task UpdateMentorPriceAsync(int accountId, int newPrice)
+        {
+            var mentor = await _unitOfWork.Mentors.GetMentorByIdAsync(accountId);
+            if (mentor == null)
+            {
+                throw new NotFoundException($"Không tìm thấy mentor với AccountId {accountId}.");
+            }
+
+            // Optional: Cooldown logic
+            // if (mentor.PriceLastUpdatedDate.HasValue && mentor.PriceLastUpdatedDate.Value.AddMonths(1) > DateTime.UtcNow) ...
+
+            mentor.PricePerSession = newPrice;
+            mentor.PriceLastUpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.Mentors.Update(mentor);
+            await _unitOfWork.SaveAsync();
         }
     }
 }

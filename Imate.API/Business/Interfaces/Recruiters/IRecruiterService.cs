@@ -7,6 +7,7 @@ using Imate.API.Presentation.ResponseModels;
 using Imate.API.Presentation.ResponseModels.JobApplications;
 using Imate.API.Presentation.ResponseModels.Recruiter;
 using Microsoft.Identity.Client;
+using Microsoft.AspNetCore.Http;
 
 namespace Imate.API.Business.Interfaces.Recruiters
 {
@@ -26,5 +27,6 @@ namespace Imate.API.Business.Interfaces.Recruiters
         Task<PagedList<GetCandidateAppliedJobResponse>> GetCandidateAppliedJob(int accountId, AppliedApplicationCandidateFilterRequest request);
 
         Task<JobApplication> CreateJobApplication(int accountId, CreateJobApplicationRequest request);
+        Task<string> UploadCompanyLogoAsync(IFormFile file);
 	}
 }

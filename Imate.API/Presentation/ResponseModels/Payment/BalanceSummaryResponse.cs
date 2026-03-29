@@ -1,4 +1,4 @@
-﻿namespace Imate.API.Presentation.ResponseModels.Payment
+namespace Imate.API.Presentation.ResponseModels.Payment
 {
     public class BalanceSummaryResponse
     {
@@ -12,5 +12,6 @@
         public int? PricePerSession { get; set; } // Giá 1 session của mentor
         public int? CurrentEscrowBookings { get; set; } // Số booking đang escrow
         public int? RequiredBalanceForOneBooking { get; set; } // Số tiền đảm bảo cần cho 1 booking
+        public decimal? GuaranteeDepositRate { get; set; } // Tỷ lệ tiền đảm bảo (%)
     }
 }

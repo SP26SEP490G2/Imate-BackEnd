@@ -9,7 +9,7 @@ namespace Imate.API.Presentation.RequestModels.UserManagement
     {
         [Required]
         public string CompanyName { get; set; }
-        public string? CompanyLogo { get; set; }
+        public IFormFile? CompanyLogo { get; set; }
         public string? Website { get; set; }
         [Required]
         public string? Industry { get; set; }

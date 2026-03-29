@@ -4,7 +4,6 @@ namespace Imate.API.Models.Enums
     {
         MentorRegistration,
         RefundRequest,
-        ContentReport,
         ReportMentor,
         ReportRating,
         TechnicalError,

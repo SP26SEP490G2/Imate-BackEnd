@@ -33,5 +33,12 @@ namespace Imate.API.Presentation.RequestModels.UserManagement
         /// </summary>
         [Required]
         public string BankCode { get; set; }
+
+        public List<int> PositionIds { get; set; } = new List<int>();
+        public List<int> SkillIds { get; set; } = new List<int>();
+        public List<int> CompanyIds { get; set; } = new List<int>();
+
+        [Range(0, 50)]
+        public int? Yoe { get; set; }
     }
 }
