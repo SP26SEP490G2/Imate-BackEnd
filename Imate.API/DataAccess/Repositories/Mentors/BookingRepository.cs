@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
@@ -303,6 +303,14 @@ namespace Imate.API.DataAccess.Repositories.Mentors
                 var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(b.StartTime.DateTime, localTimeZone);
                 return TimeOnly.FromDateTime(localStartTime) == slotStartTime;
             }).OrderBy(b => b.StartTime);
+        }
+
+        public async Task<IEnumerable<Booking>> GetExpiredConfirmedBookingsAsync(DateTime cutoffTimeUtc)
+        {
+            return await _context.Bookings
+                .Where(b => b.Status == BookingStatus.Confirmed
+                    && b.StartTime < cutoffTimeUtc)
+                .ToListAsync();
         }
     }
 }
