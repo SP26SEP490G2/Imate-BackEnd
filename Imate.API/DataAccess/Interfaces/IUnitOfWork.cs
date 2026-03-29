@@ -1,5 +1,6 @@
 using Imate.API.DataAccess.Interfaces.Applications;
 using Imate.API.DataAccess.Interfaces.Classification;
+using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces.Payment;
@@ -33,6 +34,7 @@ namespace Imate.API.DataAccess.Interfaces
         IApplicationRepository Applications { get; }
         ISystemConfigRepository SystemConfigs { get; }
         ISystemNotificationRepository SystemNotifications { get; }
+        ICommentRepository Comments { get; }
 
 
         Task SaveChangesAsync();

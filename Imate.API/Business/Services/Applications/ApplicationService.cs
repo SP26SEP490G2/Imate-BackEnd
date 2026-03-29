@@ -528,6 +528,75 @@ namespace Imate.API.Business.Services.Applications
             // 4. Trả về kết quả
             return reportDetails;
         }
+
+        public async Task<ReportCommentDetailResponse> GetReportCommentDetails(int applicationId)
+        {
+            var application = await _unitOfWork.Applications.GetAllApplications()
+                .Where(a => a.Id == applicationId && a.ApplicationType == ApplicationType.ReportComment)
+                .FirstOrDefaultAsync();
+
+            if (application == null)
+                throw new NotFoundException($"Không tìm thấy đơn tố cáo comment với ID {applicationId}.");
+
+            var response = new ReportCommentDetailResponse
+            {
+                Id = application.Id,
+                Title = application.Title,
+                Content = application.Content,
+                Status = application.Status.ToString(),
+                ApplicationType = application.ApplicationType.ToString(),
+                EvidenceUrls = application.EvidenceUrls,
+                Response = application.Response,
+                CreatedAt = DateOnly.FromDateTime(application.CreatedAt.DateTime),
+                UpdatedAt = application.UpdatedAt?.DateTime,
+                CommentId = application.CommentId,
+                ReviewerId = application.ReviewerId,
+                ReviewerName = application.Reviewer?.FullName,
+                Reporter = new ReportCommentUserInfo
+                {
+                    Id = application.User.Id,
+                    FullName = application.User.FullName,
+                    Email = application.User.Email,
+                    AvatarUrl = application.User.AvatarUrl,
+                },
+            };
+
+            if (application.CommentId == null)
+                return response;
+
+            var comment = await _unitOfWork.Comments.GetCommentWithDetailsByIdAsync(application.CommentId.Value);
+            if (comment == null)
+                return response;
+
+            response.CommentDetail = new ReportCommentDetail
+            {
+                Id = comment.Id,
+                Content = comment.Content,
+                CreatedAt = comment.CreatedAt.DateTime,
+                UpdatedAt = comment.UpdatedAt?.DateTime,
+                Author = new ReportCommentUserInfo
+                {
+                    Id = comment.User.Id,
+                    FullName = comment.User.FullName,
+                    Email = comment.User.Email,
+                    AvatarUrl = comment.User.AvatarUrl,
+                },
+                Question = comment.Question == null ? null : new ReportCommentQuestionInfo
+                {
+                    Id = comment.Question.Id,
+                    Content = comment.Question.Content,
+                    CreatedByUser = new ReportCommentUserInfo
+                    {
+                        Id = comment.Question.CreatorId,
+                        FullName = comment.Question.Creator.FullName,
+                        AvatarUrl = comment.Question.Creator.AvatarUrl,
+                    }
+                }
+            };
+
+            return response;
+        }
+
         public async Task<object> GetReportMentorDetails(int applicationId)
         {
             // 1. Lấy IQueryable (giả định đã Include Reviewer)
@@ -672,10 +741,10 @@ namespace Imate.API.Business.Services.Applications
 
             // 5. Tạo content từ reason và additional details
             var reasonText = GetReportReasonString(request.Reason);
-            var content = $"Lý do: {reasonText}";
+            var content = $"{reasonText}";
             if (!string.IsNullOrWhiteSpace(request.AdditionalDetails))
             {
-                content += $"\n\nChi tiết thêm: {request.AdditionalDetails}";
+                content = $"Khác: {request.AdditionalDetails}";
             }
 
             // 6. Tạo Application mới
@@ -758,6 +827,17 @@ namespace Imate.API.Business.Services.Applications
                             var allApplicationsWithComment = await _context.Set<Application>()
                                 .Where(a => a.CommentId == commentId)
                                 .ToListAsync();
+
+                            foreach (var relatedApp in allApplicationsWithComment)
+                            {
+                                if (relatedApp.Status == ApplicationStatus.Pending || relatedApp.Status == ApplicationStatus.InReview)
+                                {
+                                    relatedApp.Status = ApplicationStatus.Approved;
+                                    relatedApp.ReviewerId = reviewerId;
+                                    relatedApp.Response = $"Tự động duyệt: bình luận đã bị xóa";
+                                    relatedApp.UpdatedAt = DateTime.UtcNow;
+                                }
+                            }
 
                             foreach (var app in allApplicationsWithComment)
                             {
@@ -1019,7 +1099,6 @@ namespace Imate.API.Business.Services.Applications
                     ApplicationType.TechnicalError,
                     ApplicationType.ReportMentor,
                     ApplicationType.ReportRating,
-                    ApplicationType.ReportContent,
                     ApplicationType.ReportComment
                 };
             var summaries = await _unitOfWork.Applications

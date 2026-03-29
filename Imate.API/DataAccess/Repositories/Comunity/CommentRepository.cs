@@ -36,5 +36,13 @@ namespace Imate.API.DataAccess.Repositories.Comunity
         {
             _context.Set<Comment>().Remove(comment);
         }
+        public async Task<Comment?> GetCommentWithDetailsByIdAsync(int commentId)
+        {
+            return await _context.Set<Comment>()
+                .Include(c => c.User)
+                .Include(c => c.Question)
+                    .ThenInclude(q => q.Creator) 
+                .FirstOrDefaultAsync(c => c.Id == commentId);
+        }
     }
 }

@@ -2,6 +2,7 @@ using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Applications;
 using Imate.API.DataAccess.Interfaces.Classification;
+using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces.Payment;
@@ -39,7 +40,8 @@ namespace Imate.API.DataAccess.Repositories
             IApplicationRepository applications,
             IMentorRecurringSlotRepository mentorRecurringSlots,
             ISystemNotificationRepository systemNotifications,
-            ISubscriptionPackageRepository subscriptionPackages)
+            ISubscriptionPackageRepository subscriptionPackages,
+            ICommentRepository comments)
         {
             _repositoryContext = repositoryContext;
             Accounts = accounts;
@@ -60,6 +62,7 @@ namespace Imate.API.DataAccess.Repositories
             SystemConfigs = systemConfigs;
             SystemNotifications = systemNotifications;
             SubscriptionPackages = subscriptionPackages;
+            Comments = comments;
         }
         public IAccountRepository Accounts { get; private set; }
         public IMentorRepository Mentors { get; private set; }
@@ -79,6 +82,7 @@ namespace Imate.API.DataAccess.Repositories
         public ISubscriptionPackageRepository SubscriptionPackages { get; private set; }
         public ISystemConfigRepository SystemConfigs { get; }
         public ISystemNotificationRepository SystemNotifications { get; private set; }
+        public ICommentRepository Comments { get; private set; }
         public Task SaveChangesAsync() => _repositoryContext.SaveChangesAsync();
         public Task SaveAsync() => _repositoryContext.SaveChangesAsync();
         public void Dispose()
