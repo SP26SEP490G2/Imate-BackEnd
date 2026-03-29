@@ -36,9 +36,9 @@ namespace Imate.API.Business.Services.Mentors
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // Wait a short moment on startup to let the app fully initialize
-            Console.WriteLine("🕐 AutoCompleteBookingService: Starting in 10 seconds...");
+            Console.WriteLine("AutoCompleteBookingService: Starting in 10 seconds...");
             await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
-            Console.WriteLine("🚀 AutoCompleteBookingService: Service started. Scanning immediately...");
+            Console.WriteLine("AutoCompleteBookingService: Service started. Scanning immediately...");
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -48,11 +48,11 @@ namespace Imate.API.Business.Services.Mentors
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ AutoCompleteBookingService ERROR: {ex.Message}");
+                    Console.WriteLine($"AutoCompleteBookingService ERROR: {ex.Message}");
                     _logger.LogError(ex, "AutoCompleteBookingService encountered an error.");
                 }
 
-                Console.WriteLine($"⏳ AutoCompleteBookingService: Next scan in {ScanInterval.TotalMinutes} minutes...");
+                Console.WriteLine($"AutoCompleteBookingService: Next scan in {ScanInterval.TotalMinutes} minutes...");
                 await Task.Delay(ScanInterval, stoppingToken);
             }
         }
@@ -105,7 +105,7 @@ namespace Imate.API.Business.Services.Mentors
                     }
 
                     _logger.LogInformation(
-                        "AutoCompleteBooking: Booking #{BookingId} (StartTime: {StartTime}) → Completed. Escrow released: {HasEscrow}",
+                        "AutoCompleteBooking: Booking #{BookingId} (StartTime: {StartTime}) -> Completed. Escrow released: {HasEscrow}",
                         booking.Id, booking.StartTime, escrowTransaction != null);
                 }
                 catch (Exception ex)
