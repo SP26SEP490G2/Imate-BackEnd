@@ -9,5 +9,6 @@ namespace Imate.API.DataAccess.Interfaces.Comunity
         Task SaveChangesAsync();
 
         Task DeleteCommentAsync(Comment comment);
+        Task<Comment?> GetCommentWithDetailsByIdAsync(int commentId);
     }
 }

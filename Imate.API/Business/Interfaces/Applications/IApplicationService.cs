@@ -20,5 +20,6 @@ namespace Imate.API.Business.Interfaces.Applications
         Task ApproveApplicationAsync(int applicationId, int reviewerId, string? responseNote = null);
         Task RejectApplicationAsync(int applicationId, int reviewerId, string? responseNote = null);
         Task<IEnumerable<ApplicationNeedProcessSummaryResponse>> GetPendingSummaryAsync();
+        Task<ReportCommentDetailResponse> GetReportCommentDetails(int applicationId);
     }
 }
