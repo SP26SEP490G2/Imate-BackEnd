@@ -46,3 +46,4 @@ logs/
 .DS_Store
 Thumbs.db
 Imate.API/appsettings.json
+Imate.API/serviceAccountKey.json
