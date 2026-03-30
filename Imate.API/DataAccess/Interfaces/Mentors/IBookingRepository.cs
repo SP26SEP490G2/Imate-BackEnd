@@ -1,4 +1,4 @@
-﻿using Imate.API.Models.Entities;
+using Imate.API.Models.Entities;
 using Imate.API.Presentation.ResponseModels.Mentors;
 
 namespace Imate.API.DataAccess.Interfaces.Mentors
@@ -22,5 +22,11 @@ namespace Imate.API.DataAccess.Interfaces.Mentors
         IQueryable<Booking> GetAllBookings();
         Task<List<RatingDetailModel>> GetCandidateRatingsByMentorIdAsync(int mentorId);
         Task<IEnumerable<Booking>> GetConfirmedBookingsBySlotIdAsync(int mentorId, int slotId);
+
+        /// <summary>
+        /// Gets all Confirmed bookings whose StartTime is before the cutoff (expired).
+        /// Used by AutoCompleteBookingService to auto-complete stuck bookings.
+        /// </summary>
+        Task<IEnumerable<Booking>> GetExpiredConfirmedBookingsAsync(DateTime cutoffTimeUtc);
     }
 }
