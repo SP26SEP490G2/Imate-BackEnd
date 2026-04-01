@@ -3,7 +3,9 @@ using Imate.API.Business.Services.Recruiters;
 using Imate.API.Configurations;
 using Imate.API.Infrastructure.Configurations;
 using Imate.API.Middleware;
+using Imate.API.Presentation.SignalR;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using PayOS;
 using System.Text;
 
@@ -11,6 +13,7 @@ using System.Text;
 Console.OutputEncoding = Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
+var configuration = builder.Configuration;
 
 // Add services to the container.
 builder.Services.ConfigureCors();
@@ -25,6 +28,7 @@ builder.Services.AddScoped<PayOSClient>();
 builder.Services.AddFirebaseAdmin();
 builder.Services.AddMyServices(builder.Configuration);
 builder.Services.AddSignalR();
+
 builder.Services.AddHostedService<AutoCloseJobServices>();
 builder.Services.AddHostedService<TransactionTimeoutService>();
 builder.Services.AddHostedService<SubscriptionExpirationService>();
@@ -51,6 +55,7 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
+app.MapHub<SystemNotificationHub>("/api/systemNotificationHub");
 
 app.UseCors("CorsPolicy");
 
