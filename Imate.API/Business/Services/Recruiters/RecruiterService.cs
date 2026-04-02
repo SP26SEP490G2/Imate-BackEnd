@@ -383,22 +383,23 @@ namespace Imate.API.Business.Services.Recruiters
 
 
 				await _unitOfWork.SaveChangesAsync();
+				var jobUpdate = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(result.Id);
 				var newData = new
 				{
-					exsitingJob.Title,
-					exsitingJob.Location,
-					exsitingJob.EmploymentType,
-					exsitingJob.MinSalary,
-					exsitingJob.MaxSalary,
-					exsitingJob.JobDescription,
-					exsitingJob.Status,
-					exsitingJob.ApplicationDeadline,
-					JobSkills = exsitingJob.JobSkills.Select(id => new JobSkillResponse
+					jobUpdate.Title,
+					jobUpdate.Location,
+					jobUpdate.EmploymentType,
+					jobUpdate.MinSalary,
+					jobUpdate.MaxSalary,
+					jobUpdate.JobDescription,
+					jobUpdate.Status,
+					jobUpdate.ApplicationDeadline,
+					JobSkills = jobUpdate.JobSkills.Select(id => new JobSkillResponse
 					{
 						Id = id.SkillId,
 						SkillName = id.Skill.Name,
 					}).ToList(),
-					JobPosition = exsitingJob.JobPositions.Select(id => new JobPositionResponse
+					JobPosition = jobUpdate.JobPositions.Select(id => new JobPositionResponse
 					{
 						Id = id.PositionId,
 						PositionName = id.Position.Name,

@@ -80,15 +80,14 @@ namespace Imate.API.Business.Services.Mentors
 
             // 2. Financials
             int price = mentor.PricePerSession;
-            /* 
+
             if (candidateAccount.Balance < price)
             {
-                throw new BadRequestException("Insufficient balance to book this session.");
+                throw new BadRequestException($"Số dư không đủ để đặt lịch. Cần {price:N0} imCoin, hiện có {candidateAccount.Balance:N0} imCoin.");
             }
 
             // Deduct balance (tracked by EF, will save with SaveChangesAsync below)
             candidateAccount.Balance -= price;
-            */
 
             // Create Escrow Transaction
             var transaction = new Transaction

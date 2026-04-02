@@ -28,9 +28,15 @@ namespace Imate.API.Configurations
             services.AddCors(options =>
             {
                 options.AddPolicy("CorsPolicy", builder =>
-                    builder.AllowAnyOrigin()
+                    builder
+                     .WithOrigins(
+                    "http://localhost:7939",
+                    "http://localhost:5173",
+                    "http://localhost:3000"
+                )
                     .AllowAnyMethod()
-                    .AllowAnyHeader());
+                    .AllowAnyHeader()
+                    .AllowCredentials());
             });
 
         public static void ConfigureIISIntegration(this IServiceCollection services) =>

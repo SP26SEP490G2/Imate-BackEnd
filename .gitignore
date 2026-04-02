@@ -65,3 +65,4 @@ diff_vs_main.patch
 .DS_Store
 Thumbs.db
 Imate.API/appsettings.json
+Imate.API/serviceAccountKey.json
