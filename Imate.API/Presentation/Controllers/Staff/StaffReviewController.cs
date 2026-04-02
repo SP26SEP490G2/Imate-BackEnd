@@ -77,7 +77,7 @@ namespace Imate.API.Presentation.Controllers.Staff
         public async Task<IActionResult> ReviewRecruiter(int id, [FromBody] ReviewRequest request)
         {
             var staffId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var sid) ? sid : 0;
-            await _staffReviewService.ReviewRecruiterApplicationAsync(id, request.IsApproved, request.Note, staffId);
+            await _staffReviewService.ReviewRecruiterApplicationAsync(id, request.IsApproved, request.Note, staffId, request.CreateCompany ?? false);
             return Ok(new { Message = $"{(request.IsApproved ? "Duyệt" : "Từ chối")} hồ sơ Recruiter thành công." });
         }
 
@@ -87,5 +87,6 @@ namespace Imate.API.Presentation.Controllers.Staff
     {
         public bool IsApproved { get; set; }
         public string? Note { get; set; }
+        public bool? CreateCompany { get; set; }
     }
 }

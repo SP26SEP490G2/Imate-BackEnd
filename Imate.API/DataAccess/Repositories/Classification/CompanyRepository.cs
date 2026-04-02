@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.ResponseModels.Classification;
@@ -104,6 +104,12 @@ namespace Imate.API.DataAccess.Repositories.Classification
             return await _context.Set<Company>()
                                  .AnyAsync(c => c.Name.ToLower() == name.ToLower() && c.Id != excludeId);
         }
+        public async Task<Company?> GetByNameAsync(string name)
+        {
+            return await _context.Set<Company>()
+                                 .FirstOrDefaultAsync(c => c.Name.ToLower() == name.ToLower());
+        }
+
         public IQueryable<Company> GetAllQueryable()
         {
             return _context.Set<Company>().AsQueryable();

@@ -89,7 +89,7 @@ namespace Imate.API.Business.Services
                     Email = request.Email,
                     Password = request.Password,
                     DisplayName = request.FullName,
-                    EmailVerified = false
+                    EmailVerified = true
                 };
                 firebaseUser = await _firebaseAuth.CreateUserAsync(args);
             }
@@ -163,11 +163,11 @@ namespace Imate.API.Business.Services
 
             string uid = decodedToken.Uid;
 
-            bool isEmailVerified = decodedToken.Claims.GetValueOrDefault("email_verified", false) as bool? ?? false;
-            if (!isEmailVerified)
-            {
-                throw new UnauthorizedException("Vui lòng xác minh tài khoản email trước khi đăng nhập.");
-            }
+            // bool isEmailVerified = decodedToken.Claims.GetValueOrDefault("email_verified", false) as bool? ?? false;
+            // if (!isEmailVerified)
+            // {
+            //     throw new UnauthorizedException("Vui lòng xác minh tài khoản email trước khi đăng nhập.");
+            // }
 
             // BƯỚC 3: TÌM TÀI KHOẢN TRONG DATABASE
             var account = await _accountRepository.GetByProviderIdAsync(uid);
@@ -192,6 +192,9 @@ namespace Imate.API.Business.Services
             var primaryRole = rolesList.FirstOrDefault().ToString() ?? "Candidate";
             var verificationStatus = await GetVerificationStatusAsync(account.Id, primaryRole);
 
+            var isNewAccount = (primaryRole == RoleName.Mentor.ToString() && (await _mentorRepository.GetMentorByIdAsync(account.Id)) == null)
+                               || (primaryRole == RoleName.Recruiter.ToString() && (await _recruiterRepository.GetRecruiterByIdAsync(account.Id)) == null);
+
             var userDto = new UserDto
             {
                 Id = account.Id,
@@ -199,6 +202,7 @@ namespace Imate.API.Business.Services
                 Email = account.Email,
                 AvatarUrl = account.AvatarUrl,
                 Role = primaryRole,
+                IsNewAccount = isNewAccount,
                 AccountStatus = account.Status.ToString(),
                 VerificationStatus = verificationStatus
             };
@@ -271,11 +275,12 @@ namespace Imate.API.Business.Services
             // TẠO VÀ LƯU REFRESH TOKEN
             var refreshToken = await CreateAndSaveRefreshTokenAsync(accountToUse.Id);
             
-            // Khoảng existingAccount check
-            var isNewAccount = existingAccount == null;
-            
             var rolesList = roles.ToList();
             var primaryRole = rolesList.FirstOrDefault().ToString() ?? "Candidate";
+            
+            // Khoảng existingAccount check
+            var isNewAccount = (primaryRole == RoleName.Mentor.ToString() && (await _mentorRepository.GetMentorByIdAsync(accountToUse.Id)) == null)
+                               || (primaryRole == RoleName.Recruiter.ToString() && (await _recruiterRepository.GetRecruiterByIdAsync(accountToUse.Id)) == null);
             var verificationStatus = await GetVerificationStatusAsync(accountToUse.Id, primaryRole);
 
             var userDto = new UserDto
@@ -551,6 +556,9 @@ namespace Imate.API.Business.Services
             var primaryRole = rolesList.FirstOrDefault().ToString() ?? "Candidate";
             var verificationStatus = await GetVerificationStatusAsync(account.Id, primaryRole);
 
+            var isNewAccount = (primaryRole == RoleName.Mentor.ToString() && (await _mentorRepository.GetMentorByIdAsync(account.Id)) == null)
+                               || (primaryRole == RoleName.Recruiter.ToString() && (await _recruiterRepository.GetRecruiterByIdAsync(account.Id)) == null);
+
             // 8. Tạo UserDto
             var userDto = new UserDto
             {
@@ -559,6 +567,7 @@ namespace Imate.API.Business.Services
                 Email = account.Email,
                 AvatarUrl = account.AvatarUrl,
                 Role = primaryRole,
+                IsNewAccount = isNewAccount,
                 AccountStatus = account.Status.ToString(),
                 VerificationStatus = verificationStatus
             };

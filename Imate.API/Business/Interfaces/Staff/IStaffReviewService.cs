@@ -10,6 +10,6 @@ namespace Imate.API.Business.Interfaces.Staff
         Task<StaffMentorApplicationResponse?> GetMentorApplicationByIdAsync(int id);
         Task<IEnumerable<StaffRecruiterApplicationResponse>> GetPendingRecruiterApplicationsAsync();
         Task ReviewMentorApplicationAsync(int accountId, bool isApproved, string? note, int staffId);
-        Task ReviewRecruiterApplicationAsync(int accountId, bool isApproved, string? note, int staffId);
+        Task ReviewRecruiterApplicationAsync(int accountId, bool isApproved, string? note, int staffId, bool createCompany);
     }
 }

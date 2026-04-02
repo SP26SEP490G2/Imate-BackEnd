@@ -5,6 +5,7 @@ using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.ResponseModels.Staff;
 using Imate.API.Business.Interfaces;
+using Imate.API.Models.Entities;
 
 namespace Imate.API.Business.Services.Staff
 {
@@ -156,7 +157,7 @@ namespace Imate.API.Business.Services.Staff
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task ReviewRecruiterApplicationAsync(int accountId, bool isApproved, string? note, int staffId)
+        public async Task ReviewRecruiterApplicationAsync(int accountId, bool isApproved, string? note, int staffId, bool createCompany)
         {
             var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
                 ?? throw new NotFoundException("Không tìm thấy tài khoản Recruiter.");
@@ -167,6 +168,22 @@ namespace Imate.API.Business.Services.Staff
             if (isApproved)
             {
                 account.Status = AccountStatus.Active;
+
+                // Tự động tạo công ty nếu được yêu cầu
+                if (createCompany && account.Recruiter != null && !string.IsNullOrWhiteSpace(account.Recruiter.CompanyName))
+                {
+                    var existingCompany = await _unitOfWork.Companies.GetByNameAsync(account.Recruiter.CompanyName);
+                    if (existingCompany == null)
+                    {
+                        var newCompany = new Company
+                        {
+                            Name = account.Recruiter.CompanyName,
+                            ImageUrl = account.Recruiter.CompanyLogo,
+                            IsActive = true // Mặc định là active khi staff phê duyệt
+                        };
+                        await _unitOfWork.Companies.AddAsync(newCompany);
+                    }
+                }
             }
             
             if (account.Recruiter != null)

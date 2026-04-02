@@ -1,4 +1,4 @@
-﻿using Imate.API.Models.Entities;
+using Imate.API.Models.Entities;
 using Imate.API.Presentation.ResponseModels.Classification;
 
 namespace Imate.API.DataAccess.Interfaces.Classification
@@ -12,6 +12,7 @@ namespace Imate.API.DataAccess.Interfaces.Classification
         Task<(IEnumerable<Company> Items, int TotalCount)> GetPagedListAsync(CompanyListRequestModel request);
         Task<bool> NameExistsAsync(string name);
         Task<bool> NameExistsExcludingIdAsync(string name, int excludeId);
+        Task<Company?> GetByNameAsync(string name);
         IQueryable<Company> GetAllQueryable();
     }
 }
