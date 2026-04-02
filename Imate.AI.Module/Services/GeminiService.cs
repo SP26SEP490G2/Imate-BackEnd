@@ -151,7 +151,7 @@ namespace Imate.AI.Module.Services
 
             _logger.LogInformation("Calling Gemini API...");
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            cts.CancelAfter(TimeSpan.FromSeconds(3));
             try
             {
                 var response = await _httpClient.PostAsync(requestUrl, content);

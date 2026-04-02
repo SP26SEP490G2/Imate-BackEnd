@@ -41,4 +41,10 @@
     <ProjectReference Include="..\Imate.AI.Module\Imate.AI.Module.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+	<None Update="comment-moderation.json">
+	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</None>
+  </ItemGroup>
+
 </Project>

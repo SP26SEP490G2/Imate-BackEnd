@@ -13,6 +13,7 @@ using Imate.API.Presentation.ResponseModels.QuestionBank;
 using Imate.API.Presentation.SignalR.Events.QuestionBanks;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 
 namespace Imate.API.Business.Services.QuestionBank
 {
@@ -1121,7 +1122,7 @@ namespace Imate.API.Business.Services.QuestionBank
 
             return created;
         }
-        public async Task<GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId)
+        public async Task<GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId, int? accountId)
         {
             var a = await _unitOfWork.Questions.GetQuestionByIdAsync(questionId, true);
             if (a == null) throw new NotFoundException($"Không tìm được câu hỏi hệ thống");
@@ -1138,7 +1139,21 @@ namespace Imate.API.Business.Services.QuestionBank
                 CategoriesName = a.QuestionCategories.Select(c => c.Category.Name).ToList(),
                 SkillsName = a.QuestionSkills.Select(s => s.Skill.Name).ToList(),
                 PositionsName = a.QuestionPositions.Select(p => p.Position.Name).ToList(),
-
+                Comments = a.Comments.Select(c => new CommentDto
+                {
+                    Id = c.Id,
+                    Content = c.Content,
+                    UserId = c.UserId,
+                    UserName = c.User?.FullName ?? "Unknown",
+                    UserAvatarUrl = c.User?.AvatarUrl ?? string.Empty,
+                    UserRole = c.User?.AccountRoles?.FirstOrDefault()?.Role?.Name.ToString() ?? "Candidate",
+                    CreatedAt = c.CreatedAt,
+                    UpdatedAt = c.UpdatedAt,
+                    UpvoteCount = c.Votes?.Count(v => v.IsUpvote) ?? 0,
+                    DownvoteCount = c.Votes?.Count(v => !v.IsUpvote) ?? 0,
+                    TotalVotes = c.Votes?.Count ?? 0,
+                    CurrentUserVoteIsUpvote = accountId.HasValue ? c.Votes?.FirstOrDefault(v => v.AccountId == accountId.Value)?.IsUpvote : null
+                }).ToList()
                 // THAY THẾ .ToListAsync() bằng .FirstOrDefaultAsync() để chỉ lấy 1 đối tượng.
 
 
