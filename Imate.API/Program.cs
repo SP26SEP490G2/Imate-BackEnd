@@ -13,6 +13,7 @@ using System.Text;
 Console.OutputEncoding = Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddJsonFile("comment-moderation.json", optional: true, reloadOnChange: true);
 var configuration = builder.Configuration;
 
 // Add services to the container.

@@ -17,6 +17,13 @@ namespace Imate.API.DataAccess.Configurations
             builder.Property(e => e.IsActive).IsRequired();
             builder.Property(e => e.CreatedAt).IsRequired().HasColumnType("datetimeoffset");
             builder.Property(e => e.UpdatedAt).IsRequired(false).HasColumnType("datetimeoffset");
+
+            var seedDate = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
+            builder.HasData(
+                new Company { Id = 1, Name = "FPT", IsActive = true, CreatedAt = seedDate },
+                new Company { Id = 2, Name = "Vinfast", IsActive = true, CreatedAt = seedDate },
+                new Company { Id = 3, Name = "Google", IsActive = true, CreatedAt = seedDate }
+            );
         }
     }
 }
