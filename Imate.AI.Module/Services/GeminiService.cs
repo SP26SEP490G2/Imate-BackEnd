@@ -168,7 +168,7 @@ Bạn PHẢI trả lời bằng định dạng JSON chính xác sau. KHÔNG thê
             try
             {
                 responseMessage = await GenerateContentAsync(systemPrompt, userPrompt);
-
+ 
                 // Clean response - remove markdown code blocks if present
                 var cleanedResponse = responseMessage.Trim();
                 if (cleanedResponse.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
