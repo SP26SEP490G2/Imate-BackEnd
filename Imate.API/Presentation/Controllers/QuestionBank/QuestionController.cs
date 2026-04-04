@@ -197,7 +197,8 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
         [HttpGet(APIConfig.Question.GetSystemQuestionById)]
         public async Task<IActionResult> GetSystemQuestionForStaffByIdAsync(int questionId)
         {
-            var question = await _questionService.GetSystemQuestionByIdAsync(questionId);
+            var accountId = GetCurrentAccountId();
+            var question = await _questionService.GetSystemQuestionByIdAsync(questionId, accountId);
 
             return Ok(question);
         }

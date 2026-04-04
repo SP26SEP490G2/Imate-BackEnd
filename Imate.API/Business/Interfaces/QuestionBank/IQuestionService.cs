@@ -21,7 +21,7 @@ namespace Imate.API.Business.Interfaces.QuestionBank
         Task<ContributedQuestionDetailsResponseModel> GetPublicContributedQuestionByIdAsync(int questionId, int? accountId);
         Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request);
         Task<Question> UpdateSystemQuestionForStaffAsync(int questionId, UpdateSystemQuestionForStaffRequest request);
-        Task<GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId);
+        Task<GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId, int? accountId);
         Task<GetAllContributedQuestionsForStaffAsyncResponse> GetContributedQuestionByIdAsync(int questionId, int? accountId);
 
         Task<Question> UpdateContributedQuestionStatusAsync(int questionId, bool status, int staffId);

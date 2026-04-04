@@ -195,6 +195,10 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
                 .Include(q => q.QuestionPositions)
                     .ThenInclude(qp => qp.Position)
                 .Include(q => q.Comments)
+                    .ThenInclude(c => c.User)
+                        .ThenInclude(c => c.AccountRoles)
+                            .ThenInclude(c => c.Role)
+                .Include(q => q.Comments)
                     .ThenInclude(c => c.Votes)
                     .Where(q => q.IsFromSystem == isFromSystem)
                           .FirstOrDefaultAsync();
