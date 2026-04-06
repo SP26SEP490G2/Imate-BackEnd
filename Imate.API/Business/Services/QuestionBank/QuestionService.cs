@@ -1041,7 +1041,7 @@ namespace Imate.API.Business.Services.QuestionBank
             await _mediator.Publish(new NewContributedQuestionEvent(question));
         }
 
-        public async Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request)
+        public async Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request, int creatorId)
         {
             // 1. Ánh xạ thuộc tính cơ bản
             var question = new Question
@@ -1049,14 +1049,11 @@ namespace Imate.API.Business.Services.QuestionBank
                 Content = request.Content,
                 Difficulty = request.Difficulty,
                 SampleAnswer = request.SampleAnswer,
-                CreatorId = request.CreatorId,
+                CreatorId = creatorId,
                 IsFromSystem = true,
                 IsActive = true
             };
-            var a = new List<int>();
-            // 2. Kiểm tra tồn tại của Creator ID
-            if (await _unitOfWork.Accounts.AreUsersExisted(request.CreatorId) == false)
-                throw new NotFoundException($"Creator ID {request.CreatorId} không tồn tại.");
+            var a = new List<int>();         
 
             // --- BẮT ĐẦU PHẦN ÁNH XẠ VÀ VALIDATION CHO CÁC MỐI QUAN HỆ ---
 

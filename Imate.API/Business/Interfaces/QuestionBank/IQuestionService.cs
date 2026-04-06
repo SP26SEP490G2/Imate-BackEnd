@@ -19,7 +19,7 @@ namespace Imate.API.Business.Interfaces.QuestionBank
         Task<IEnumerable<PublicContributedQuestionResponseModel>> GetAllPublicContributedQuestionAsync(string subscription,int? accountId);
         Task<PagedList<PublicContributedQuestionResponseModel>> GetPublicContributedQuestionBanksWithPaginationAsync(string subscription, int? accountId, GetPublicContributedQuestionParams questionParams);
         Task<ContributedQuestionDetailsResponseModel> GetPublicContributedQuestionByIdAsync(int questionId, int? accountId);
-        Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request);
+        Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request, int creatorId);
         Task<Question> UpdateSystemQuestionForStaffAsync(int questionId, UpdateSystemQuestionForStaffRequest request);
         Task<GetAllSystemQuestionsForStaffAsyncResponse> GetSystemQuestionByIdAsync(int questionId, int? accountId);
         Task<GetAllContributedQuestionsForStaffAsyncResponse> GetContributedQuestionByIdAsync(int questionId, int? accountId);

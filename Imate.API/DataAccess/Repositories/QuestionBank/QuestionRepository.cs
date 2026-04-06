@@ -369,6 +369,7 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
                 .Include(q => q.Comments)
                 .Where(q => q.IsActive)
                 .OrderByDescending(q => q.Comments.Count)
+                .Take(5)
                 .Select(q => new QuestionResponse.ListHotQuestion
                 {
                     Id = q.Id,
