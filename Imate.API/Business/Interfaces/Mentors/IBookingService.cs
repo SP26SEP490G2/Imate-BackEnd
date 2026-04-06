@@ -9,6 +9,8 @@ namespace Imate.API.Business.Interfaces.Mentors
         Task<List<MentorBookedSlotResponse>> GetBookedSlotsByMentorIdAsync(int mentorId);
         Task<List<BookingDetailResponse>> GetCandidateBookingsAsync(int candidateId);
         Task<List<BookingDetailResponse>> GetMentorBookingsAsync(int mentorId);
+        Task<List<MentorSessionSummaryResponse>> GetMentorCompletedBookingsSummaryAsync(int mentorId);
+        Task<BookingDetailResponse> GetMentorSessionDetailAsync(int mentorId, int sessionId);
         Task CancelBookingAsync(int bookingId, int candidateId);
         Task RateMentorAsync(int bookingId, int candidateId, RateMentorRequest request);
     }

@@ -15,6 +15,7 @@ namespace Imate.API.Presentation.ResponseModels.Mentors
         public DateOnly BookDate { get; set; }
         public BookingStatus Status { get; set; }
         public string? MeetingRoomId { get; set; }
+        public string? AudioRecordKey { get; set; }
         public int Price { get; set; }
     }
 }

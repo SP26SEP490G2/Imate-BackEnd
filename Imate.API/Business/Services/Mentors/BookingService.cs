@@ -6,6 +6,7 @@ using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Mentors;
 using Imate.API.Presentation.ResponseModels.Mentors;
 using Imate.API.Business.Exceptions;
+using System.Text.Json;
 
 namespace Imate.API.Business.Services.Mentors
 {
@@ -205,6 +206,7 @@ namespace Imate.API.Business.Services.Mentors
 
         public async Task<List<BookingDetailResponse>> GetMentorBookingsAsync(int mentorId)
         {
+            await AutoCompleteExpiredBookingsAsync();
             var bookings = await _unitOfWork.Bookings.GetAllBookings()
                 .Where(b => b.MentorId == mentorId)
                 .Select(b => new
@@ -253,6 +255,124 @@ namespace Imate.API.Business.Services.Mentors
                     Price = b.PriceAtBooking
                 };
             }).ToList();
+        }
+
+        public async Task<List<MentorSessionSummaryResponse>> GetMentorCompletedBookingsSummaryAsync(int mentorId)
+        {
+            await AutoCompleteExpiredBookingsAsync();
+            var mentor = await _unitOfWork.Mentors.GetByIdAsync(mentorId)
+                ?? throw new NotFoundException("Mentor not found.");
+
+            var bookings = await _unitOfWork.Bookings.GetMentorCompletedBookingsAsync(mentorId);
+
+            return bookings.Select(b => new MentorSessionSummaryResponse
+            {
+                BookingId = b.Id,
+                CandidateId = b.CandidateId,
+                CandidateName = b.Candidate.FullName,
+                CandidateAvatarUrl = b.Candidate.AvatarUrl,
+                Status = b.Status,
+                StartTime = b.StartTime,
+                ReviewText = b.ReviewText,
+                RatingScore = b.RatingScore
+            }).ToList();
+        }
+
+        public async Task<BookingDetailResponse> GetMentorSessionDetailAsync(int mentorId, int sessionId)
+        {
+            var mentor = await _unitOfWork.Mentors.GetByIdAsync(mentorId)
+                ?? throw new NotFoundException("Mentor not found.");
+
+            var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(sessionId)
+                ?? throw new NotFoundException("Session not found.");
+
+            if (booking.MentorId != mentorId)
+            {
+                throw new BadRequestException("This session does not belong to the mentor.");
+            }
+
+            string? mp4Url = null;
+            if (!string.IsNullOrEmpty(booking.AudioRecordKey))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(booking.AudioRecordKey);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var file in files.EnumerateArray())
+                        {
+                            if (file.TryGetProperty("fileName", out var fileName) && 
+                                fileName.GetString()?.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                if (file.TryGetProperty("url", out var url))
+                                {
+                                    mp4Url = url.GetString();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    mp4Url = null;
+                }
+            }
+
+            var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
+            TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
+            var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(booking.StartTime.DateTime, localTimeZone);
+            var timeOnly = TimeOnly.FromDateTime(localStartTime);
+            var slot = slots.FirstOrDefault(s => s.DayOfWeek == (int)booking.BookDate.DayOfWeek && s.StartTime == timeOnly);
+            
+            DateTimeOffset endTime = booking.StartTime.AddHours(1);
+            if (slot != null)
+            {
+                endTime = booking.StartTime.Add(slot.EndTime.ToTimeSpan() - slot.StartTime.ToTimeSpan());
+            }
+
+            return new BookingDetailResponse
+            {
+                BookingId = booking.Id,
+                MentorId = booking.MentorId,
+                CandidateId = booking.CandidateId,
+                ProfileName = booking.Candidate.FullName,
+                ProfileAvatarUrl = booking.Candidate.AvatarUrl,
+                JobTitle = "Candidate",
+                StartTime = booking.StartTime,
+                EndTime = endTime,
+                BookDate = booking.BookDate,
+                Status = booking.Status,
+                MeetingRoomId = booking.AgoraChannelName,
+                AudioRecordKey = mp4Url,
+                Price = booking.PriceAtBooking
+            };
+        }
+
+        private async Task AutoCompleteExpiredBookingsAsync()
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                var expiredBookings = await _unitOfWork.Bookings.GetAllBookings()
+                    .Where(b => b.Status == BookingStatus.Confirmed && b.StartTime.AddHours(1) < now)
+                    .ToListAsync();
+
+                if (expiredBookings.Any())
+                {
+                    foreach (var booking in expiredBookings)
+                    {
+                        booking.Status = BookingStatus.Completed;
+                        booking.UpdatedAt = DateTime.UtcNow;
+                    }
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
+            catch (Exception)
+            {
+                // Log and ignore to prevent failure in main flow
+            }
         }
 
         public async Task CancelBookingAsync(int bookingId, int candidateId)

@@ -42,6 +42,24 @@ namespace Imate.API.Presentation.Controllers.Mentors
             return Ok(result);
         }
 
+        [HttpGet("mentor/history-session")]
+        [Authorize(Roles = "Mentor")]
+        public async Task<IActionResult> GetMentorHistorySession()
+        {
+            var mentorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _bookingService.GetMentorCompletedBookingsSummaryAsync(mentorId);
+            return Ok(result);
+        }
+
+        [HttpGet("mentor/history-session/{sessionId}")]
+        [Authorize(Roles = "Mentor")]
+        public async Task<IActionResult> GetMentorHistorySessionDetail(int sessionId)
+        {
+            var mentorId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _bookingService.GetMentorSessionDetailAsync(mentorId, sessionId);
+            return Ok(result);
+        }
+
         [HttpPut("{bookingId}/cancel")]
         [Authorize(Roles = "Candidate")]
         public async Task<IActionResult> CancelBooking(int bookingId)
