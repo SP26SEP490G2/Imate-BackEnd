@@ -19,7 +19,5 @@ namespace Imate.API.Presentation.RequestModels.QuestionBank
         public List<int> SkillIds { get; set; }
         [MinLength(1, ErrorMessage = "Phải có ít nhất một vị trí.")]
         public List<int> PositionIds { get; set; }
-        [Required(ErrorMessage = "Phải có người tạo.")]   
-        public int CreatorId { get; set; } 
     }
 }
