@@ -54,16 +54,19 @@ namespace Imate.API.Business.Services.Mentors
                     );
                 }
 
-                var resultQuery = query.Select(m => new MentorResponse.ListPreviewMentor
-                {
-                    AccountId = m.AccountId,
-                    FullName = m.Account.FullName,
-                    Position = m.MentorPositions.FirstOrDefault() != null ? m.MentorPositions.FirstOrDefault().Position.Name : string.Empty,
-                    Yoe = m.Yoe,
-                    Company = m.MentorCompanies.FirstOrDefault() != null ? m.MentorCompanies.FirstOrDefault().Company.Name : string.Empty,
-                    AvgRatings = m.AvgRatings,
-                    TotalRatingCount = m.TotalRatingCount
-                });
+                var resultQuery = query
+                    .OrderByDescending(m => m.AvgRatings)
+                    .Select(m => new MentorResponse.ListPreviewMentor
+                    {
+                        AccountId = m.AccountId,
+                        FullName = m.Account.FullName,
+                        Position = m.MentorPositions.FirstOrDefault() != null ? m.MentorPositions.FirstOrDefault().Position.Name : string.Empty,
+                        Yoe = m.Yoe,
+                        Company = m.MentorCompanies.FirstOrDefault() != null ? m.MentorCompanies.FirstOrDefault().Company.Name : string.Empty,
+                        AvgRatings = m.AvgRatings,
+                        TotalRatingCount = m.TotalRatingCount
+                    })
+                    .Take(5);
 
                 return await PagedList<MentorResponse.ListPreviewMentor>.CreateAsync(
                     resultQuery,
