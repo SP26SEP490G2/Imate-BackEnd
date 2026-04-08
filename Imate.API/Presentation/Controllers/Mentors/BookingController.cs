@@ -60,6 +60,24 @@ namespace Imate.API.Presentation.Controllers.Mentors
             return Ok(result);
         }
 
+        [HttpGet("candidate/history-session")]
+        [Authorize(Roles = "Candidate")]
+        public async Task<IActionResult> GetCandidateHistorySession()
+        {
+            var candidateId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _bookingService.GetCandidateCompletedBookingsSummaryAsync(candidateId);
+            return Ok(result);
+        }
+
+        [HttpGet("candidate/history-session/{sessionId}")]
+        [Authorize(Roles = "Candidate")]
+        public async Task<IActionResult> GetCandidateHistorySessionDetail(int sessionId)
+        {
+            var candidateId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _bookingService.GetCandidateSessionDetailAsync(candidateId, sessionId);
+            return Ok(result);
+        }
+
         [HttpPut("{bookingId}/cancel")]
         [Authorize(Roles = "Candidate")]
         public async Task<IActionResult> CancelBooking(int bookingId)

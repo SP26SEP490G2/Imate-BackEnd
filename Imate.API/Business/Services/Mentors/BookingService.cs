@@ -375,6 +375,99 @@ namespace Imate.API.Business.Services.Mentors
             }
         }
 
+        public async Task<List<CandidateSessionSummaryResponse>> GetCandidateCompletedBookingsSummaryAsync(int candidateId)
+        {
+            await AutoCompleteExpiredBookingsAsync();
+
+            var bookings = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.CandidateId == candidateId && (b.Status == BookingStatus.Completed || b.Status == BookingStatus.Cancelled))
+                .Select(b => new CandidateSessionSummaryResponse
+                {
+                    BookingId = b.Id,
+                    MentorId = b.MentorId,
+                    MentorName = b.Mentor.Account.FullName,
+                    MentorAvatarUrl = b.Mentor.Account.AvatarUrl,
+                    Status = b.Status,
+                    StartTime = b.StartTime,
+                    RatingScore = b.RatingScore,
+                    ReviewText = b.ReviewText,
+                    RatingCreatedAt = b.RatingCreatedAt
+                })
+                .OrderByDescending(b => b.StartTime)
+                .ToListAsync();
+
+            return bookings;
+        }
+
+        public async Task<BookingDetailResponse> GetCandidateSessionDetailAsync(int candidateId, int sessionId)
+        {
+            var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(sessionId)
+                ?? throw new NotFoundException("Session not found.");
+
+            if (booking.CandidateId != candidateId)
+            {
+                throw new BadRequestException("This session does not belong to the candidate.");
+            }
+
+            string? mp4Url = null;
+            if (!string.IsNullOrEmpty(booking.AudioRecordKey))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(booking.AudioRecordKey);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var file in files.EnumerateArray())
+                        {
+                            if (file.TryGetProperty("fileName", out var fileName) && 
+                                fileName.GetString()?.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                if (file.TryGetProperty("url", out var url))
+                                {
+                                    mp4Url = url.GetString();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    mp4Url = null;
+                }
+            }
+
+            var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
+            TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
+            var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(booking.StartTime.DateTime, localTimeZone);
+            var timeOnly = TimeOnly.FromDateTime(localStartTime);
+            var slot = slots.FirstOrDefault(s => s.DayOfWeek == (int)booking.BookDate.DayOfWeek && s.StartTime == timeOnly);
+            
+            DateTimeOffset endTime = booking.StartTime.AddHours(1);
+            if (slot != null)
+            {
+                endTime = booking.StartTime.Add(slot.EndTime.ToTimeSpan() - slot.StartTime.ToTimeSpan());
+            }
+
+            return new BookingDetailResponse
+            {
+                BookingId = booking.Id,
+                MentorId = booking.MentorId,
+                CandidateId = booking.CandidateId,
+                ProfileName = booking.Mentor.Account.FullName,
+                ProfileAvatarUrl = booking.Mentor.Account.AvatarUrl,
+                JobTitle = "Mentor",
+                StartTime = booking.StartTime,
+                EndTime = endTime,
+                BookDate = booking.BookDate,
+                Status = booking.Status,
+                MeetingRoomId = booking.AgoraChannelName,
+                AudioRecordKey = mp4Url,
+                Price = booking.PriceAtBooking
+            };
+        }
+
         public async Task CancelBookingAsync(int bookingId, int candidateId)
         {
             var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(bookingId)
