@@ -12,6 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Azure Speech SDK for TTS -->
+    <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.42.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Copy SystemMessages to output directory -->
     <Content Include="SystemMessages\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

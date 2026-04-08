@@ -24,6 +24,9 @@ namespace Imate.AI.Module.Extensions
             // Practice Test service (UC-30)
             services.AddScoped<IPracticeTestService, PracticeTestService>();
 
+            // Interview AI service (UC-35)
+            services.AddScoped<IInterviewService, InterviewService>();
+
             return services;
         }
     }
