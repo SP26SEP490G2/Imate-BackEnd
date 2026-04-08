@@ -65,8 +65,7 @@ namespace Imate.API.Business.Services.Mentors
                         Company = m.MentorCompanies.FirstOrDefault() != null ? m.MentorCompanies.FirstOrDefault().Company.Name : string.Empty,
                         AvgRatings = m.AvgRatings,
                         TotalRatingCount = m.TotalRatingCount
-                    })
-                    .Take(5);
+                    });
 
                 return await PagedList<MentorResponse.ListPreviewMentor>.CreateAsync(
                     resultQuery,
