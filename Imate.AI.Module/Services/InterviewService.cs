@@ -176,6 +176,26 @@ namespace Imate.AI.Module.Services
             sb.AppendLine($"\nCâu hỏi thứ: {previousResponses.Count + 1}/{MaxQuestionsPerSession}");
             if (estimatedAbility.HasValue) sb.AppendLine($"Năng lực ước tính: {estimatedAbility.Value:F2}");
 
+            // Thêm nội dung CV ứng viên để cá nhân hóa câu hỏi
+            if (!string.IsNullOrEmpty(session.CvContent))
+            {
+                sb.AppendLine("\n=== THÔNG TIN CV ỨNG VIÊN ===");
+                sb.AppendLine(session.CvContent.Length > 2000
+                    ? session.CvContent.Substring(0, 2000) + "..."
+                    : session.CvContent);
+                sb.AppendLine("=== HẾT CV ===");
+            }
+
+            // Thêm JD gốc để câu hỏi sát yêu cầu công việc
+            if (!string.IsNullOrEmpty(session.JobDescriptionText))
+            {
+                sb.AppendLine("\n=== MÔ TẢ CÔNG VIỆC (JD) ===");
+                sb.AppendLine(session.JobDescriptionText.Length > 1500
+                    ? session.JobDescriptionText.Substring(0, 1500) + "..."
+                    : session.JobDescriptionText);
+                sb.AppendLine("=== HẾT JD ===");
+            }
+
             if (previousResponses.Any())
             {
                 sb.AppendLine("\n=== LỊCH SỬ CÂU HỎI TRƯỚC ===");
@@ -189,7 +209,8 @@ namespace Imate.AI.Module.Services
                 sb.AppendLine("=== HẾT LỊCH SỬ ===");
             }
 
-            sb.AppendLine("\nDựa vào context trên, hãy tạo câu hỏi phỏng vấn tiếp theo. KHÔNG lặp lại chủ đề câu trước.");
+            sb.AppendLine("\nDựa vào context trên (bao gồm CV và JD nếu có), hãy tạo câu hỏi phỏng vấn tiếp theo.");
+            sb.AppendLine("Ưu tiên hỏi về kinh nghiệm thực tế trong CV kết hợp yêu cầu trong JD. KHÔNG lặp lại chủ đề câu trước.");
             if (previousResponses.Count == 0)
                 sb.AppendLine("Đây là câu hỏi đầu tiên, hãy bắt đầu với độ khó vừa phải.");
 
@@ -307,6 +328,26 @@ Lưu ý:
             var rawResponse = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
 
             return ParseSetupResponse(rawResponse);
+        }
+
+        public async Task<string> GenerateReactionAsync(int sessionId, string question, string userAnswer)
+        {
+            var systemPrompt = @"Bạn là phỏng vấn viên AI tên Bernie, chuyên phỏng vấn IT. 
+Sau khi ứng viên trả lời, hãy phản hồi ngắn gọn (1-2 câu) một cách tự nhiên và chuyên nghiệp.
+
+QUY TẮC:
+- Nhận xét tích cực nếu câu trả lời tốt (ví dụ: 'Câu trả lời rất chi tiết!', 'Tốt lắm!')
+- Gợi ý nhẹ nếu câu trả lời chung chung (ví dụ: 'Bạn có thể cho ví dụ cụ thể hơn không?')
+- Chuyển tiếp tự nhiên sang câu hỏi tiếp theo (ví dụ: 'Hay lắm! Tiếp theo tôi muốn hỏi về...')
+- KHÔNG đánh giá điểm, KHÔNG nói đáp án đúng/sai
+- KHÔNG hỏi câu hỏi mới trong phản hồi
+- Trả về text thuần, KHÔNG markdown, KHÔNG JSON";
+
+            var userPrompt = $"Câu hỏi phỏng vấn: {question}\nCâu trả lời của ứng viên: {userAnswer}\n\nHãy phản hồi ngắn gọn (1-2 câu):";
+
+            _logger.LogInformation("Generating AI reaction for session {SessionId}", sessionId);
+            var reaction = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
+            return reaction.Trim();
         }
 
         private SetupInterviewResult ParseSetupResponse(string rawResponse)

@@ -6,6 +6,9 @@ NGUYÊN TẮC:
 3. Đa dạng chủ đề: lý thuyết, thực hành, tình huống, kinh nghiệm
 4. Câu hỏi phải thực tế, liên quan công việc thực tế
 5. Tối đa 10 câu hỏi cho một phiên phỏng vấn
+6. Nếu có thông tin CV, hãy hỏi dựa trên kinh nghiệm và dự án thực tế của ứng viên
+7. Kết hợp giữa yêu cầu JD và kinh nghiệm trong CV để tạo câu hỏi sát thực tế
+8. Ưu tiên hỏi về kỹ năng ứng viên tự nhận có nhưng JD yêu cầu — đây là điểm giao quan trọng nhất
 
 PHẢI trả về ĐÚNG JSON format (không markdown, không code block, CHỈ JSON thuần):
 {

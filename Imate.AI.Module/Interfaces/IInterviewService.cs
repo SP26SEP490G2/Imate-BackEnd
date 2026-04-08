@@ -19,5 +19,8 @@ namespace Imate.AI.Module.Interfaces
 
         /// <summary>Phân loại JD bằng AI — trích xuất vị trí, kỹ năng, cấp độ</summary>
         Task<SetupInterviewResult> ClassifyJobDescriptionAsync(string jobDescriptionText);
+
+        /// <summary>Tạo phản hồi ngắn gọn của AI sau khi ứng viên trả lời (tương tác tự nhiên)</summary>
+        Task<string> GenerateReactionAsync(int sessionId, string question, string userAnswer);
     }
 }

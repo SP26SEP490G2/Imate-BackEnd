@@ -278,10 +278,28 @@ namespace Imate.AI.Module.Controllers
                 session.TotalQuestionsAnswered += 1;
                 await _dataProvider.UpdateSessionAsync(session);
 
+                // Tạo phản hồi AI cho câu trả lời (tương tác tự nhiên)
+                string? aiReaction = null;
+                try
+                {
+                    aiReaction = await _interviewService.GenerateReactionAsync(
+                        request.InterviewSessionId,
+                        response.QuestionContent,
+                        request.UserAnswer);
+                }
+                catch (Exception reactionEx)
+                {
+                    _logger.LogWarning(reactionEx, "Failed to generate AI reaction, skipping");
+                }
+
                 return Ok(new
                 {
                     success = true,
-                    data = new { message = "Câu trả lời đã được ghi nhận." },
+                    data = new
+                    {
+                        message = "Câu trả lời đã được ghi nhận.",
+                        aiReaction = aiReaction
+                    },
                     message = "Gửi câu trả lời thành công."
                 });
             }
