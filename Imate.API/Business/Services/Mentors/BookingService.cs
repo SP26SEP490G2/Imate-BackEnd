@@ -450,7 +450,7 @@ namespace Imate.API.Business.Services.Mentors
             booking.UpdatedAt = DateTime.UtcNow;
 
             // Recalculate Mentor's average rating
-            var mentor = await _unitOfWork.Mentors.GetByIdAsync(booking.MentorId)
+            var mentor = await _unitOfWork.Mentors.GetMentorByIdAsync(booking.MentorId)
                 ?? throw new NotFoundException("Mentor not found.");
 
             var completedBookings = await _unitOfWork.Bookings.GetMentorCompletedBookingsAsync(booking.MentorId);
