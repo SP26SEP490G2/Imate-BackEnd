@@ -22,17 +22,20 @@ namespace Imate.AI.Module.Controllers
         private readonly IInterviewService _interviewService;
         private readonly IInterviewSessionDataProvider _dataProvider;
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly ISpeechSynthesisService _speechSynthesisService;
         private readonly ILogger<AIInterviewController> _logger;
 
         public AIInterviewController(
             IInterviewService interviewService,
             IInterviewSessionDataProvider dataProvider,
             IServiceScopeFactory serviceScopeFactory,
+            ISpeechSynthesisService speechSynthesisService,
             ILogger<AIInterviewController> logger)
         {
             _interviewService = interviewService;
             _dataProvider = dataProvider;
             _serviceScopeFactory = serviceScopeFactory;
+            _speechSynthesisService = speechSynthesisService;
             _logger = logger;
         }
 
@@ -173,7 +176,7 @@ namespace Imate.AI.Module.Controllers
         /// GET /api/ai-interview/welcome-message/{sessionId}
         /// </summary>
         [HttpGet("ai-interview/welcome-message/{sessionId}")]
-        public async Task<IActionResult> GetWelcomeMessage(int sessionId)
+        public async Task<IActionResult> GetWelcomeMessage(int sessionId, CancellationToken cancellationToken)
         {
             try
             {
@@ -184,10 +187,27 @@ namespace Imate.AI.Module.Controllers
                 var welcomeMessage = await _interviewService.GenerateWelcomeMessageAsync(
                     session.PositionName, session.CompanyName);
 
+                string? audioBase64 = null;
+                string? mimeType = null;
+                try
+                {
+                    var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
+                        welcomeMessage,
+                        language: "vi-VN",
+                        cancellationToken: cancellationToken);
+
+                    audioBase64 = speechResult.AudioBase64;
+                    mimeType = speechResult.MimeType;
+                }
+                catch (Exception ttsEx)
+                {
+                    _logger.LogWarning(ttsEx, "Lỗi khi gọi TTS cho lời chào");
+                }
+
                 return Ok(new
                 {
                     success = true,
-                    data = new { welcomeMessage },
+                    data = new { welcomeMessage, audioBase64, mimeType },
                     message = "Tạo lời chào thành công."
                 });
             }
@@ -203,7 +223,7 @@ namespace Imate.AI.Module.Controllers
         /// POST /api/ai-interview/generate-question
         /// </summary>
         [HttpPost("ai-interview/generate-question")]
-        public async Task<IActionResult> GenerateQuestion([FromBody] GenerateQuestionRequest request)
+        public async Task<IActionResult> GenerateQuestion([FromBody] GenerateQuestionRequest request, CancellationToken cancellationToken)
         {
             try
             {
@@ -223,6 +243,20 @@ namespace Imate.AI.Module.Controllers
 
                 if (result.IsTerminated)
                 {
+                    try
+                    {
+                        var speechTermResult = await _speechSynthesisService.SynthesizeToBase64Async(
+                            result.TerminationMessage ?? "Buổi phỏng vấn kết thúc.",
+                            language: "vi-VN",
+                            cancellationToken: cancellationToken);
+                        result.AudioBase64 = speechTermResult.AudioBase64;
+                        result.MimeType = speechTermResult.MimeType;
+                    } 
+                    catch (Exception ttsEx)
+                    {
+                        _logger.LogWarning(ttsEx, "Lỗi TTS thông báo kết thúc phỏng vấn");
+                    }
+
                     return Ok(new
                     {
                         success = true,
@@ -232,6 +266,21 @@ namespace Imate.AI.Module.Controllers
                         data = result,
                         message = "Phỏng vấn đã kết thúc."
                     });
+                }
+
+                try
+                {
+                    var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
+                        result.QuestionText,
+                        language: "vi-VN",
+                        cancellationToken: cancellationToken);
+
+                    result.AudioBase64 = speechResult.AudioBase64;
+                    result.MimeType = speechResult.MimeType;
+                }
+                catch (Exception ttsEx)
+                {
+                    _logger.LogWarning(ttsEx, "Lỗi TTS cho câu hỏi phỏng vấn");
                 }
 
                 return Ok(new { success = true, data = result, message = "Tạo câu hỏi thành công." });
@@ -252,7 +301,7 @@ namespace Imate.AI.Module.Controllers
         /// POST /api/ai-interview/submit-answer
         /// </summary>
         [HttpPost("ai-interview/submit-answer")]
-        public async Task<IActionResult> SubmitAnswer([FromBody] SubmitAnswerRequest request)
+        public async Task<IActionResult> SubmitAnswer([FromBody] SubmitAnswerRequest request, CancellationToken cancellationToken)
         {
             try
             {
@@ -280,16 +329,30 @@ namespace Imate.AI.Module.Controllers
 
                 // Tạo phản hồi AI cho câu trả lời (tương tác tự nhiên)
                 string? aiReaction = null;
+                string? aiReactionAudioBase64 = null;
+                string? mimeType = null;
+
                 try
                 {
                     aiReaction = await _interviewService.GenerateReactionAsync(
                         request.InterviewSessionId,
                         response.QuestionContent,
                         request.UserAnswer);
+
+                    if (!string.IsNullOrEmpty(aiReaction))
+                    {
+                        var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
+                            aiReaction,
+                            language: "vi-VN",
+                            cancellationToken: cancellationToken);
+
+                        aiReactionAudioBase64 = speechResult.AudioBase64;
+                        mimeType = speechResult.MimeType;
+                    }
                 }
                 catch (Exception reactionEx)
                 {
-                    _logger.LogWarning(reactionEx, "Failed to generate AI reaction, skipping");
+                    _logger.LogWarning(reactionEx, "Lỗi khi gọi dịch vụ tạo câu phản hồi hoặc TTS, bỏ qua.");
                 }
 
                 return Ok(new
@@ -298,7 +361,9 @@ namespace Imate.AI.Module.Controllers
                     data = new
                     {
                         message = "Câu trả lời đã được ghi nhận.",
-                        aiReaction = aiReaction
+                        aiReaction = aiReaction,
+                        aiReactionAudioBase64 = aiReactionAudioBase64,
+                        mimeType = mimeType
                     },
                     message = "Gửi câu trả lời thành công."
                 });

@@ -13,6 +13,8 @@ namespace Imate.AI.Module.Models.Responses
         public string? TerminationReason { get; set; }
         public string? TerminationMessage { get; set; }
         public QuestionMetrics? Metrics { get; set; }
+        public string? AudioBase64 { get; set; }
+        public string? MimeType { get; set; }
     }
 
     /// <summary>
