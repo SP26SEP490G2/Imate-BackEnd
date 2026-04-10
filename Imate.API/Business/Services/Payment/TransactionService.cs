@@ -243,7 +243,7 @@ namespace Imate.API.Business.Services.Payment
             }
 
             // Giới hạn độ dài description (PayOS có thể có giới hạn)
-            var description = $"Deposit Imateint #{orderCode}";
+            var description = $"Nap imCoin #{newTransaction.Id}";
             if (description.Length > 255)
             {
                 description = description.Substring(0, 255);
@@ -550,6 +550,7 @@ namespace Imate.API.Business.Services.Payment
                     throw new ArgumentException("Vai trò người dùng không được phép thực hiện hành động này.");
                 }
                 // --- KẾT THÚC LOGIC LẤY THÔNG TIN ---
+
 
                 // 2.5. KIỂM TRA TIỀN ĐẢM BẢO CHO MENTOR
                 if (role.Equals("Mentor", StringComparison.OrdinalIgnoreCase) && mentorProfile != null)
