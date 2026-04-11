@@ -16,6 +16,7 @@ namespace Imate.AI.Module.Services
         private readonly IGeminiService _geminiService;
         private readonly IInterviewSessionDataProvider _dataProvider;
         private readonly ILogger<InterviewService> _logger;
+        private readonly IQuestionDataProvider _questionDataProvider;
 
         private const int MaxQuestionsPerSession = 10;
         private static readonly string _questionSystemPrompt;
@@ -39,11 +40,13 @@ namespace Imate.AI.Module.Services
         public InterviewService(
             IGeminiService geminiService,
             IInterviewSessionDataProvider dataProvider,
-            ILogger<InterviewService> logger)
+            ILogger<InterviewService> logger,
+            IQuestionDataProvider questionDataProvider)
         {
             _geminiService = geminiService;
             _dataProvider = dataProvider;
             _logger = logger;
+            _questionDataProvider = questionDataProvider;
         }
 
         public async Task<string> GenerateWelcomeMessageAsync(string? positionName, string? companyName, string? language = null)
@@ -70,6 +73,7 @@ namespace Imate.AI.Module.Services
 
             var existingResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
             var answeredCount = existingResponses.Count(r => !string.IsNullOrEmpty(r.UserAnswer));
+            var ragQuestions = await GetReferenceQuestionsAsync(session.SkillName ?? "General", session.LevelName ?? "Junior");
 
             if (answeredCount >= MaxQuestionsPerSession)
             {
@@ -81,11 +85,12 @@ namespace Imate.AI.Module.Services
                 };
             }
 
-            var userPrompt = BuildQuestionUserPrompt(session, existingResponses, estimatedAbility);
+            var userPrompt = BuildQuestionUserPrompt(session, existingResponses, estimatedAbility, ragQuestions);
 
             _logger.LogInformation("Generating question {Number}/{Max} for session {SessionId}",
                 existingResponses.Count + 1, MaxQuestionsPerSession, sessionId);
-
+            var delay = Random.Shared.Next(800, 1500);
+            await Task.Delay(delay);
             var rawResponse = await _geminiService.GenerateContentAsync(_questionSystemPrompt, userPrompt);
             var questionData = ParseQuestionResponse(rawResponse);
 
@@ -165,9 +170,21 @@ namespace Imate.AI.Module.Services
 
         // ── Private helpers ──
 
-        private static string BuildQuestionUserPrompt(InterviewSessionData session, List<InterviewResponseData> previousResponses, double? estimatedAbility)
+        private static string BuildQuestionUserPrompt(InterviewSessionData session, List<InterviewResponseData> previousResponses, double? estimatedAbility, List<QuestionBankItem>? ragQuestions)
         {
             var sb = new StringBuilder();
+
+            int turnNumber = previousResponses.Count + 1;
+            // Xác định đang ở Chunk nào
+            string currentPhase = turnNumber switch
+            {
+                <= 2 => "Giai đoạn 1: Giới thiệu bản thân (Ice-breaker)",
+                <= 4 => "Giai đoạn 2: Câu hỏi kỹ thuật chuyên môn (Technical)",
+                <= 7 => "Giai đoạn 3: Tình huống giả định (Situational)",
+                8 => "Giai đoạn 4: Đào sâu tình huống từ câu trả lời trước (Deep-dive)",
+                _ => "Giai đoạn 5: Văn hóa làm việc và mức độ phù hợp (Culture fit)"
+            };
+
             sb.AppendLine("=== THÔNG TIN PHIÊN PHỎNG VẤN ===");
             if (!string.IsNullOrEmpty(session.PositionName)) sb.AppendLine($"Vị trí: {session.PositionName}");
             if (!string.IsNullOrEmpty(session.SkillName)) sb.AppendLine($"Kỹ năng: {session.SkillName}");
@@ -175,6 +192,20 @@ namespace Imate.AI.Module.Services
             if (!string.IsNullOrEmpty(session.CompanyName)) sb.AppendLine($"Công ty: {session.CompanyName}");
             sb.AppendLine($"\nCâu hỏi thứ: {previousResponses.Count + 1}/{MaxQuestionsPerSession}");
             if (estimatedAbility.HasValue) sb.AppendLine($"Năng lực ước tính: {estimatedAbility.Value:F2}");
+
+            sb.AppendLine($"\n**TRẠNG THÁI HIỆN TẠI: Đang ở Câu hỏi thứ {turnNumber}/{MaxQuestionsPerSession}**");
+            sb.AppendLine($"**>>> YÊU CẦU: HÃY ĐẶT 1 CÂU HỎI THUỘC CHỦ ĐỀ CỦA [{currentPhase}] <<<**\n");
+
+
+            if (turnNumber >= 3 && turnNumber <= 4 && ragQuestions?.Count > 0)
+            {
+                sb.AppendLine("\n=== NGÂN HÀNG CÂU HỎI THAM KHẢO TỪ DATABASE ===");
+                sb.AppendLine("Hãy sử dụng các câu hỏi mẫu sau làm chất liệu tham khảo để biến tấu ra câu hỏi cho ứng viên sao cho phù hợp với cấp độ và JD (Không copy nguyên văn):");
+                foreach (var q in ragQuestions)
+                {
+                    sb.AppendLine($"- Tham khảo: {q.Content}");
+                }
+            }
 
             // Thêm nội dung CV ứng viên để cá nhân hóa câu hỏi
             if (!string.IsNullOrEmpty(session.CvContent))
@@ -395,6 +426,23 @@ QUY TẮC:
             var cleaned = Regex.Replace(text.Trim(), @"^```(?:json)?\s*", "", RegexOptions.IgnoreCase);
             cleaned = Regex.Replace(cleaned, @"\s*```\s*$", "");
             return cleaned.Trim();
+        }
+
+        private async Task<List<QuestionBankItem>> GetReferenceQuestionsAsync(string field, string level)
+        {
+            try
+            {
+                // Lấy 5 câu hỏi ngẫu nhiên trong DB đúng chuyên môn làm dữ liệu mồi (RAG)
+                if (_questionDataProvider != null)
+                {
+                    return await _questionDataProvider.GetQuestionsAsync(field, level, 5);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Lỗi khi lấy câu hỏi mồi từ Database");
+            }
+            return new List<QuestionBankItem>();
         }
     }
 }
