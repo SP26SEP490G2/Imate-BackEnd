@@ -509,7 +509,76 @@ namespace Imate.AI.Module.Controllers
         }
 
         /// <summary>
+        /// Khôi phục trạng thái phiên phỏng vấn khi reload trang
+        /// GET /api/ai-interview/resume-session/{sessionId}
+        /// Trả về session info + tất cả responses (kể cả chưa feedback) để frontend rebuild chat
+        /// </summary>
+        [HttpGet("ai-interview/resume-session/{sessionId}")]
+        public async Task<IActionResult> ResumeSession(int sessionId)
+        {
+            try
+            {
+                var accountId = GetAccountId();
+                if (accountId == null)
+                    return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
+
+                var session = await _dataProvider.GetSessionByIdAsync(sessionId);
+                if (session == null)
+                    return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {sessionId}" });
+
+                if (session.AccountId != accountId.Value)
+                    return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
+
+                var allResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
+                var orderedResponses = allResponses.OrderBy(r => r.TurnNumber).ToList();
+
+                // Xác định câu hỏi cuối cùng chưa được trả lời (nếu có)
+                var lastUnanswered = orderedResponses.LastOrDefault(r => string.IsNullOrEmpty(r.UserAnswer));
+                var answeredCount = orderedResponses.Count(r => !string.IsNullOrEmpty(r.UserAnswer));
+
+                var responseList = orderedResponses.Select(r => new
+                {
+                    id = r.Id,
+                    turnNumber = r.TurnNumber,
+                    questionContent = r.QuestionContent,
+                    userAnswer = r.UserAnswer,
+                    answerTimestamp = r.AnswerTimestamp,
+                }).ToList();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        session = new
+                        {
+                            id = session.Id,
+                            positionName = session.PositionName,
+                            skillName = session.SkillName,
+                            levelName = session.LevelName,
+                            companyName = session.CompanyName,
+                            startTime = session.StartTime,
+                            endTime = session.EndTime,
+                            status = session.Status,
+                        },
+                        responses = responseList,
+                        answeredCount,
+                        currentResponseId = lastUnanswered?.Id,
+                        hasUnansweredQuestion = lastUnanswered != null,
+                    },
+                    message = "Khôi phục phiên phỏng vấn thành công."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resuming session: {Message}", ex.Message);
+                return StatusCode(500, new { success = false, message = $"Lỗi hệ thống: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
         /// Danh sách lịch sử phỏng vấn
+
         /// GET /api/ai-interview/history
         /// </summary>
         [HttpGet("ai-interview/history")]
