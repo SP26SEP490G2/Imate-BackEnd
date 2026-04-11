@@ -24,6 +24,7 @@ namespace Imate.API.Configurations
 
             // Đăng ký Gemini Speech TTS (thay thế Azure)
             services.AddScoped<ISpeechSynthesisService, GeminiSpeechSynthesisService>();
+            services.AddScoped<IAzureSpeechSynthesisService, AzureSpeechSynthesisService>();
 
             // HttpClient cho Gemini TTS
             services.AddHttpClient();
