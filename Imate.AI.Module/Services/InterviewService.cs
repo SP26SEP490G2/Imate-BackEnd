@@ -52,7 +52,7 @@ namespace Imate.AI.Module.Services
         public async Task<string> GenerateWelcomeMessageAsync(string? CvContent, string? positionName, string? companyName, string? language = null)
         {
             var lang = language ?? "vi-VN";
-            var systemPrompt = "Bạn là phỏng vấn viên AI tên Bernie, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Trả về text thuần, KHÔNG trả JSON.";
+            var systemPrompt = "Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Trả về text thuần, KHÔNG trả JSON.";
 
             var sb = new StringBuilder();
             sb.AppendLine("Hãy tạo lời chào mừng cho buổi phỏng vấn với thông tin:");
@@ -60,7 +60,7 @@ namespace Imate.AI.Module.Services
             if (!string.IsNullOrEmpty(companyName)) sb.AppendLine($"- Công ty: {companyName}");
             if (!string.IsNullOrEmpty(CvContent)) sb.AppendLine($"- Cv User: {CvContent}");
             sb.AppendLine($"- Ngôn ngữ: {(lang.StartsWith("vi") ? "Tiếng Việt" : "English")}");
-            sb.AppendLine("Giới thiệu bản thân là Bernie, giải thích ngắn gọn quy trình phỏng vấn. Tối đa 3-4 câu.");
+            sb.AppendLine("Giới thiệu bản thân là imAI, giải thích ngắn gọn quy trình phỏng vấn. Tối đa 3-4 câu.");
 
             var welcomeMessage = await _geminiService.GenerateContentAsync(systemPrompt, sb.ToString());
             return welcomeMessage.Trim();
@@ -280,8 +280,18 @@ namespace Imate.AI.Module.Services
 
         private static string BuildFeedbackUserPrompt(InterviewResponseData response)
         {
+            string currentPhase = response.TurnNumber switch
+            {
+                <= 2 => "Giai đoạn 1: Giới thiệu bản thân (Ice-breaker)",
+                <= 4 => "Giai đoạn 2: Câu hỏi kỹ thuật chuyên môn (Technical)",
+                <= 7 => "Giai đoạn 3: Tình huống giả định (Situational)",
+                9 => "Giai đoạn 4: Đào sâu tình huống từ câu trả lời trước (Deep-dive)",
+                _ => "Giai đoạn 5: Văn hóa làm việc và mức độ phù hợp (Culture fit)"
+            };
+
             var sb = new StringBuilder();
             sb.AppendLine("=== ĐÁNH GIÁ CÂU TRẢ LỜI ===");
+            sb.AppendLine($"Bạn hãy phân tích theo tiêu chí của: [{currentPhase}]");
             sb.AppendLine($"Câu hỏi: {response.QuestionContent}");
             sb.AppendLine($"Câu trả lời: {response.UserAnswer}");
             if (!string.IsNullOrEmpty(response.ExpectedAnswerOutline))
@@ -393,7 +403,7 @@ Lưu ý:
 
         public async Task<string> GenerateReactionAsync(int sessionId, string question, string userAnswer)
         {
-            var systemPrompt = @"Bạn là phỏng vấn viên AI tên Bernie, chuyên phỏng vấn IT. 
+            var systemPrompt = @"Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. 
 Sau khi ứng viên trả lời, hãy phản hồi ngắn gọn (1-2 câu) một cách tự nhiên và chuyên nghiệp.
 
 QUY TẮC:
