@@ -2,22 +2,29 @@ using Microsoft.EntityFrameworkCore;
 using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
+using Microsoft.EntityFrameworkCore;
+using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.DataAccess.Interfaces;
+using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Mentors;
 using Imate.API.Presentation.ResponseModels.Mentors;
 using Imate.API.Business.Exceptions;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 
 namespace Imate.API.Business.Services.Mentors
 {
     public class BookingService : IBookingService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IConfiguration _configuration;
         private const string LocalTimeZoneId = "SE Asia Standard Time";
 
-        public BookingService(IUnitOfWork unitOfWork)
+        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration)
         {
             _unitOfWork = unitOfWork;
+            _configuration = configuration;
         }
 
         public async Task<BookingResponseModel> CreateBookingAsync(BookingCreateRequest request, int candidateId)
@@ -291,34 +298,7 @@ namespace Imate.API.Business.Services.Mentors
                 throw new BadRequestException("This session does not belong to the mentor.");
             }
 
-            string? mp4Url = null;
-            if (!string.IsNullOrEmpty(booking.AudioRecordKey))
-            {
-                try
-                {
-                    using var doc = JsonDocument.Parse(booking.AudioRecordKey);
-                    var root = doc.RootElement;
-                    if (root.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
-                    {
-                        foreach (var file in files.EnumerateArray())
-                        {
-                            if (file.TryGetProperty("fileName", out var fileName) && 
-                                fileName.GetString()?.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) == true)
-                            {
-                                if (file.TryGetProperty("url", out var url))
-                                {
-                                    mp4Url = url.GetString();
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (JsonException)
-                {
-                    mp4Url = null;
-                }
-            }
+            var (recordingUrls, firstMp4Url) = ParseRecordingInfo(booking);
 
             var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
             TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
@@ -345,7 +325,8 @@ namespace Imate.API.Business.Services.Mentors
                 BookDate = booking.BookDate,
                 Status = booking.Status,
                 MeetingRoomId = booking.AgoraChannelName,
-                AudioRecordKey = mp4Url,
+                AudioRecordKey = firstMp4Url,
+                RecordingUrls = recordingUrls,
                 Price = booking.PriceAtBooking
             };
         }
@@ -409,34 +390,7 @@ namespace Imate.API.Business.Services.Mentors
                 throw new BadRequestException("This session does not belong to the candidate.");
             }
 
-            string? mp4Url = null;
-            if (!string.IsNullOrEmpty(booking.AudioRecordKey))
-            {
-                try
-                {
-                    using var doc = JsonDocument.Parse(booking.AudioRecordKey);
-                    var root = doc.RootElement;
-                    if (root.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array)
-                    {
-                        foreach (var file in files.EnumerateArray())
-                        {
-                            if (file.TryGetProperty("fileName", out var fileName) && 
-                                fileName.GetString()?.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) == true)
-                            {
-                                if (file.TryGetProperty("url", out var url))
-                                {
-                                    mp4Url = url.GetString();
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (JsonException)
-                {
-                    mp4Url = null;
-                }
-            }
+            var (recordingUrls, firstMp4Url) = ParseRecordingInfo(booking);
 
             var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
             TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
@@ -463,7 +417,8 @@ namespace Imate.API.Business.Services.Mentors
                 BookDate = booking.BookDate,
                 Status = booking.Status,
                 MeetingRoomId = booking.AgoraChannelName,
-                AudioRecordKey = mp4Url,
+                AudioRecordKey = firstMp4Url,
+                RecordingUrls = recordingUrls,
                 Price = booking.PriceAtBooking
             };
         }
@@ -556,6 +511,74 @@ namespace Imate.API.Business.Services.Mentors
             }
 
             await _unitOfWork.SaveChangesAsync();
+        }
+
+        private (List<string> urls, string? firstUrl) ParseRecordingInfo(Booking booking)
+        {
+            List<string> recordingUrls = new List<string>();
+            if (string.IsNullOrEmpty(booking.AudioRecordKey)) return (recordingUrls, null);
+
+            try
+            {
+                using var doc = JsonDocument.Parse(booking.AudioRecordKey);
+                
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var session in doc.RootElement.EnumerateArray())
+                    {
+                        ExtractFromSession(session, recordingUrls, booking);
+                    }
+                }
+                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    ExtractFromSession(doc.RootElement, recordingUrls, booking);
+                }
+            }
+            catch (JsonException) { }
+
+            recordingUrls = recordingUrls.Distinct().ToList();
+            return (recordingUrls, recordingUrls.FirstOrDefault());
+        }
+
+        private void ExtractFromSession(JsonElement session, List<string> recordingUrls, Booking booking)
+        {
+            bool hasSid = session.TryGetProperty("sid", out var sidProp) && !string.IsNullOrEmpty(sidProp.GetString());
+            bool foundFile = false;
+
+            if (session.TryGetProperty("files", out var filesProp) && filesProp.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var file in filesProp.EnumerateArray())
+                {
+                    if (file.TryGetProperty("fileName", out var fileNameProp))
+                    {
+                        var fileName = fileNameProp.GetString();
+                        if (!string.IsNullOrEmpty(fileName) && fileName.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
+                        {
+                            recordingUrls.Add(CreateFileUrl(fileName));
+                            foundFile = true;
+                        }
+                    }
+                }
+            }
+
+            // Fallback: If no files array or empty, but we have a Sid, try to predict the composite URL
+            if (!foundFile && hasSid)
+            {
+                var sid = sidProp.GetString();
+                if (!string.IsNullOrEmpty(sid))
+                {
+                    // Standard naming: recordings/booking{ID}/{ID}/{ID}_{SID}.mp4
+                    var fileName = $"recordings/booking{booking.Id}/{booking.Id}/{booking.Id}_{sid}.mp4";
+                    recordingUrls.Add(CreateFileUrl(fileName));
+                }
+            }
+        }
+
+        private string CreateFileUrl(string fileName)
+        {
+            var bucketName = _configuration["AwsS3Storage:BucketName"] ?? "";
+            var regionName = _configuration["AwsS3Storage:RegionName"] ?? "ap-southeast-2";
+            return $"https://{bucketName}.s3.{regionName}.amazonaws.com/{fileName}";
         }
     }
 }
