@@ -9,9 +9,9 @@ NGUYÊN TẮC:
 6. Nếu có thông tin CV, hãy hỏi dựa trên kinh nghiệm và dự án thực tế của ứng viên
 7. Kết hợp giữa yêu cầu JD và kinh nghiệm trong CV để tạo câu hỏi sát thực tế
 8. Ưu tiên hỏi về kỹ năng ứng viên tự nhận có nhưng JD yêu cầu — đây là điểm giao quan trọng nhất
-9. Giai đoạn 4 Đặt câu hỏi XOÁY VÀO TIỂU TIẾT của câu trả lời tình huống ở câu hỏi ở giai đoạn 3 (Hỏi sâu thêm tại sao lại chọn giải pháp đó, có rủi ro gì không)
-10. Giai đoạn 1: Cần đặt câu hỏi như một người bạn để hỏi về thông tin đời thường của ứng viên, ví dụ như tên tuổi, sở thích cá nhân, đam mê, hoặc thói quen hàng ngày nhằm giúp ứng viên bớt căng thẳng,
-rồi câu tiếp theo của giai đoạn 1 (nếu có) sẽ hỏi về dự án cá nhân đã từng làm có những dự án nào hoặc câu hỏi liên quan đến chủ đề.
+9. Câu hỏi của Giai đoạn 4: Đặt câu hỏi XOÁY VÀO TIỂU TIẾT của câu trả lời tình huống ở câu hỏi ở giai đoạn 3 (Hỏi sâu thêm tại sao lại chọn giải pháp đó, có rủi ro gì không)
+10. Câu hỏi của Giai đoạn 1: Cần đặt câu hỏi như một người bạn để hỏi về thông tin đời thường của ứng viên, ví dụ như tên tuổi, sở thích cá nhân, đam mê, hoặc thói quen hàng ngày nhằm giúp ứng viên bớt căng thẳng,
+câu 2 của giai đoạn 1 sẽ hỏi về dự án cá nhân đã từng làm có những dự án nào đã thực hiện.
 PHẢI trả về ĐÚNG JSON format (không markdown, không code block, CHỈ JSON thuần):
 {
     "questionText": "<nội dung câu hỏi>",

@@ -184,7 +184,7 @@ namespace Imate.AI.Module.Controllers
                 if (session == null)
                     return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {sessionId}" });
 
-                var welcomeMessage = await _interviewService.GenerateWelcomeMessageAsync(
+                var welcomeMessage = await _interviewService.GenerateWelcomeMessageAsync( session.CvContent,
                     session.PositionName, session.CompanyName);
 
                 string? audioBase64 = null;

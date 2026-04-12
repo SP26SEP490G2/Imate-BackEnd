@@ -49,7 +49,7 @@ namespace Imate.AI.Module.Services
             _questionDataProvider = questionDataProvider;
         }
 
-        public async Task<string> GenerateWelcomeMessageAsync(string? positionName, string? companyName, string? language = null)
+        public async Task<string> GenerateWelcomeMessageAsync(string? CvContent, string? positionName, string? companyName, string? language = null)
         {
             var lang = language ?? "vi-VN";
             var systemPrompt = "Bạn là phỏng vấn viên AI tên Bernie, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Trả về text thuần, KHÔNG trả JSON.";
@@ -58,6 +58,7 @@ namespace Imate.AI.Module.Services
             sb.AppendLine("Hãy tạo lời chào mừng cho buổi phỏng vấn với thông tin:");
             if (!string.IsNullOrEmpty(positionName)) sb.AppendLine($"- Vị trí: {positionName}");
             if (!string.IsNullOrEmpty(companyName)) sb.AppendLine($"- Công ty: {companyName}");
+            if (!string.IsNullOrEmpty(CvContent)) sb.AppendLine($"- Cv User: {CvContent}");
             sb.AppendLine($"- Ngôn ngữ: {(lang.StartsWith("vi") ? "Tiếng Việt" : "English")}");
             sb.AppendLine("Giới thiệu bản thân là Bernie, giải thích ngắn gọn quy trình phỏng vấn. Tối đa 3-4 câu.");
 
