@@ -22,14 +22,14 @@ namespace Imate.AI.Module.Controllers
         private readonly IInterviewService _interviewService;
         private readonly IInterviewSessionDataProvider _dataProvider;
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        private readonly ISpeechSynthesisService _speechSynthesisService;
+        private readonly IAzureSpeechSynthesisService _speechSynthesisService;
         private readonly ILogger<AIInterviewController> _logger;
 
         public AIInterviewController(
             IInterviewService interviewService,
             IInterviewSessionDataProvider dataProvider,
             IServiceScopeFactory serviceScopeFactory,
-            ISpeechSynthesisService speechSynthesisService,
+            IAzureSpeechSynthesisService speechSynthesisService,
             ILogger<AIInterviewController> logger)
         {
             _interviewService = interviewService;
@@ -194,7 +194,7 @@ namespace Imate.AI.Module.Controllers
                     var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
                         welcomeMessage,
                         language: "vi-VN",
-                        cancellationToken: cancellationToken);
+                        cancellationToken: CancellationToken.None);
 
                     audioBase64 = speechResult.AudioBase64;
                     mimeType = speechResult.MimeType;
@@ -248,7 +248,7 @@ namespace Imate.AI.Module.Controllers
                         var speechTermResult = await _speechSynthesisService.SynthesizeToBase64Async(
                             result.TerminationMessage ?? "Buổi phỏng vấn kết thúc.",
                             language: "vi-VN",
-                            cancellationToken: cancellationToken);
+                            cancellationToken: CancellationToken.None);
                         result.AudioBase64 = speechTermResult.AudioBase64;
                         result.MimeType = speechTermResult.MimeType;
                     } 
@@ -273,7 +273,7 @@ namespace Imate.AI.Module.Controllers
                     var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
                         result.QuestionText,
                         language: "vi-VN",
-                        cancellationToken: cancellationToken);
+                        cancellationToken: CancellationToken.None);
 
                     result.AudioBase64 = speechResult.AudioBase64;
                     result.MimeType = speechResult.MimeType;
@@ -295,6 +295,7 @@ namespace Imate.AI.Module.Controllers
                 return StatusCode(500, new { success = false, message = $"Lỗi hệ thống: {ex.Message}" });
             }
         }
+
 
         /// <summary>
         /// Lưu câu trả lời người dùng
@@ -344,7 +345,7 @@ namespace Imate.AI.Module.Controllers
                         var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
                             aiReaction,
                             language: "vi-VN",
-                            cancellationToken: cancellationToken);
+                            cancellationToken: CancellationToken.None);
 
                         aiReactionAudioBase64 = speechResult.AudioBase64;
                         mimeType = speechResult.MimeType;

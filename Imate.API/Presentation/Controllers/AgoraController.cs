@@ -389,45 +389,44 @@ namespace Imate.API.Presentation.Controllers
                 var recordingUid = (1000000 + bookingId).ToString();
                 
                 // 5. Check if there's any old/active recording that needs cleanup
+                List<RecordingInfo> sessionList = new List<RecordingInfo>();
                 if (!string.IsNullOrEmpty(booking.AudioRecordKey))
                 {
-                    // Try to parse existing recording info
                     try
                     {
-                        var options = new System.Text.Json.JsonSerializerOptions
+                        var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        // Try to parse as a list first
+                        try 
                         {
-                            PropertyNameCaseInsensitive = true
-                        };
-                        var existingRecording = System.Text.Json.JsonSerializer.Deserialize<RecordingInfo>(
-                            booking.AudioRecordKey, options);
-                        
-                        // If recording exists and not stopped yet, try to stop it first
-                        if (existingRecording != null && 
-                            !string.IsNullOrEmpty(existingRecording.Sid) && 
-                            !existingRecording.StoppedAt.HasValue)
+                            sessionList = System.Text.Json.JsonSerializer.Deserialize<List<RecordingInfo>>(booking.AudioRecordKey, options) ?? new List<RecordingInfo>();
+                        }
+                        catch
                         {
-                            Console.WriteLine($"??  Booking {bookingId} has an active recording. Attempting to stop it first...");
+                            // Try to parse as single object (backward compatibility)
+                            var single = System.Text.Json.JsonSerializer.Deserialize<RecordingInfo>(booking.AudioRecordKey, options);
+                            if (single != null) sessionList.Add(single);
+                        }
+
+                        // If any recording is still active, try to stop it
+                        var activeRecording = sessionList.FirstOrDefault(r => !r.StoppedAt.HasValue && !string.IsNullOrEmpty(r.Sid));
+                        if (activeRecording != null)
+                        {
+                            Console.WriteLine($"??  Booking {bookingId} has an active recording {activeRecording.Sid}. Attempting to stop it first...");
                             try
                             {
-                                await _agoraRecordingService.StopRecordingAsync(
-                                    existingRecording.ResourceId,
-                                    existingRecording.Sid,
-                                    channelName,
-                                    recordingUid
-                                );
+                                await _agoraRecordingService.StopRecordingAsync(activeRecording.ResourceId, activeRecording.Sid, channelName, recordingUid);
+                                activeRecording.StoppedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                                 Console.WriteLine($"? Old recording stopped successfully");
                             }
                             catch (Exception stopEx)
                             {
-                                // If stop fails (e.g., session already ended), just log and continue
-                                Console.WriteLine($"??  Failed to stop old recording (may already be stopped): {stopEx.Message}");
+                                Console.WriteLine($"??  Failed to stop old recording: {stopEx.Message}");
                             }
                         }
                     }
-                    catch (System.Text.Json.JsonException)
+                    catch (Exception ex)
                     {
-                        // Old format, just log and continue
-                        Console.WriteLine($"??  Booking {bookingId} has old format recording. Starting new one...");
+                        Console.WriteLine($"??  Error handling existing recording data: {ex.Message}");
                     }
                 }
 
@@ -460,7 +459,7 @@ namespace Imate.API.Presentation.Controllers
                 var storageConfig = new RecordingStorageConfig
                 {
                     Vendor = 1, // AWS S3
-                    Region = 8, // ap-southeast-1 (FIXED: was 6, should be 8)
+                    Region = 9, // ap-southeast-2 (Sydney) matches user's config
                     Bucket = _configuration["AwsS3Storage:BucketName"] ?? "",
                     AccessKey = _configuration["AwsS3Storage:AccessKey"] ?? "",
                     SecretKey = _configuration["AwsS3Storage:SecretKey"] ?? "",
@@ -475,17 +474,18 @@ namespace Imate.API.Presentation.Controllers
                     storageConfig
                 );
 
-                // 8. Save recording info to booking
-                // Store ResourceId and SID as JSON: {"resourceId":"xxx","sid":"yyy"}
-                var recordingInfo = System.Text.Json.JsonSerializer.Serialize(new
+                // 8. Save recording info to booking (Append to list)
+                var newSession = new RecordingInfo
                 {
-                    resourceId = recordingResponse.ResourceId,
-                    sid = recordingResponse.Sid,
-                    channelName = channelName,
-                    uid = recordingUid,
-                    startedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                });
-                booking.AudioRecordKey = recordingInfo;
+                    ResourceId = recordingResponse.ResourceId,
+                    Sid = recordingResponse.Sid,
+                    ChannelName = channelName,
+                    Uid = recordingUid,
+                    StartedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+                sessionList.Add(newSession);
+                
+                booking.AudioRecordKey = System.Text.Json.JsonSerializer.Serialize(sessionList);
                 await _unitOfWork.SaveChangesAsync();
 
                 Console.WriteLine($"? Recording started successfully for booking {bookingId}");
@@ -551,123 +551,77 @@ namespace Imate.API.Presentation.Controllers
                 {
                     Console.WriteLine($"?? Parsing recording info from AudioRecordKey: {booking.AudioRecordKey?.Substring(0, Math.Min(100, booking.AudioRecordKey?.Length ?? 0))}...");
                     
-                    RecordingInfo? recordingInfo = null;
+                    List<RecordingInfo> sessionList = new List<RecordingInfo>();
+                    RecordingInfo? activeRecording = null;
                     
-                    // Try to parse as new format (JSON)
                     try
                     {
-                        var options = new System.Text.Json.JsonSerializerOptions
+                        var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        try 
                         {
-                            PropertyNameCaseInsensitive = true
-                        };
-                        recordingInfo = System.Text.Json.JsonSerializer.Deserialize<RecordingInfo>(
-                            booking.AudioRecordKey, options);
+                            sessionList = System.Text.Json.JsonSerializer.Deserialize<List<RecordingInfo>>(booking.AudioRecordKey, options) ?? new List<RecordingInfo>();
+                        }
+                        catch
+                        {
+                            var single = System.Text.Json.JsonSerializer.Deserialize<RecordingInfo>(booking.AudioRecordKey, options);
+                            if (single != null) sessionList.Add(single);
+                        }
+
+                        // For StopRecordingForBooking, we usually want to stop the LATEST active session
+                        activeRecording = sessionList.LastOrDefault(r => !r.StoppedAt.HasValue);
                     }
                     catch (System.Text.Json.JsonException ex)
                     {
-                        Console.WriteLine($"??  Failed to parse as JSON, might be old format: {ex.Message}");
-                        // Might be old format (just a string like "audio_record_xxx")
-                        // In that case, we can't stop it, return error
-                        return BadRequest(new { error = "Recording info không h?p l? ho?c d?nh d?ng cu. Vui lòng start recording m?i." });
+                        Console.WriteLine($"??  Failed to parse recording info: {ex.Message}");
+                        return BadRequest(new { error = "Recording info không h?p l? ho?c d?nh d?ng cu." });
                     }
 
-                    if (recordingInfo == null)
+                    if (activeRecording == null)
                     {
-                        Console.WriteLine($"? Recording info is null");
-                        return BadRequest(new { error = "Recording info không h?p l?" });
+                        Console.WriteLine($"? No active recording session found to stop");
+                        return Ok(new { success = true, message = "Không tìm th?y session dang record d? stop" });
                     }
                     
-                    if (string.IsNullOrEmpty(recordingInfo.ResourceId))
+                    if (string.IsNullOrEmpty(activeRecording.ResourceId))
                     {
-                        Console.WriteLine($"? ResourceId is empty");
-                        return BadRequest(new { error = "Recording info không h?p l? - thi?u ResourceId" });
+                        return BadRequest(new { error = "Recording info thi?u ResourceId" });
                     }
                     
-                    if (string.IsNullOrEmpty(recordingInfo.Sid))
+                    if (string.IsNullOrEmpty(activeRecording.Sid))
                     {
-                        Console.WriteLine($"? SID is empty. ResourceId: {recordingInfo.ResourceId}");
-                        // If SID is empty but ResourceId exists, we might need to query for SID
-                        // For now, return error
-                        return BadRequest(new { error = "Recording info không h?p l? - thi?u SID. Có th? recording chua du?c start dúng cách." });
+                        return BadRequest(new { error = "Recording info thi?u SID" });
                     }
                     
-                    // Check if recording is already stopped
-                    if (recordingInfo.StoppedAt.HasValue && recordingInfo.StoppedAt > 0)
-                    {
-                        Console.WriteLine($"??  Recording already stopped at: {recordingInfo.StoppedAt}");
-                        return Ok(new { 
-                            success = true, 
-                            alreadyStopped = true,
-                            message = "Recording dã du?c d?ng tru?c dó",
-                            resourceId = recordingInfo.ResourceId,
-                            sid = recordingInfo.Sid,
-                            stoppedAt = recordingInfo.StoppedAt,
-                            files = recordingInfo.Files
-                        });
-                    }
-                    
-                    Console.WriteLine($"? Parsed recording info - ResourceId: {recordingInfo.ResourceId}, SID: {recordingInfo.Sid}");
+                    Console.WriteLine($"? Parsed recording info - ResourceId: {activeRecording.ResourceId}, SID: {activeRecording.Sid}");
 
                     var channelName = booking.Id.ToString();
-                    var uid = recordingInfo.Uid;
+                    var uid = activeRecording.Uid;
 
                     // Stop recording
                     AgoraRecordingStopResponse? response = null;
-                    bool stopFailed = false;
-                    string stopError = "";
                     
                     try
                     {
                         response = await _agoraRecordingService.StopRecordingAsync(
-                            recordingInfo.ResourceId,
-                            recordingInfo.Sid,
+                            activeRecording.ResourceId,
+                            activeRecording.Sid,
                             channelName,
                             uid
                         );
                     }
                     catch (Exception stopEx)
                     {
-                        stopFailed = true;
-                        stopError = stopEx.Message;
-                        Console.WriteLine($"??  Failed to stop recording via API: {stopError}");
+                        Console.WriteLine($"??  Failed to stop recording via API: {stopEx.Message}");
                         
                         // Check if it's a "failed to find worker" error (recording already stopped or expired)
-                        if (stopError.Contains("failed to find worker") || stopError.Contains("404"))
+                        if (stopEx.Message.Contains("failed to find worker") || stopEx.Message.Contains("404"))
                         {
                             Console.WriteLine($"??  Recording session not found. It may have already stopped or expired.");
-                            // Mark as stopped in database but don't throw error
-                            var updatedInfo = new
-                            {
-                                resourceId = recordingInfo.ResourceId,
-                                sid = recordingInfo.Sid,
-                                channelName = channelName,
-                                uid = uid,
-                                startedAt = recordingInfo.StartedAt,
-                                stoppedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                                files = recordingInfo.Files
-                            };
-                            booking.AudioRecordKey = System.Text.Json.JsonSerializer.Serialize(updatedInfo);
-                            
-                            // Update booking status to Completed if AudioRecordKey is not null
-                            if (!string.IsNullOrEmpty(booking.AudioRecordKey))
-                            {
-                                booking.Status = BookingStatus.Completed;
-                            }
-                            
-                            await _unitOfWork.SaveChangesAsync();
-                            
-                            return Ok(new
-                            {
-                                success = true,
-                                alreadyStopped = true,
-                                message = "Recording session không tìm th?y (có th? dã d?ng ho?c h?t h?n)",
-                                resourceId = recordingInfo.ResourceId,
-                                sid = recordingInfo.Sid,
-                                files = recordingInfo.Files
-                            });
                         }
-                        // For other errors, rethrow
-                        throw;
+                        else
+                        {
+                            throw;
+                        }
                     }
 
                     // Helper function to create file URL from AWS S3
@@ -680,49 +634,22 @@ namespace Imate.API.Presentation.Controllers
                         return $"https://{bucketName}.s3.{regionName}.amazonaws.com/{fileName}";
                     }
 
-
-                    // Update booking with file information
-                    if (response != null && response.Files != null && response.Files.Any())
+                    // Update recording session with result
+                    activeRecording.StoppedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    
+                    // NEW: Save file list to database so we don't have null in the record key
+                    if (response?.Files != null && response.Files.Any())
                     {
-                        var updatedInfo = new
+                        activeRecording.Files = response.Files.Select(f => new RecordingFileInfo
                         {
-                            resourceId = recordingInfo.ResourceId,
-                            sid = recordingInfo.Sid,
-                            channelName = channelName,
-                            uid = uid,
-                            startedAt = recordingInfo.StartedAt,
-                            stoppedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                            files = response.Files.Select(f => new
-                            {
-                                fileName = f.FileName,
-                                trackType = f.TrackType,
-                                isPlayable = f.IsPlayable,
-                                url = CreateFileUrl(f.FileName) // Add URL for accessing the file
-                            }).ToArray()
-                        };
-                        booking.AudioRecordKey = System.Text.Json.JsonSerializer.Serialize(updatedInfo);
-                    }
-                    else
-                    {
-                        // Keep existing info but mark as stopped
-                        var updatedInfo = new
-                        {
-                            resourceId = recordingInfo.ResourceId,
-                            sid = recordingInfo.Sid,
-                            channelName = channelName,
-                            uid = uid,
-                            startedAt = recordingInfo.StartedAt,
-                            stoppedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                        };
-                        booking.AudioRecordKey = System.Text.Json.JsonSerializer.Serialize(updatedInfo);
+                            FileName = f.FileName,
+                            TrackType = f.TrackType,
+                            IsPlayable = f.IsPlayable
+                        }).ToList();
                     }
 
-                    // Update booking status to Completed if AudioRecordKey is not null
-                    if (!string.IsNullOrEmpty(booking.AudioRecordKey))
-                    {
-                        booking.Status = BookingStatus.Completed;
-                    }
-
+                    booking.AudioRecordKey = System.Text.Json.JsonSerializer.Serialize(sessionList);
+                    
                     await _unitOfWork.SaveChangesAsync();
 
                     Console.WriteLine($"? Recording stopped successfully for booking {bookingId}");
@@ -740,8 +667,8 @@ namespace Imate.API.Presentation.Controllers
                     {
                         success = true,
                         bookingId = bookingId,
-                        resourceId = recordingInfo.ResourceId,
-                        sid = recordingInfo.Sid,
+                        resourceId = activeRecording.ResourceId,
+                        sid = activeRecording.Sid,
                         files = filesWithUrls
                     });
                 }
@@ -849,16 +776,16 @@ namespace Imate.API.Presentation.Controllers
 
                 try
                 {
-                    var options = new System.Text.Json.JsonSerializerOptions
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    List<RecordingInfo> sessionList = new List<RecordingInfo>();
+                    try 
                     {
-                        PropertyNameCaseInsensitive = true
-                    };
-                    var recordingInfo = System.Text.Json.JsonSerializer.Deserialize<RecordingInfo>(
-                        booking.AudioRecordKey, options);
-
-                    if (recordingInfo == null)
+                        sessionList = System.Text.Json.JsonSerializer.Deserialize<List<RecordingInfo>>(booking.AudioRecordKey, options) ?? new List<RecordingInfo>();
+                    }
+                    catch
                     {
-                        return Ok(new { hasRecording = false, message = "Recording info không h?p l?" });
+                        var single = System.Text.Json.JsonSerializer.Deserialize<RecordingInfo>(booking.AudioRecordKey, options);
+                        if (single != null) sessionList.Add(single);
                     }
 
                     // Helper function to create file URL from AWS S3
@@ -866,35 +793,38 @@ namespace Imate.API.Presentation.Controllers
                     {
                         var bucketName = _configuration["AwsS3Storage:BucketName"] ?? "";
                         var regionName = _configuration["AwsS3Storage:RegionName"] ?? "ap-southeast-1";
-                        // AWS S3 URL format: https://{bucket}.s3.{region}.amazonaws.com/{filePath}
-                        // FileName already contains the folder prefix from fileNamePrefix
                         return $"https://{bucketName}.s3.{regionName}.amazonaws.com/{fileName}";
                     }
 
-                    // Map files to include URLs
-                    var filesWithUrls = recordingInfo.Files?.Select(f => new
+                    var allRecordings = sessionList.Select(session => new
                     {
-                        fileName = f.FileName,
-                        trackType = f.TrackType,
-                        isPlayable = f.IsPlayable,
-                        url = CreateFileUrl(f.FileName)
-                    }).ToArray();
+                        resourceId = session.ResourceId,
+                        sid = session.Sid,
+                        channelName = session.ChannelName,
+                        uid = session.Uid,
+                        startedAt = session.StartedAt,
+                        stoppedAt = session.StoppedAt,
+                        files = session.Files?.Select(f => new
+                        {
+                            fileName = f.FileName,
+                            trackType = f.TrackType,
+                            isPlayable = f.IsPlayable,
+                            url = CreateFileUrl(f.FileName)
+                        }).ToArray()
+                    }).ToList();
 
                     return Ok(new
                     {
                         hasRecording = true,
-                        resourceId = recordingInfo.ResourceId,
-                        sid = recordingInfo.Sid,
-                        channelName = recordingInfo.ChannelName,
-                        uid = recordingInfo.Uid,
-                        startedAt = recordingInfo.StartedAt,
-                        stoppedAt = recordingInfo.StoppedAt,
-                        files = filesWithUrls
+                        count = allRecordings.Count,
+                        recordings = allRecordings,
+                        // For backward compatibility, also return the latest one at root
+                        latest = allRecordings.LastOrDefault()
                     });
                 }
                 catch (System.Text.Json.JsonException)
                 {
-                    return Ok(new { hasRecording = false, message = "Recording info d?nh d?ng cu" });
+                    return Ok(new { hasRecording = false, message = "Recording info d?nh d?ng không h?p l?" });
                 }
             }
             catch (Exception ex)

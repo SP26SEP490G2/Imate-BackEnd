@@ -1,4 +1,5 @@
 using Amazon.S3;
+using Imate.AI.Module.Interfaces;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Applications;
 using Imate.API.Business.Interfaces.Classification;
@@ -168,7 +169,9 @@ namespace Imate.API.Infrastructure.Configurations
                 options.MultipartBodyLengthLimit = 104857600;
             });
             services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
-
+            // Azure Speech Services
+            services.AddScoped<IAzureSpeechRecognitionService, AzureSpeechRecognitionService>();
+            services.AddScoped<IAzureSpeechSynthesisService, AzureSpeechSynthesisService>();
 
 
 

@@ -17,7 +17,7 @@ namespace Imate.API.DataAccess.Configurations
             builder.Property(e => e.PriceAtBooking).IsRequired();
             builder.Property(e => e.Status).IsRequired().HasConversion<string>().HasColumnType("nvarchar(50)");
             builder.Property(e => e.AgoraChannelName).IsRequired().HasColumnType("nvarchar(255)");
-            builder.Property(e => e.AudioRecordKey).HasColumnType("nvarchar(500)").IsRequired(false);
+            builder.Property(e => e.AudioRecordKey).HasColumnType("nvarchar(max)").IsRequired(false);
             builder.Property(e => e.RatingScore).IsRequired(false);
             builder.Property(e => e.ReviewText).HasColumnType("nvarchar(max)").IsRequired(false);
             builder.Property(e => e.RatingCreatedAt).IsRequired(false).HasColumnType("datetimeoffset");
