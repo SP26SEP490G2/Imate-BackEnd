@@ -131,7 +131,17 @@ namespace Imate.AI.Module.Services
             };
 
             var savedId = await _dataProvider.CreateResponseAsync(newResponse);
-           
+            questionData.InterviewResponseId = savedId;
+
+            // Gắn thông tin chunk cho frontend hiển thị
+            (questionData.ChunkIndex, questionData.ChunkLabel) = turnNumber switch
+            {
+                <= 2 => (1, "Giới thiệu"),
+                <= 4 => (2, "Kỹ thuật"),
+                <= 7 => (3, "Tình huống"),
+                <= 9 => (4, "Chuyên sâu"),
+                _    => (5, "Văn hóa")
+            };
 
             return questionData;
         }
