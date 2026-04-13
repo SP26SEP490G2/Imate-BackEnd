@@ -36,8 +36,15 @@ namespace Imate.AI.Module.Services
         /// <summary>
         /// Gọi Gemini API với system prompt và user prompt
         /// </summary>
+        /// <summary>
+        /// Gọi Gemini API với retry logic: nếu bị rate-limit (429) hoặc server error (5xx),
+        /// chờ 30 giây rồi thử lại, tối đa 3 lần.
+        /// </summary>
         public async Task<string> GenerateContentAsync(string systemPrompt, string userPrompt)
         {
+            const int maxRetries = 3;
+            const int retryDelaySeconds = 30;
+
             var requestUrl = $"{_apiUrl}?key={_apiKey}";
 
             var requestBody = new
@@ -67,19 +74,50 @@ namespace Imate.AI.Module.Services
             };
 
             var jsonContent = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            _logger.LogInformation("Calling Gemini API...");
-            var response = await _httpClient.PostAsync(requestUrl, content);
-            var responseBody = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                _logger.LogError("Gemini API error {StatusCode}: {Body}", response.StatusCode, responseBody);
-                throw new Exception($"Gemini API error: {response.StatusCode}");
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                _logger.LogInformation("Calling Gemini API (attempt {Attempt}/{Max})...", attempt, maxRetries);
+                var response = await _httpClient.PostAsync(requestUrl, content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var statusCode = (int)response.StatusCode;
+                    var isRetryable = statusCode == 429 || statusCode >= 500;
+
+                    _logger.LogWarning(
+                        "Gemini API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
+                        response.StatusCode, attempt, maxRetries, responseBody);
+
+                    if (isRetryable && attempt < maxRetries)
+                    {
+                        _logger.LogInformation(
+                            "Rate-limit or server error. Retrying in {Delay}s...", retryDelaySeconds);
+                        await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds));
+                        continue; // retry
+                    }
+
+                    // Hết retry hoặc lỗi không phải retryable (400, 401, 403...)
+                    _logger.LogError("Gemini API failed after {Attempt} attempt(s). Giving up.", attempt);
+                    throw new Exception($"Gemini API error: {response.StatusCode}");
+                }
+
+                // ── Thành công → parse response ──
+                return ParseGeminiResponse(responseBody);
             }
 
-            // Parse response - Gemini 2.5 Pro with thinking trả về nhiều parts
+            // Không bao giờ tới đây nhưng compiler cần
+            throw new Exception("Gemini API: max retries exhausted");
+        }
+
+        /// <summary>
+        /// Parse response JSON từ Gemini API, lọc bỏ thought parts.
+        /// </summary>
+        private string ParseGeminiResponse(string responseBody)
+        {
             using var doc = JsonDocument.Parse(responseBody);
             var parts = doc.RootElement
                 .GetProperty("candidates")[0]
@@ -118,6 +156,9 @@ namespace Imate.AI.Module.Services
 
         public async Task<string> GenerateContentForCommentAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
         {
+            const int maxRetries = 3;
+            const int retryDelaySeconds = 30;
+
             var requestUrl = $"{_apiUrl}?key={_apiKey}";
 
             var requestBody = new
@@ -147,57 +188,43 @@ namespace Imate.AI.Module.Services
             };
 
             var jsonContent = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            _logger.LogInformation("Calling Gemini API...");
+            _logger.LogInformation("Calling Gemini API for Comment...");
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(3));
             try
             {
-                var response = await _httpClient.PostAsync(requestUrl, content);
-                var responseBody = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
                 {
-                    _logger.LogError("Gemini API error {StatusCode}: {Body}", response.StatusCode, responseBody);
-                    throw new Exception($"Gemini API error: {response.StatusCode}");
-                }
+                    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                // Parse response - Gemini 2.5 Pro with thinking trả về nhiều parts
-                using var doc = JsonDocument.Parse(responseBody);
-                var parts = doc.RootElement
-                    .GetProperty("candidates")[0]
-                    .GetProperty("content")
-                    .GetProperty("parts");
+                    _logger.LogInformation("Gemini Comment API (attempt {Attempt}/{Max})...", attempt, maxRetries);
+                    var response = await _httpClient.PostAsync(requestUrl, content);
+                    var responseBody = await response.Content.ReadAsStringAsync();
 
-                // Tìm part chứa response text (không phải thought)
-                string? resultText = null;
-                foreach (var part in parts.EnumerateArray())
-                {
-                    if (part.TryGetProperty("thought", out var thought) && thought.GetBoolean())
-                        continue;
-
-                    if (part.TryGetProperty("text", out var text))
+                    if (!response.IsSuccessStatusCode)
                     {
-                        resultText = text.GetString();
-                        break;
+                        var statusCode = (int)response.StatusCode;
+                        var isRetryable = statusCode == 429 || statusCode >= 500;
+
+                        _logger.LogWarning(
+                            "Gemini Comment API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
+                            response.StatusCode, attempt, maxRetries, responseBody);
+
+                        if (isRetryable && attempt < maxRetries)
+                        {
+                            _logger.LogInformation("Retrying in {Delay}s...", retryDelaySeconds);
+                            await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds));
+                            continue;
+                        }
+
+                        throw new Exception($"Gemini API error: {response.StatusCode}");
                     }
+
+                    return ParseGeminiResponse(responseBody);
                 }
 
-                // Fallback: lấy part cuối cùng
-                if (string.IsNullOrEmpty(resultText))
-                {
-                    var lastPart = parts[parts.GetArrayLength() - 1];
-                    resultText = lastPart.GetProperty("text").GetString();
-                }
-
-                if (string.IsNullOrEmpty(resultText))
-                {
-                    throw new Exception("Không nhận được phản hồi từ Gemini AI");
-                }
-
-                _logger.LogInformation("Gemini API response received ({Length} chars)", resultText.Length);
-                return resultText;
+                throw new Exception("Gemini API: max retries exhausted");
             }
             catch (OperationCanceledException)
             {
