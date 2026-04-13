@@ -16,6 +16,7 @@ using Microsoft.Identity.Client;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.Business.Interfaces.Notification;
+using System.Security.Principal;
 
 namespace Imate.API.Business.Services
 {
@@ -485,6 +486,7 @@ namespace Imate.API.Business.Services
             // 7. Cập nhật local DB (ví dụ: ngày UpdateAt)
             account.UpdatedAt = DateTime.UtcNow;
             await _accountRepository.UpdateAsync(account);
+            await _systemNotificationService.CreateAndSendNotificationAsync(accountId, "Bạn đã đổi mật khẩu thành công!", null);
 
             // 8. Revoke tất cả refresh tokens cũ để force logout tất cả devices
             // Điều này đảm bảo rằng sau khi đổi mật khẩu, user phải đăng nhập lại trên tất cả devices
