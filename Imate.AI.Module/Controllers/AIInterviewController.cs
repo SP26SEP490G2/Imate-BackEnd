@@ -184,25 +184,25 @@ namespace Imate.AI.Module.Controllers
                 if (session == null)
                     return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {sessionId}" });
 
-                var welcomeMessage = await _interviewService.GenerateWelcomeMessageAsync(
+                var welcomeMessage = await _interviewService.GenerateWelcomeMessageAsync( session.CvContent,
                     session.PositionName, session.CompanyName);
 
                 string? audioBase64 = null;
                 string? mimeType = null;
-                try
-                {
-                    var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
-                        welcomeMessage,
-                        language: "vi-VN",
-                        cancellationToken: CancellationToken.None);
-
-                    audioBase64 = speechResult.AudioBase64;
-                    mimeType = speechResult.MimeType;
-                }
-                catch (Exception ttsEx)
-                {
-                    _logger.LogWarning(ttsEx, "Lỗi khi gọi TTS cho lời chào");
-                }
+                // [TTS DISABLED FOR TESTING]
+                // try
+                // {
+                //     var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
+                //         welcomeMessage,
+                //         language: "vi-VN",
+                //         cancellationToken: CancellationToken.None);
+                //     audioBase64 = speechResult.AudioBase64;
+                //     mimeType = speechResult.MimeType;
+                // }
+                // catch (Exception ttsEx)
+                // {
+                //     _logger.LogWarning(ttsEx, "Lỗi khi gọi TTS cho lời chào");
+                // }
 
                 return Ok(new
                 {
@@ -243,19 +243,20 @@ namespace Imate.AI.Module.Controllers
 
                 if (result.IsTerminated)
                 {
-                    try
-                    {
-                        var speechTermResult = await _speechSynthesisService.SynthesizeToBase64Async(
-                            result.TerminationMessage ?? "Buổi phỏng vấn kết thúc.",
-                            language: "vi-VN",
-                            cancellationToken: CancellationToken.None);
-                        result.AudioBase64 = speechTermResult.AudioBase64;
-                        result.MimeType = speechTermResult.MimeType;
-                    } 
-                    catch (Exception ttsEx)
-                    {
-                        _logger.LogWarning(ttsEx, "Lỗi TTS thông báo kết thúc phỏng vấn");
-                    }
+                    // [TTS DISABLED FOR TESTING]
+                    // try
+                    // {
+                    //     var speechTermResult = await _speechSynthesisService.SynthesizeToBase64Async(
+                    //         result.TerminationMessage ?? "Buổi phỏng vấn kết thúc.",
+                    //         language: "vi-VN",
+                    //         cancellationToken: CancellationToken.None);
+                    //     result.AudioBase64 = speechTermResult.AudioBase64;
+                    //     result.MimeType = speechTermResult.MimeType;
+                    // } 
+                    // catch (Exception ttsEx)
+                    // {
+                    //     _logger.LogWarning(ttsEx, "Lỗi TTS thông báo kết thúc phỏng vấn");
+                    // }
 
                     return Ok(new
                     {
@@ -268,20 +269,20 @@ namespace Imate.AI.Module.Controllers
                     });
                 }
 
-                try
-                {
-                    var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
-                        result.QuestionText,
-                        language: "vi-VN",
-                        cancellationToken: CancellationToken.None);
-
-                    result.AudioBase64 = speechResult.AudioBase64;
-                    result.MimeType = speechResult.MimeType;
-                }
-                catch (Exception ttsEx)
-                {
-                    _logger.LogWarning(ttsEx, "Lỗi TTS cho câu hỏi phỏng vấn");
-                }
+                // [TTS DISABLED FOR TESTING]
+                // try
+                // {
+                //     var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
+                //         result.QuestionText,
+                //         language: "vi-VN",
+                //         cancellationToken: CancellationToken.None);
+                //     result.AudioBase64 = speechResult.AudioBase64;
+                //     result.MimeType = speechResult.MimeType;
+                // }
+                // catch (Exception ttsEx)
+                // {
+                //     _logger.LogWarning(ttsEx, "Lỗi TTS cho câu hỏi phỏng vấn");
+                // }
 
                 return Ok(new { success = true, data = result, message = "Tạo câu hỏi thành công." });
             }
@@ -340,16 +341,16 @@ namespace Imate.AI.Module.Controllers
                         response.QuestionContent,
                         request.UserAnswer);
 
-                    if (!string.IsNullOrEmpty(aiReaction))
-                    {
-                        var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
-                            aiReaction,
-                            language: "vi-VN",
-                            cancellationToken: CancellationToken.None);
-
-                        aiReactionAudioBase64 = speechResult.AudioBase64;
-                        mimeType = speechResult.MimeType;
-                    }
+                    // [TTS DISABLED FOR TESTING]
+                    // if (!string.IsNullOrEmpty(aiReaction))
+                    // {
+                    //     var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
+                    //         aiReaction,
+                    //         language: "vi-VN",
+                    //         cancellationToken: CancellationToken.None);
+                    //     aiReactionAudioBase64 = speechResult.AudioBase64;
+                    //     mimeType = speechResult.MimeType;
+                    // }
                 }
                 catch (Exception reactionEx)
                 {

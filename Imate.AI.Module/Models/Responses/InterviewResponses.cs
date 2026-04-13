@@ -15,6 +15,11 @@ namespace Imate.AI.Module.Models.Responses
         public QuestionMetrics? Metrics { get; set; }
         public string? AudioBase64 { get; set; }
         public string? MimeType { get; set; }
+
+        /// <summary>Giai đoạn phỏng vấn (1-5)</summary>
+        public int ChunkIndex { get; set; }
+        /// <summary>Tên giai đoạn hiển thị cho ứng viên</summary>
+        public string ChunkLabel { get; set; } = string.Empty;
     }
 
     /// <summary>

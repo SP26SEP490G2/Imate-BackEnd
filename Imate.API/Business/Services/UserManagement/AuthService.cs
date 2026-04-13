@@ -15,6 +15,8 @@ using Imate.API.Presentation.ResponseModels.Recruiter;
 using Microsoft.Identity.Client;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Recruiters;
+using Imate.API.Business.Interfaces.Notification;
+using System.Security.Principal;
 
 namespace Imate.API.Business.Services
 {
@@ -32,6 +34,7 @@ namespace Imate.API.Business.Services
         private readonly IConfiguration _configuration;
         private readonly string _frontendBaseUrl;
         private readonly IAuditLogService _auditLogService;
+        private readonly ISystemNotificationService _systemNotificationService;
 
 
         public AuthService(
@@ -44,7 +47,8 @@ namespace Imate.API.Business.Services
             IRefreshTokenRepository refreshTokenRepository,
             IOptions<JwtSettings> jwtOptions,
             IConfiguration configuration,
-            IAuditLogService auditLogService)
+            IAuditLogService auditLogService,
+            ISystemNotificationService systemNotificationService)
         {
             _accountRepository = accountRepository;
             _mentorRepository = mentorRepository;
@@ -59,6 +63,7 @@ namespace Imate.API.Business.Services
             _frontendBaseUrl = _configuration["FrontendSettings:BaseUrl"] ??
                               throw new ArgumentNullException("FrontendSettings:BaseUrl is not set in appsettings");
             _auditLogService = auditLogService;
+            _systemNotificationService = systemNotificationService;
         }
 
         public async Task<AuthResponse> RegisterWithEmailAsync(RegisterWithEmailRequest request)
@@ -140,6 +145,7 @@ namespace Imate.API.Business.Services
                 AccountStatus = newAccount.Status.ToString(),
                 VerificationStatus = verificationStatus
             };
+            await _systemNotificationService.CreateAndSendNotificationAsync(newAccount.Id, "Welcome to Imate",null);
 
             return new AuthResponse
             {
@@ -480,6 +486,7 @@ namespace Imate.API.Business.Services
             // 7. Cập nhật local DB (ví dụ: ngày UpdateAt)
             account.UpdatedAt = DateTime.UtcNow;
             await _accountRepository.UpdateAsync(account);
+            await _systemNotificationService.CreateAndSendNotificationAsync(accountId, "Bạn đã đổi mật khẩu thành công!", null);
 
             // 8. Revoke tất cả refresh tokens cũ để force logout tất cả devices
             // Điều này đảm bảo rằng sau khi đổi mật khẩu, user phải đăng nhập lại trên tất cả devices

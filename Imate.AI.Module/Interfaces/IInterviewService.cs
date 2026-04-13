@@ -9,7 +9,7 @@ namespace Imate.AI.Module.Interfaces
     public interface IInterviewService
     {
         /// <summary>Tạo tin nhắn chào mừng từ AI</summary>
-        Task<string> GenerateWelcomeMessageAsync(string? positionName, string? companyName, string? language = null);
+        Task<string> GenerateWelcomeMessageAsync(string? cvContent, string? positionName, string? companyName, string? language = null);
 
         /// <summary>Tạo câu hỏi phỏng vấn tiếp theo (adaptive)</summary>
         Task<GenerateQuestionResult> GenerateQuestionAsync(int sessionId, double? estimatedAbility = null);
