@@ -158,11 +158,9 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
             {
                 await _context.Questions.AddAsync(question);
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
             }
             catch (Exception)
             {
-                await transaction.RollbackAsync();
                 throw;
             }
         }
