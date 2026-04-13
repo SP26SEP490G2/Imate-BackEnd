@@ -133,15 +133,9 @@ namespace Imate.AI.Module.Services
             var savedId = await _dataProvider.CreateResponseAsync(newResponse);
             questionData.InterviewResponseId = savedId;
 
-            // Gắn thông tin chunk cho frontend hiển thị
-            (questionData.ChunkIndex, questionData.ChunkLabel) = turnNumber switch
-            {
-                <= 2 => (1, "Giới thiệu"),
-                <= 4 => (2, "Kỹ thuật"),
-                <= 7 => (3, "Tình huống"),
-                <= 9 => (4, "Chuyên sâu"),
-                _    => (5, "Văn hóa")
-            };
+            _logger.LogInformation(
+                "[INTERVIEW] Câu hỏi đã lưu: ResponseId={ResponseId}, Turn={Turn}",
+                savedId, turnNumber);
 
             return questionData;
         }
@@ -159,37 +153,76 @@ namespace Imate.AI.Module.Services
 
             var totalScores = new List<double>();
 
+            const int maxFeedbackRetries = 3;
+            const int feedbackRetryDelaySeconds = 30;
+
             foreach (var response in answeredResponses)
             {
-                try
+                bool feedbackSuccess = false;
+
+                for (int attempt = 1; attempt <= maxFeedbackRetries; attempt++)
                 {
-                    var userPrompt = BuildFeedbackUserPrompt(response);
-                    var rawFeedback = await _geminiService.GenerateContentAsync(_feedbackSystemPrompt, userPrompt);
-                    var feedback = ParseFeedbackResponse(rawFeedback);
+                    try
+                    {
+                        var userPrompt = BuildFeedbackUserPrompt(response);
 
-                    response.AIFeedback = feedback.OverallComment;
-                    response.SuggestedAnswer = feedback.SuggestedAnswer;
-                    response.BloomScore = feedback.BloomScore;
-                    response.DemonstratedBloomLevel = feedback.DemonstratedBloomLevel;
-                    response.TechnicalDepthScore = feedback.TechnicalDepthScore;
-                    response.ProblemSolvingScore = feedback.ProblemSolvingScore;
-                    response.CommunicationScore = feedback.CommunicationScore;
-                    response.PracticalExperienceScore = feedback.PracticalExperienceScore;
-                    response.StructuredFeedbackJson = rawFeedback;
+                        _logger.LogInformation(
+                            "[FEEDBACK] Câu {Turn}/{Total} (attempt {Attempt}/{Max}) — Response ID: {Id}",
+                            response.TurnNumber, answeredResponses.Count, attempt, maxFeedbackRetries, response.Id);
 
-                    await _dataProvider.UpdateResponseAsync(response);
+                        var rawFeedback = await _geminiService.GenerateContentAsync(_feedbackSystemPrompt, userPrompt);
+                        var feedback = ParseFeedbackResponse(rawFeedback);
 
-                    var avgScore = new[] { feedback.TechnicalDepthScore, feedback.ProblemSolvingScore, feedback.CommunicationScore, feedback.PracticalExperienceScore }
-                        .Where(s => s.HasValue).Select(s => s!.Value).DefaultIfEmpty(0).Average();
-                    totalScores.Add(avgScore);
+                        response.AIFeedback = feedback.OverallComment;
+                        response.SuggestedAnswer = feedback.SuggestedAnswer;
+                        response.BloomScore = feedback.BloomScore;
+                        response.DemonstratedBloomLevel = feedback.DemonstratedBloomLevel;
+                        response.TechnicalDepthScore = feedback.TechnicalDepthScore;
+                        response.ProblemSolvingScore = feedback.ProblemSolvingScore;
+                        response.CommunicationScore = feedback.CommunicationScore;
+                        response.PracticalExperienceScore = feedback.PracticalExperienceScore;
+                        response.StructuredFeedbackJson = rawFeedback;
 
-                    _logger.LogInformation("Feedback generated for Response {ResponseId}, Turn {Turn}",
-                        response.Id, response.TurnNumber);
+                        await _dataProvider.UpdateResponseAsync(response);
+
+                        var avgScore = new[] { feedback.TechnicalDepthScore, feedback.ProblemSolvingScore, feedback.CommunicationScore, feedback.PracticalExperienceScore }
+                            .Where(s => s.HasValue).Select(s => s!.Value).DefaultIfEmpty(0).Average();
+                        totalScores.Add(avgScore);
+
+                        _logger.LogInformation(
+                            "[FEEDBACK] ✅ Câu {Turn} thành công! AvgScore={Score:F2}",
+                            response.TurnNumber, avgScore);
+
+                        feedbackSuccess = true;
+                        break; // Thành công → thoát vòng retry, sang câu tiếp
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            "[FEEDBACK] ⚠ Câu {Turn} lỗi (attempt {Attempt}/{Max}): {Message}",
+                            response.TurnNumber, attempt, maxFeedbackRetries, ex.Message);
+
+                        if (attempt < maxFeedbackRetries)
+                        {
+                            _logger.LogInformation(
+                                "[FEEDBACK] Chờ {Delay}s trước khi thử lại câu {Turn}...",
+                                feedbackRetryDelaySeconds, response.TurnNumber);
+                            await Task.Delay(TimeSpan.FromSeconds(feedbackRetryDelaySeconds));
+                        }
+                        else
+                        {
+                            _logger.LogError(ex,
+                                "[FEEDBACK] ❌ Câu {Turn} thất bại sau {Max} lần thử. Bỏ qua.",
+                                response.TurnNumber, maxFeedbackRetries);
+                        }
+                    }
                 }
-                catch (Exception ex)
+
+                if (!feedbackSuccess)
                 {
-                    _logger.LogError(ex, "Error generating feedback for Response {ResponseId}: {Message}",
-                        response.Id, ex.Message);
+                    _logger.LogWarning(
+                        "[FEEDBACK] Câu {Turn} không có feedback — sẽ hiển thị trống trên UI",
+                        response.TurnNumber);
                 }
             }
 
