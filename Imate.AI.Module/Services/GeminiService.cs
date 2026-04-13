@@ -2,23 +2,33 @@ using Imate.AI.Module.Interfaces;
 using Imate.AI.Module.Models.Responses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
 namespace Imate.AI.Module.Services
 {
     /// <summary>
-    /// Gemini AI Service - gọi Gemini API qua key4u.shop proxy
+    /// Gemini AI Service - gọi qua Beeknoee OpenAI-compatible API
+    /// (API cũ key4u.shop đã được comment lại bên dưới)
     /// </summary>
     public class GeminiService : IGeminiService
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<GeminiService> _logger;
-        private readonly string _apiKey;
-        private readonly string _apiUrl;
+
+        // ===== NEW: Beeknoee API config =====
+        private readonly string _beeknoeeApiUrl;
+        private readonly string _beeknoeeApiKey;
+        private readonly string _beeknoeeModel;
         private readonly double _temperature;
-        private readonly double _topP;
-        private readonly int _thinkingBudget;
+        private readonly int _maxTokens;
+
+        // ===== OLD: Gemini native API config (commented out) =====
+        // private readonly string _apiKey;
+        // private readonly string _apiUrl;
+        // private readonly double _topP;
+        // private readonly int _thinkingBudget;
 
         public GeminiService(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiService> logger)
         {
@@ -26,18 +36,25 @@ namespace Imate.AI.Module.Services
             _logger = logger;
 
             var settings = configuration.GetSection("GeminiSettings");
-            _apiKey = settings["ApiKey"] ?? throw new InvalidOperationException("GeminiSettings:ApiKey is required");
-            _apiUrl = settings["ApiUrl"] ?? "https://api.key4u.shop/v1beta/models/gemini-2.5-pro:generateContent";
-            _temperature = double.TryParse(settings["Temperature"], out var temp) ? temp : 1.0;
-            _topP = double.TryParse(settings["TopP"], out var topP) ? topP : 1.0;
-            _thinkingBudget = int.TryParse(settings["ThinkingBudget"], out var budget) ? budget : 26240;
+
+            // ===== NEW: Beeknoee API settings =====
+            _beeknoeeApiUrl = settings["BeeknoeeApiUrl"] ?? "https://platform.beeknoee.com/api/v1/chat/completions";
+            _beeknoeeApiKey = settings["BeeknoeeApiKey"] ?? "sk-bee-163ac7606c7e46db8cfd15087fdc4b12";
+            _beeknoeeModel = settings["BeeknoeeModel"] ?? "gemini-3-flash";
+            _temperature = double.TryParse(settings["Temperature"], out var temp) ? temp : 0.7;
+            _maxTokens = int.TryParse(settings["MaxTokens"], out var maxTok) ? maxTok : 8192;
+
+            // ===== OLD: Gemini native API settings (commented out) =====
+            // _apiKey = settings["ApiKey"] ?? throw new InvalidOperationException("GeminiSettings:ApiKey is required");
+            // _apiUrl = settings["ApiUrl"] ?? "https://api.key4u.shop/v1beta/models/gemini-2.5-pro:generateContent";
+            // _temperature = double.TryParse(settings["Temperature"], out var temp) ? temp : 1.0;
+            // _topP = double.TryParse(settings["TopP"], out var topP) ? topP : 1.0;
+            // _thinkingBudget = int.TryParse(settings["ThinkingBudget"], out var budget) ? budget : 26240;
         }
 
         /// <summary>
-        /// Gọi Gemini API với system prompt và user prompt
-        /// </summary>
-        /// <summary>
-        /// Gọi Gemini API với retry logic: nếu bị rate-limit (429) hoặc server error (5xx),
+        /// Gọi Beeknoee API (OpenAI-compatible) với system prompt và user prompt.
+        /// Retry logic: nếu bị rate-limit (429) hoặc server error (5xx),
         /// chờ 30 giây rồi thử lại, tối đa 3 lần.
         /// </summary>
         public async Task<string> GenerateContentAsync(string systemPrompt, string userPrompt)
@@ -45,32 +62,18 @@ namespace Imate.AI.Module.Services
             const int maxRetries = 3;
             const int retryDelaySeconds = 30;
 
-            var requestUrl = $"{_apiUrl}?key={_apiKey}";
-
+            // ===== NEW: Beeknoee OpenAI-compatible request =====
             var requestBody = new
             {
-                systemInstruction = new
+                model = _beeknoeeModel,
+                messages = new object[]
                 {
-                    parts = new[] { new { text = systemPrompt } }
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
                 },
-                contents = new[]
-                {
-                    new
-                    {
-                        role = "user",
-                        parts = new[] { new { text = userPrompt } }
-                    }
-                },
-                generationConfig = new
-                {
-                    temperature = _temperature,
-                    topP = _topP,
-                    thinkingConfig = new
-                    {
-                        includeThoughts = true,
-                        thinkingBudget = _thinkingBudget
-                    }
-                }
+                temperature = _temperature,
+                max_tokens = _maxTokens,
+                stream = false
             };
 
             var jsonContent = JsonSerializer.Serialize(requestBody);
@@ -79,8 +82,13 @@ namespace Imate.AI.Module.Services
             {
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                _logger.LogInformation("Calling Gemini API (attempt {Attempt}/{Max})...", attempt, maxRetries);
-                var response = await _httpClient.PostAsync(requestUrl, content);
+                // ===== NEW: Bearer token auth =====
+                using var request = new HttpRequestMessage(HttpMethod.Post, _beeknoeeApiUrl);
+                request.Content = content;
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _beeknoeeApiKey);
+
+                _logger.LogInformation("Calling Beeknoee API (attempt {Attempt}/{Max})...", attempt, maxRetries);
+                var response = await _httpClient.SendAsync(request);
                 var responseBody = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
@@ -89,7 +97,7 @@ namespace Imate.AI.Module.Services
                     var isRetryable = statusCode == 429 || statusCode >= 500;
 
                     _logger.LogWarning(
-                        "Gemini API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
+                        "Beeknoee API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
                         response.StatusCode, attempt, maxRetries, responseBody);
 
                     if (isRetryable && attempt < maxRetries)
@@ -97,99 +105,140 @@ namespace Imate.AI.Module.Services
                         _logger.LogInformation(
                             "Rate-limit or server error. Retrying in {Delay}s...", retryDelaySeconds);
                         await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds));
-                        continue; // retry
+                        continue;
                     }
 
-                    // Hết retry hoặc lỗi không phải retryable (400, 401, 403...)
-                    _logger.LogError("Gemini API failed after {Attempt} attempt(s). Giving up.", attempt);
-                    throw new Exception($"Gemini API error: {response.StatusCode}");
+                    _logger.LogError("Beeknoee API failed after {Attempt} attempt(s). Giving up.", attempt);
+                    throw new Exception($"Beeknoee API error: {response.StatusCode}");
                 }
 
-                // ── Thành công → parse response ──
-                return ParseGeminiResponse(responseBody);
+                // ── Thành công → parse OpenAI-compatible response ──
+                return ParseBeeknoeeResponse(responseBody);
             }
 
-            // Không bao giờ tới đây nhưng compiler cần
-            throw new Exception("Gemini API: max retries exhausted");
+            throw new Exception("Beeknoee API: max retries exhausted");
+
+            // ===== OLD: Gemini native API request (commented out) =====
+            // var requestUrl = $"{_apiUrl}?key={_apiKey}";
+            // var requestBody = new
+            // {
+            //     systemInstruction = new
+            //     {
+            //         parts = new[] { new { text = systemPrompt } }
+            //     },
+            //     contents = new[]
+            //     {
+            //         new
+            //         {
+            //             role = "user",
+            //             parts = new[] { new { text = userPrompt } }
+            //         }
+            //     },
+            //     generationConfig = new
+            //     {
+            //         temperature = _temperature,
+            //         topP = _topP,
+            //         thinkingConfig = new
+            //         {
+            //             includeThoughts = true,
+            //             thinkingBudget = _thinkingBudget
+            //         }
+            //     }
+            // };
+            // var jsonContent = JsonSerializer.Serialize(requestBody);
+            // ... (retry loop calling _httpClient.PostAsync(requestUrl, content))
+            // return ParseGeminiResponse(responseBody);
         }
 
         /// <summary>
-        /// Parse response JSON từ Gemini API, lọc bỏ thought parts.
+        /// Parse response JSON từ Beeknoee API (OpenAI-compatible format).
+        /// Format: { choices: [{ message: { content: "..." } }] }
         /// </summary>
-        private string ParseGeminiResponse(string responseBody)
+        private string ParseBeeknoeeResponse(string responseBody)
         {
             using var doc = JsonDocument.Parse(responseBody);
-            var parts = doc.RootElement
-                .GetProperty("candidates")[0]
-                .GetProperty("content")
-                .GetProperty("parts");
 
-            // Tìm part chứa response text (không phải thought)
-            string? resultText = null;
-            foreach (var part in parts.EnumerateArray())
+            if (!doc.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
             {
-                if (part.TryGetProperty("thought", out var thought) && thought.GetBoolean())
-                    continue;
-
-                if (part.TryGetProperty("text", out var text))
-                {
-                    resultText = text.GetString();
-                    break;
-                }
+                throw new Exception("Không nhận được phản hồi từ Beeknoee API (no choices)");
             }
 
-            // Fallback: lấy part cuối cùng
-            if (string.IsNullOrEmpty(resultText))
+            var firstChoice = choices[0];
+            if (!firstChoice.TryGetProperty("message", out var message) ||
+                !message.TryGetProperty("content", out var contentEl))
             {
-                var lastPart = parts[parts.GetArrayLength() - 1];
-                resultText = lastPart.GetProperty("text").GetString();
+                throw new Exception("Không nhận được phản hồi từ Beeknoee API (no message content)");
             }
+
+            var resultText = contentEl.GetString();
 
             if (string.IsNullOrEmpty(resultText))
             {
-                throw new Exception("Không nhận được phản hồi từ Gemini AI");
+                throw new Exception("Không nhận được phản hồi từ Beeknoee AI");
             }
 
-            _logger.LogInformation("Gemini API response received ({Length} chars)", resultText.Length);
+            _logger.LogInformation("Beeknoee API response received ({Length} chars)", resultText.Length);
             return resultText;
         }
+
+        // ===== OLD: ParseGeminiResponse (commented out) =====
+        // /// <summary>
+        // /// Parse response JSON từ Gemini API, lọc bỏ thought parts.
+        // /// </summary>
+        // private string ParseGeminiResponse(string responseBody)
+        // {
+        //     using var doc = JsonDocument.Parse(responseBody);
+        //     var parts = doc.RootElement
+        //         .GetProperty("candidates")[0]
+        //         .GetProperty("content")
+        //         .GetProperty("parts");
+        //
+        //     string? resultText = null;
+        //     foreach (var part in parts.EnumerateArray())
+        //     {
+        //         if (part.TryGetProperty("thought", out var thought) && thought.GetBoolean())
+        //             continue;
+        //         if (part.TryGetProperty("text", out var text))
+        //         {
+        //             resultText = text.GetString();
+        //             break;
+        //         }
+        //     }
+        //     if (string.IsNullOrEmpty(resultText))
+        //     {
+        //         var lastPart = parts[parts.GetArrayLength() - 1];
+        //         resultText = lastPart.GetProperty("text").GetString();
+        //     }
+        //     if (string.IsNullOrEmpty(resultText))
+        //     {
+        //         throw new Exception("Không nhận được phản hồi từ Gemini AI");
+        //     }
+        //     _logger.LogInformation("Gemini API response received ({Length} chars)", resultText.Length);
+        //     return resultText;
+        // }
 
         public async Task<string> GenerateContentForCommentAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
         {
             const int maxRetries = 3;
             const int retryDelaySeconds = 30;
 
-            var requestUrl = $"{_apiUrl}?key={_apiKey}";
-
+            // ===== NEW: Beeknoee OpenAI-compatible request =====
             var requestBody = new
             {
-                systemInstruction = new
+                model = _beeknoeeModel,
+                messages = new object[]
                 {
-                    parts = new[] { new { text = systemPrompt } }
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
                 },
-                contents = new[]
-                {
-                    new
-                    {
-                        role = "user",
-                        parts = new[] { new { text = userPrompt } }
-                    }
-                },
-                generationConfig = new
-                {
-                    temperature = _temperature,
-                    topP = _topP,
-                    thinkingConfig = new
-                    {
-                        includeThoughts = true,
-                        thinkingBudget = _thinkingBudget
-                    }
-                }
+                temperature = _temperature,
+                max_tokens = _maxTokens,
+                stream = false
             };
 
             var jsonContent = JsonSerializer.Serialize(requestBody);
 
-            _logger.LogInformation("Calling Gemini API for Comment...");
+            _logger.LogInformation("Calling Beeknoee API for Comment...");
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(3));
             try
@@ -198,8 +247,13 @@ namespace Imate.AI.Module.Services
                 {
                     var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                    _logger.LogInformation("Gemini Comment API (attempt {Attempt}/{Max})...", attempt, maxRetries);
-                    var response = await _httpClient.PostAsync(requestUrl, content);
+                    // ===== NEW: Bearer token auth =====
+                    using var request = new HttpRequestMessage(HttpMethod.Post, _beeknoeeApiUrl);
+                    request.Content = content;
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _beeknoeeApiKey);
+
+                    _logger.LogInformation("Beeknoee Comment API (attempt {Attempt}/{Max})...", attempt, maxRetries);
+                    var response = await _httpClient.SendAsync(request);
                     var responseBody = await response.Content.ReadAsStringAsync();
 
                     if (!response.IsSuccessStatusCode)
@@ -208,7 +262,7 @@ namespace Imate.AI.Module.Services
                         var isRetryable = statusCode == 429 || statusCode >= 500;
 
                         _logger.LogWarning(
-                            "Gemini Comment API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
+                            "Beeknoee Comment API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
                             response.StatusCode, attempt, maxRetries, responseBody);
 
                         if (isRetryable && attempt < maxRetries)
@@ -218,19 +272,48 @@ namespace Imate.AI.Module.Services
                             continue;
                         }
 
-                        throw new Exception($"Gemini API error: {response.StatusCode}");
+                        throw new Exception($"Beeknoee API error: {response.StatusCode}");
                     }
 
-                    return ParseGeminiResponse(responseBody);
+                    return ParseBeeknoeeResponse(responseBody);
                 }
 
-                throw new Exception("Gemini API: max retries exhausted");
+                throw new Exception("Beeknoee API: max retries exhausted");
             }
             catch (OperationCanceledException)
             {
-                _logger.LogError("API Gemini bị timeout hoặc bị hủy bởi người dùng.");
+                _logger.LogError("Beeknoee API bị timeout hoặc bị hủy bởi người dùng.");
                 throw new Exception("Yêu cầu quá thời gian xử lý, vui lòng thử lại.");
             }
+
+            // ===== OLD: Gemini native API for comment (commented out) =====
+            // var requestUrl = $"{_apiUrl}?key={_apiKey}";
+            // var requestBody = new
+            // {
+            //     systemInstruction = new
+            //     {
+            //         parts = new[] { new { text = systemPrompt } }
+            //     },
+            //     contents = new[]
+            //     {
+            //         new
+            //         {
+            //             role = "user",
+            //             parts = new[] { new { text = userPrompt } }
+            //         }
+            //     },
+            //     generationConfig = new
+            //     {
+            //         temperature = _temperature,
+            //         topP = _topP,
+            //         thinkingConfig = new
+            //         {
+            //             includeThoughts = true,
+            //             thinkingBudget = _thinkingBudget
+            //         }
+            //     }
+            // };
+            // ... (retry loop + ParseGeminiResponse)
         }
 
         public async Task<CommentModerationResult> ModerateCommentAsync(string commentContent)
@@ -328,7 +411,7 @@ Bạn PHẢI trả lời bằng định dạng JSON chính xác sau. KHÔNG thê
             }
             catch (JsonException ex)
             {
-                var errorMsg = $"Không thể parse JSON response từ Gemini API";
+                var errorMsg = $"Không thể parse JSON response từ Beeknoee API";
                 if (!string.IsNullOrEmpty(responseMessage))
                 {
                     errorMsg += $". Response gốc: {responseMessage.Substring(0, Math.Min(500, responseMessage.Length))}";

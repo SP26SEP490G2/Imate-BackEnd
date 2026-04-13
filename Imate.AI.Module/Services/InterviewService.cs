@@ -131,7 +131,11 @@ namespace Imate.AI.Module.Services
             };
 
             var savedId = await _dataProvider.CreateResponseAsync(newResponse);
-           
+            questionData.InterviewResponseId = savedId;
+
+            _logger.LogInformation(
+                "[INTERVIEW] Câu hỏi đã lưu: ResponseId={ResponseId}, Turn={Turn}",
+                savedId, turnNumber);
 
             return questionData;
         }
