@@ -189,7 +189,6 @@ namespace Imate.API.Business.Services.ExternalServices
         /// </summary>
         private static string BuildSsml(string text, string language, string voice, double rate = 1.0)
         {
-            // Bước 1: Escape XML trước để đảm bảo chuỗi an toàn
             var escapedText = text
                 .Replace("&", "&amp;")
                 .Replace("<", "&lt;")
@@ -197,27 +196,33 @@ namespace Imate.API.Business.Services.ExternalServices
                 .Replace("\"", "&quot;")
                 .Replace("'", "&apos;");
 
-            // Bước 2: Thay IMATE thành "ai mết" 
-            escapedText = Regex.Replace(
-                escapedText,
-                @"\bIMATE\b",
-                "ai mết"
-            );
+            // Fix đọc sai
+            escapedText = Regex.Replace(escapedText, @"\bIMATE\b", "ai mết", RegexOptions.IgnoreCase);
+            escapedText = Regex.Replace(escapedText, @"\bim\s*ai\b", "am ây ai", RegexOptions.IgnoreCase);
 
-            // Bước 3: Tốc độ - Mặc định về 1.0 (thay vì 1.05 như trước)
+            // Xuống dòng → pause
+            escapedText = escapedText.Replace("\\n", "\n").Replace("\n", "<break time=\"600ms\"/>");
+
+            // Pause thông minh (không phá URL / số)
+            escapedText = Regex.Replace(escapedText, @"\.(?=\s+[A-ZÀ-Ỹ])", ".<break time=\"500ms\"/>");
+            escapedText = Regex.Replace(escapedText, @",(?!\d)", ",<break time=\"150ms\"/>");
+
             var targetRate = Math.Abs(rate - 1.0) < 0.01 ? 1.0 : Math.Max(0.5, Math.Min(2.0, rate));
+            var prosodyRate = targetRate == 1.0 ? "" : $"rate=\"{targetRate:F2}\"";
 
             return $@"<speak version=""1.0""
-                xmlns=""http://www.w3.org/2001/10/synthesis""
-                xmlns:mstts=""http://www.w3.org/2001/mstts""
-                xml:lang=""{language}"">
-              <voice name=""{voice}"">
-                <mstts:autolangdetect onDefaultFail=""true"" />
-                <prosody rate=""{targetRate:F2}"" pitch=""+2%"">
-                  {escapedText}
-                </prosody>
-              </voice>
-            </speak>";
+        xmlns=""http://www.w3.org/2001/10/synthesis""
+        xmlns:mstts=""http://www.w3.org/2001/mstts""
+        xml:lang=""{language}"">
+      <voice name=""{voice}"">
+        <mstts:autolangdetect onDefaultFail=""true"" />
+        <mstts:express-as style=""customerservice"" styledegree=""1.1"">
+          <prosody {prosodyRate} pitch=""+2%"">
+            {escapedText}
+          </prosody>
+        </mstts:express-as>
+      </voice>
+    </speak>";
         }
 
         private SpeechConfig CreateSpeechConfig(string language, string voice)
