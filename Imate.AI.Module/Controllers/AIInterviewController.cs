@@ -44,20 +44,26 @@ namespace Imate.AI.Module.Controllers
         /// GET /api/ai-interview/check-interview-cost
         /// </summary>
         [HttpGet("ai-interview/check-interview-cost")]
-        public IActionResult CheckInterviewCost()
+        public async Task<IActionResult> CheckInterviewCost()
         {
-            // Hiện tại trả free mặc định — mở rộng subscription sau
+            var accountId = GetAccountId();
+            if (accountId == null)
+                return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
+
+            var status = await _dataProvider.GetInterviewLimitStatusAsync(accountId.Value);
+
             return Ok(new
             {
                 success = true,
                 data = new
                 {
-                    requiresPayment = false,
-                    isFree = true,
-                    freeUsedMock = 0,
-                    freeLimit = 100,
-                    remainingFree = 100,
-                    hasEnoughBalance = true
+                    requiresPayment = !status.CanStart && status.IsFree, // Thêm logic nếu cần thanh toán
+                    isFree = status.IsFree,
+                    usedMock = status.UsedCount,
+                    limit = status.LimitCount,
+                    remaining = status.RemainingCount,
+                    canStart = status.CanStart,
+                    message = status.Message
                 },
                 message = "Kiểm tra chi phí thành công."
             });
@@ -137,6 +143,13 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
+                // Kiểm tra giới hạn lượt phỏng vấn
+                var limitStatus = await _dataProvider.GetInterviewLimitStatusAsync(accountId.Value);
+                if (!limitStatus.CanStart)
+                {
+                    return BadRequest(new { success = false, message = limitStatus.Message });
+                }
+
                 var session = new InterviewSessionData
                 {
                     AccountId = accountId.Value,
@@ -156,6 +169,9 @@ namespace Imate.AI.Module.Controllers
 
                 _logger.LogInformation("Interview session created: {SessionId} for account {AccountId}",
                     sessionId, accountId.Value);
+
+                // Tăng số lượt đã sử dụng (cho gói trả phí)
+                await _dataProvider.IncrementMockInterviewUsageAsync(accountId.Value);
 
                 return Ok(new
                 {
@@ -467,8 +483,7 @@ namespace Imate.AI.Module.Controllers
 
                 var allResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
                 var answered = allResponses.Where(r => !string.IsNullOrEmpty(r.UserAnswer)).OrderBy(r => r.TurnNumber).ToList();
-                var withFeedback = answered.Where(r => !string.IsNullOrEmpty(r.StructuredFeedbackJson))
-                    .Select((r, i) => new
+                var withFeedback = answered.Select((r, i) => new
                     {
                         id = r.Id, questionNumber = i + 1, turnNumber = r.TurnNumber,
                         questionContent = r.QuestionContent, userAnswer = r.UserAnswer,
