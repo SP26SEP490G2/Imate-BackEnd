@@ -1,8 +1,9 @@
+using Imate.API.Business.Interfaces.ExternalServices;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Options;
 using NAudio.Wave;
-using Imate.API.Business.Interfaces.ExternalServices;
+using System.Diagnostics;
 
 namespace Imate.API.Business.Services.ExternalServices
 {
@@ -209,8 +210,7 @@ namespace Imate.API.Business.Services.ExternalServices
             }
             else if (IsWebMFile(audioData))
             {
-                // WebM files (usually with Opus codec) - convert using NAudio
-                return ConvertAudioWithNAudio(audioData);
+                return ConvertWebMToWavWithFFmpeg(audioData);
             }
             else
             {
@@ -501,6 +501,45 @@ namespace Imate.API.Business.Services.ExternalServices
                 NoMatchReason.InitialBabbleTimeout => "Too much background noise detected",
                 _ => "Unknown reason"
             };
+        }
+        private WavFileInfo ConvertWebMToWavWithFFmpeg(byte[] webmData)
+        {
+            string inputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
+            string outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.wav");
+
+            try
+            {
+                File.WriteAllBytes(inputPath, webmData);
+
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "ffmpeg",
+                        Arguments = $"-y -i \"{inputPath}\" -ac 1 -ar 16000 -f wav \"{outputPath}\"",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                process.WaitForExit();
+
+                if (!File.Exists(outputPath))
+                {
+                    throw new Exception("FFmpeg failed to convert WebM to WAV.");
+                }
+
+                var wavBytes = File.ReadAllBytes(outputPath);
+                return ParseWavFile(wavBytes);
+            }
+            finally
+            {
+                try { if (File.Exists(inputPath)) File.Delete(inputPath); } catch { }
+                try { if (File.Exists(outputPath)) File.Delete(outputPath); } catch { }
+            }
         }
     }
 }
