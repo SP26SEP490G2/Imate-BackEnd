@@ -21,12 +21,14 @@ namespace Imate.AI.Module.Services
         private const int MaxQuestionsPerSession = 10;
         private static readonly string _questionSystemPrompt;
         private static readonly string _feedbackSystemPrompt;
+        private static readonly string _feedbackSummarySystemPrompt;
 
         static InterviewService()
         {
             var basePath = AppDomain.CurrentDomain.BaseDirectory;
             var questionPromptPath = Path.Combine(basePath, "SystemMessages", "interview-question-system.txt");
             var feedbackPromptPath = Path.Combine(basePath, "SystemMessages", "interview-feedback-system.txt");
+            var feedbackSummaryPromptPath = Path.Combine(basePath, "SystemMessages", "interview-feedback-summary-system.txt");
 
             _questionSystemPrompt = File.Exists(questionPromptPath)
                 ? File.ReadAllText(questionPromptPath)
@@ -35,6 +37,9 @@ namespace Imate.AI.Module.Services
             _feedbackSystemPrompt = File.Exists(feedbackPromptPath)
                 ? File.ReadAllText(feedbackPromptPath)
                 : "Bạn là chuyên gia đánh giá phỏng vấn IT. Đánh giá câu trả lời và trả về JSON.";
+            _feedbackSummarySystemPrompt = File.Exists(feedbackSummaryPromptPath)
+                ? File.ReadAllText(feedbackSummaryPromptPath)
+                : "Bạn là chuyên gia phỏng vấn IT. Hãy tổng kết buổi phỏng vấn và trả về JSON gồm overall_comment, strengths, improvements.";
         }
 
         public InterviewService(
@@ -227,9 +232,38 @@ namespace Imate.AI.Module.Services
             }
 
             var overallAvg = totalScores.Any() ? totalScores.Average() : 0.0;
-            return $"Bạn đã hoàn thành {answeredResponses.Count} câu hỏi. " +
-                $"Điểm trung bình tổng thể: {overallAvg:F2}/1.00. " +
-                $"Hãy xem chi tiết feedback cho từng câu hỏi để cải thiện kỹ năng của bạn.";
+
+            _logger.LogInformation("Generating OVERALL JSON summary for session {SessionId}", sessionId);
+            var sb = new StringBuilder();
+            sb.AppendLine("=== TỔNG KẾT PHIÊN PHỎNG VẤN ===");
+            sb.AppendLine($"Tổng số câu hỏi hoàn thành: {answeredResponses.Count}");
+            sb.AppendLine($"Điểm trung bình (Average Score): {overallAvg:F2}/1.00");
+            sb.AppendLine();
+            foreach (var r in answeredResponses)
+            {
+                sb.AppendLine($"Hỏi: {r.QuestionContent}");
+                sb.AppendLine($"Trả lời: {r.UserAnswer}");
+                sb.AppendLine($"Nhận xét AI: {r.AIFeedback}");
+                sb.AppendLine();
+            }
+            sb.AppendLine("Dựa vào toàn bộ lịch sử Q&A trên, hãy tổng kết và đưa ra nhận xét chung cho ứng viên theo đúng định dạng JSON yêu cầu.");
+
+            try 
+            {
+                var rawSummary = await _geminiService.GenerateContentAsync(_feedbackSummarySystemPrompt, sb.ToString());
+                return CleanJsonResponse(rawSummary);
+            } 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate Overall JSON Summary for session {SessionId}", sessionId);
+                var fallbackJson = new
+                {
+                    overall_comment = $"Bạn đã hoàn thành {answeredResponses.Count} câu hỏi. Điểm trung bình tổng thể: {overallAvg:F2}/1.00. Hãy xem chi tiết feedback cho từng câu hỏi để cải thiện kỹ năng của bạn.",
+                    strengths = new List<string>(),
+                    improvements = new List<string>()
+                };
+                return JsonSerializer.Serialize(fallbackJson);
+            }
         }
 
         // ── Private helpers ──
