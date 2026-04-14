@@ -18,6 +18,10 @@ namespace Imate.AI.Module.Interfaces
         Task<InterviewResponseData?> GetResponseByIdAsync(int id);
         Task UpdateResponseAsync(InterviewResponseData response);
         Task<List<InterviewResponseData>> GetResponsesBySessionIdAsync(int sessionId);
+        
+        // ── Limits & Usage ──
+        Task<InterviewLimitStatus> GetInterviewLimitStatusAsync(int accountId);
+        Task IncrementMockInterviewUsageAsync(int accountId);
     }
 
     /// <summary>
@@ -75,5 +79,18 @@ namespace Imate.AI.Module.Interfaces
         public double? StarResultScore { get; set; }
         public string? StructuredFeedbackJson { get; set; }
         public string? ExpectedAnswerOutline { get; set; }
+    }
+
+    /// <summary>
+    /// Thông tin giới hạn lượt phỏng vấn của người dùng.
+    /// </summary>
+    public class InterviewLimitStatus
+    {
+        public bool CanStart { get; set; }
+        public int UsedCount { get; set; }
+        public int LimitCount { get; set; }
+        public int RemainingCount { get; set; }
+        public bool IsFree { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 }

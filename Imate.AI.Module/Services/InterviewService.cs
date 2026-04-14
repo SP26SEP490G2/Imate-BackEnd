@@ -156,25 +156,19 @@ namespace Imate.AI.Module.Services
             _logger.LogInformation("Generating feedback for {Count} answers in session {SessionId}",
                 answeredResponses.Count, sessionId);
 
-            var totalScores = new List<double>();
+            // 1. Tạo feedback cho từng câu hỏi SONG SONG (Parallelized) để tăng tốc
+            _logger.LogInformation("[FEEDBACK] Bắt đầu tạo feedback song song cho {Count} câu hỏi...", answeredResponses.Count);
 
             const int maxFeedbackRetries = 3;
-            const int feedbackRetryDelaySeconds = 30;
+            const int feedbackRetryDelaySeconds = 15; // Giảm delay retry cho "real-time"
 
-            foreach (var response in answeredResponses)
+            var feedbackTasks = answeredResponses.Select(async response =>
             {
-                bool feedbackSuccess = false;
-
                 for (int attempt = 1; attempt <= maxFeedbackRetries; attempt++)
                 {
                     try
                     {
                         var userPrompt = BuildFeedbackUserPrompt(response);
-
-                        _logger.LogInformation(
-                            "[FEEDBACK] Câu {Turn}/{Total} (attempt {Attempt}/{Max}) — Response ID: {Id}",
-                            response.TurnNumber, answeredResponses.Count, attempt, maxFeedbackRetries, response.Id);
-
                         var rawFeedback = await _geminiService.GenerateContentAsync(_feedbackSystemPrompt, userPrompt);
                         var feedback = ParseFeedbackResponse(rawFeedback);
 
@@ -190,46 +184,32 @@ namespace Imate.AI.Module.Services
 
                         await _dataProvider.UpdateResponseAsync(response);
 
-                        var avgScore = new[] { feedback.TechnicalDepthScore, feedback.ProblemSolvingScore, feedback.CommunicationScore, feedback.PracticalExperienceScore }
+                        var avg = new[] { feedback.TechnicalDepthScore, feedback.ProblemSolvingScore, feedback.CommunicationScore, feedback.PracticalExperienceScore }
                             .Where(s => s.HasValue).Select(s => s!.Value).DefaultIfEmpty(0).Average();
-                        totalScores.Add(avgScore);
 
-                        _logger.LogInformation(
-                            "[FEEDBACK] ✅ Câu {Turn} thành công! AvgScore={Score:F2}",
-                            response.TurnNumber, avgScore);
-
-                        feedbackSuccess = true;
-                        break; // Thành công → thoát vòng retry, sang câu tiếp
+                        _logger.LogInformation("[FEEDBACK] ✅ Câu {Turn} xong (attempt {Attempt})", response.TurnNumber, attempt);
+                        return avg;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(
-                            "[FEEDBACK] ⚠ Câu {Turn} lỗi (attempt {Attempt}/{Max}): {Message}",
-                            response.TurnNumber, attempt, maxFeedbackRetries, ex.Message);
-
                         if (attempt < maxFeedbackRetries)
                         {
-                            _logger.LogInformation(
-                                "[FEEDBACK] Chờ {Delay}s trước khi thử lại câu {Turn}...",
-                                feedbackRetryDelaySeconds, response.TurnNumber);
+                            _logger.LogWarning("[FEEDBACK] ⚠ Câu {Turn} lỗi (attempt {Attempt}): {Message}. Thử lại sau {Delay}s...", 
+                                response.TurnNumber, attempt, ex.Message, feedbackRetryDelaySeconds);
                             await Task.Delay(TimeSpan.FromSeconds(feedbackRetryDelaySeconds));
                         }
                         else
                         {
-                            _logger.LogError(ex,
-                                "[FEEDBACK] ❌ Câu {Turn} thất bại sau {Max} lần thử. Bỏ qua.",
-                                response.TurnNumber, maxFeedbackRetries);
+                            _logger.LogError(ex, "[FEEDBACK] ❌ Câu {Turn} thất bại sau {Max} lần thử.", response.TurnNumber, maxFeedbackRetries);
                         }
                     }
                 }
+                return 0.0;
+            });
 
-                if (!feedbackSuccess)
-                {
-                    _logger.LogWarning(
-                        "[FEEDBACK] Câu {Turn} không có feedback — sẽ hiển thị trống trên UI",
-                        response.TurnNumber);
-                }
-            }
+            var scoresArray = await Task.WhenAll(feedbackTasks);
+            var totalScores = scoresArray.ToList();
+            _logger.LogInformation("[FEEDBACK] Hoàn thành feedback cho tất cả câu hỏi.");
 
             var overallAvg = totalScores.Any() ? totalScores.Average() : 0.0;
 
