@@ -34,6 +34,10 @@ namespace Imate.API.Common.Router
             public const string GetAllPendingContributedQuestionsForStaff = "get-all-pending-contributed-questions-for-staff";
             public const string GetMyContributedQuestions = "get-my-contributed-questions";
             public const string ChangeContributedQuestionStatusForStaff = "change-contributed-question-status-staff/{questionId}";
+            public const string ValidateQuestionsFromExcel = "validate-questions-from-excel";
+            public const string ImportValidatedQuestions = "import-validated-questions";
+            public const string RevalidateSingleQuestion = "revalidate-single-question";
+            public const string DownloadQuestionTemplate = "download-question-template";
         }
         public class Position
         {

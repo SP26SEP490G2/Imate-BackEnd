@@ -2,6 +2,7 @@ using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.QuestionBank;
+using Imate.API.Business.Services;
 using Imate.API.Common.Router;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.QuestionBank;
@@ -429,5 +430,130 @@ public async Task<IActionResult> UpdateContributedQuestionStatusAsync(int questi
         return BadRequest(new { message = ex.Message });
     }
 }
+
+        [HttpPost(APIConfig.Question.ValidateQuestionsFromExcel)]
+        public async Task<IActionResult> ValidateQuestionsFromExcel(IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new { message = "Vui lòng chọn file để upload." });
+                }
+
+                var fileExtension = Path.GetExtension(file.FileName)?.ToLower();
+                if (fileExtension != ".xlsx" && fileExtension != ".xls")
+                {
+                    return BadRequest(new { message = "Chỉ chấp nhận file Excel (.xlsx, .xls)." });
+                }
+
+                var validationResults = await _questionService.ValidateQuestionsFromExcelAsync(file);
+                return Ok(validationResults);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    detail = "Vui lòng kiểm tra lại định dạng file Excel. File phải có đúng các cột: Content, Difficulty, SampleAnswer, CategoryNames, SkillNames, PositionNames"
+                });
+            }
+        }
+
+        [HttpPost(APIConfig.Question.ImportValidatedQuestions)]
+        public async Task<IActionResult> ImportValidatedQuestions([FromBody] List<FinalImportRequest> requests)
+        {
+            try
+            {
+                // Lấy Creator ID từ JWT Token
+                var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(accountIdClaim) || !int.TryParse(accountIdClaim, out int creatorId))
+                {
+                    return Unauthorized(new { message = "Không thể xác thực người dùng. Vui lòng đăng nhập lại." });
+                }
+
+                if (requests == null || requests.Count == 0)
+                {
+                    return BadRequest(new { message = "Danh sách câu hỏi trống." });
+                }
+
+                var count = await _questionService.CreateValidatedQuestionsAsync(requests, creatorId);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Đã import thành công {count} câu hỏi.",
+                    importedCount = count
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Có lỗi xảy ra trong quá trình import.",
+                    detail = ex.Message
+                });
+            }
+        }
+
+        [HttpPost(APIConfig.Question.RevalidateSingleQuestion)]
+        public async Task<IActionResult> RevalidateSingleQuestion([FromBody] FinalImportRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+                var validationResult = await _questionService.RevalidateSingleQuestionAsync(request);
+
+                return Ok(validationResult);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Có lỗi xảy ra khi kiểm tra lại dữ liệu.",
+                    detail = ex.Message
+                });
+            }
+        }
+
+        // Trong QuestionController.cs (hoặc tương tự)
+
+        [HttpGet(APIConfig.Question.DownloadQuestionTemplate)]
+        public IActionResult DownloadQuestionTemplate()
+        {
+            try
+            {
+                // Gọi hàm của bạn để lấy mảng byte
+                var fileBytes = ExcelTemplateGenerator.GenerateQuestionTemplate();
+
+                // Đặt tên file (đảm bảo tên file không chứa ký tự đặc biệt)
+                string fileName = $"System_Question_Import_Template_{DateTime.Now:yyyyMMdd}.xlsx";
+
+                // Trả về file với Content-Type chính xác
+                return File(
+                    fileBytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName
+                );
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi và trả về lỗi 500
+                return StatusCode(500, "Failed to generate template: " + ex.Message);
+            }
+        }
     }
 }

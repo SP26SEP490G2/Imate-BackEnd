@@ -38,30 +38,21 @@ namespace Imate.API.Business.Services
                 {
                     new object[]
                     {
-                        "What is React?",
-                        "Easy",
-                        "React is a JavaScript library for building user interfaces",
-                        "Programming",
-                        "React, JavaScript",
-                        "Frontend Developer"
-                    },
-                    new object[]
-                    {
-                        "Explain the concept of OOP",
+                        "Bạn sẽ làm gì khi có xung đột với đồng nghiệp trong dự án?",
                         "Medium",
-                        "OOP includes Encapsulation, Inheritance, Polymorphism, and Abstraction",
-                        "Programming",
-                        "Java, C#",
-                        "Backend Developer"
+                        "Lắng nghe quan điểm của họ, tìm ra điểm chung và cùng hướng tới mục tiêu chung của team.",
+                        "Behavioral",
+                        "Soft Skills",
+                        "Fullstack Developer"
                     },
                     new object[]
                     {
-                        "What is the difference between SQL and NoSQL?",
-                        "Hard",
-                        "SQL is relational and uses structured schema, NoSQL is non-relational and schema-less",
-                        "Database",
-                        "SQL, MongoDB",
-                        "Backend Developer, Database Administrator"
+                        "Giải thích sự khác biệt giữa Interface và Abstract Class.",
+                        "Easy",
+                        "Interface chỉ chứa khai báo, Abstract Class có thể chứa cả khai báo và định nghĩa chi tiết.",
+                        "Technical",
+                        "Java, C#",
+                        "Backend Developer, Frontend Developer"
                     }
                 };
 
@@ -89,8 +80,8 @@ namespace Imate.API.Business.Services
                     "",
                     "1. Content: Nội dung câu hỏi (Bắt buộc, không được trùng)",
                     "2. Difficulty: Mức độ (Easy, Medium, Hard)",
-                    "3. SampleAnswer: Câu trả lời mẫu (Không bắt buộc)",
-                    "4. CategoryNames: Tên các thể loại, ngăn cách bằng dấu phẩy (VD: Programming, Database)",
+                    "3. SampleAnswer: Câu trả lời mẫu (Bắt buộc)",
+                    "4. CategoryNames: Tên các thể loại, ngăn cách bằng dấu phẩy (VD: Behavioral, Technical)",
                     "5. SkillNames: Tên các kỹ năng, ngăn cách bằng dấu phẩy (VD: Java, C#, React)",
                     "6. PositionNames: Tên các vị trí, ngăn cách bằng dấu phẩy (VD: Frontend Developer, Backend Developer)",
                     "",
