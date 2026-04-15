@@ -970,6 +970,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 Difficulty = request.Difficulty,
                 IsFromSystem = false,
                 IsActive = false,
+                CreatedAt = DateTime.UtcNow,
                 ApprovalStatus = QuestionApprovalStatus.Pending, // Mặc định là Pending khi tạo mới
                 ContributedDetail = contributedDetail,
                 QuestionSkills = request.SkillIds.Select(skillId => new QuestionSkill { SkillId = skillId }).ToList()
@@ -1051,6 +1052,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 SampleAnswer = request.SampleAnswer,
                 CreatorId = creatorId,
                 IsFromSystem = true,
+                CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
             var a = new List<int>();         
