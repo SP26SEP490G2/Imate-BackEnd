@@ -114,5 +114,105 @@ namespace Imate.API.UnitTest.Services
             await act.Should().ThrowAsync<ApplicationException>().WithMessage("An error occurred while retrieving mentors.");
         }
         #endregion
+
+        #region Edit Service Price
+        [Fact]
+        public async Task UpdateMentorPriceAsync_ShouldUpdatePrice_WhenMentorExists()
+        {
+            // Arrange
+            var mentorId = 1;
+            var mentor = new Mentor { AccountId = mentorId, PricePerSession = 100 };
+            
+            _mockUnitOfWork.Setup(u => u.Mentors.GetMentorByIdAsync(mentorId)).ReturnsAsync(mentor);
+            _mockUnitOfWork.Setup(u => u.SaveAsync()).Returns(Task.CompletedTask);
+
+            // Act
+            await _service.UpdateMentorPriceAsync(mentorId, 200);
+
+            // Assert
+            mentor.PricePerSession.Should().Be(200);
+            _mockUnitOfWork.Verify(u => u.Mentors.Update(mentor), Times.Once);
+            _mockUnitOfWork.Verify(u => u.SaveAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateMentorPriceAsync_ShouldThrowNotFound_WhenMentorDoesNotExist()
+        {
+            _mockUnitOfWork.Setup(u => u.Mentors.GetMentorByIdAsync(It.IsAny<int>())).ReturnsAsync((Mentor?)null);
+
+            var act = () => _service.UpdateMentorPriceAsync(999, 200);
+
+            await act.Should().ThrowAsync<Imate.API.Business.Exceptions.NotFoundException>();
+        }
+
+        [Fact]
+        public async Task UpdateMentorProfileAsync_ShouldUpdatePriceAndBio()
+        {
+            // Arrange
+            var mentorId = 1;
+            var mentor = new Mentor { AccountId = mentorId, PricePerSession = 100, Bio = "Old" };
+            var request = new Imate.API.Presentation.RequestModels.UserManagement.UpdateMentorProfileRequest 
+            { 
+                Bio = "New", 
+                PricePerSession = 200, 
+                Phone = "123",
+                BirthDate = "1990-01-01" 
+            };
+
+            _mockUnitOfWork.Setup(u => u.Mentors.GetMentorByIdAsync(mentorId)).ReturnsAsync(mentor);
+
+            // Act
+            await _service.UpdateMentorProfileAsync(mentorId, request);
+
+            // Assert
+            mentor.Bio.Should().Be("New");
+            mentor.PricePerSession.Should().Be(200);
+            _mockUnitOfWork.Verify(u => u.SaveChangesAsync(), Times.Once);
+        }
+        #endregion
+
+        #region Receive Rating
+        [Fact]
+        public async Task GetCandidateRatingsAsync_ShouldReturnRatings()
+        {
+            // Arrange
+            var mentorId = 1;
+            var mentor = new Mentor { AccountId = mentorId };
+            var ratings = new List<Imate.API.Presentation.ResponseModels.Mentors.RatingDetailModel>
+            {
+                new() { RatingScore = 5, ReviewText = "Good" },
+                new() { RatingScore = 4, ReviewText = "Nice" }
+            };
+
+            var mockBookingRepo = new Mock<Imate.API.DataAccess.Interfaces.Mentors.IBookingRepository>();
+            _mockUnitOfWork.Setup(u => u.Mentors.GetMentorByIdAsync(mentorId)).ReturnsAsync(mentor);
+            _mockUnitOfWork.Setup(u => u.Bookings).Returns(mockBookingRepo.Object);
+            mockBookingRepo.Setup(r => r.GetCandidateRatingsByMentorIdAsync(mentorId)).ReturnsAsync(ratings);
+
+            // Act
+            var result = await _service.GetCandidateRatingsAsync(mentorId);
+
+            // Assert
+            result.TotalRatingCount.Should().Be(2);
+            result.AverageRating.Should().Be(4.5m);
+        }
+
+        [Fact]
+        public async Task GetCandidateRatingsAsync_ShouldReturnNullAverage_WhenNoRatings()
+        {
+            // Arrange
+            var mentorId = 1;
+            _mockUnitOfWork.Setup(u => u.Mentors.GetMentorByIdAsync(mentorId)).ReturnsAsync(new Mentor());
+            var mockBookingRepo = new Mock<Imate.API.DataAccess.Interfaces.Mentors.IBookingRepository>();
+            _mockUnitOfWork.Setup(u => u.Bookings).Returns(mockBookingRepo.Object);
+            mockBookingRepo.Setup(r => r.GetCandidateRatingsByMentorIdAsync(mentorId)).ReturnsAsync(new List<Imate.API.Presentation.ResponseModels.Mentors.RatingDetailModel>());
+
+            // Act
+            var result = await _service.GetCandidateRatingsAsync(mentorId);
+
+            // Assert
+            result.AverageRating.Should().BeNull();
+        }
+        #endregion
     }
 }
