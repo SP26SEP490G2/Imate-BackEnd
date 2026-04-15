@@ -23,6 +23,7 @@ namespace Imate.API.UnitTest.Services
             _service = new MentorService(_mockUnitOfWork.Object);
         }
 
+        #region View Mentors
         [Fact]
         public async Task GetListPreviewMentorsAsync_ShouldReturnActiveMentors_WhenNoFiltersApplied()
         {
@@ -112,5 +113,6 @@ namespace Imate.API.UnitTest.Services
             // Assert
             await act.Should().ThrowAsync<ApplicationException>().WithMessage("An error occurred while retrieving mentors.");
         }
+        #endregion
     }
 }

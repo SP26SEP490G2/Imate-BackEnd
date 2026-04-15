@@ -44,6 +44,7 @@ namespace Imate.API.UnitTest.Services
             _service = new StaffReviewService(_mockUnitOfWork.Object, _mockAuditLogService.Object);
         }
 
+        #region Review Mentor Application
         [Fact]
         public async Task ReviewMentorApplicationAsync_ShouldApprove_WhenIsApprovedIsTrue()
         {
@@ -89,7 +90,9 @@ namespace Imate.API.UnitTest.Services
             // Assert
             await act.Should().ThrowAsync<NotFoundException>();
         }
+        #endregion
 
+        #region Review Recruiter Application
         [Fact]
         public async Task ReviewRecruiterApplicationAsync_ShouldApproveAndCreateCompany_WhenApprovedAndCreateCompanyIsTrue()
         {
@@ -143,7 +146,9 @@ namespace Imate.API.UnitTest.Services
             account.Status.Should().Be(AccountStatus.PendingVerification); // Status doesn't change to Active on rejection
             account.Recruiter.VerificationStatus.Should().Be(VerificationStatus.Rejected);
         }
+        #endregion
 
+        #region Review Mentor Application (Additional)
         [Fact]
         public async Task ReviewMentorApplicationAsync_ShouldReject_WhenIsApprovedIsFalse()
         {
@@ -224,7 +229,9 @@ namespace Imate.API.UnitTest.Services
             // Assert (No exception, just skip update)
             account.Status.Should().Be(AccountStatus.Active);
         }
+        #endregion
 
+        #region Review Recruiter Application (Additional)
         [Fact]
         public async Task ReviewRecruiterApplicationAsync_ShouldThrowNotFound_WhenAccountDoesNotExist()
         {
@@ -301,5 +308,6 @@ namespace Imate.API.UnitTest.Services
             // Assert
             account.Status.Should().Be(AccountStatus.Active);
         }
+        #endregion
     }
 }

@@ -32,6 +32,7 @@ namespace Imate.API.UnitTest.Services
             _service = new AccountService(_mockAccountRepo.Object, _mockUnitOfWork.Object, _mockRoleService.Object, _mockS3Service.Object);
         }
 
+        #region Submit Mentor Application
         [Fact]
         public async Task SubmitMentorProfileAsync_ShouldCreateNewMentor_WhenMentorDoesNotExist()
         {
@@ -88,7 +89,9 @@ namespace Imate.API.UnitTest.Services
             // Assert
             await act.Should().ThrowAsync<BadRequestException>().WithMessage("Chỉ tài khoản Mentor mới có thể nộp hồ sơ Mentor.");
         }
+        #endregion
 
+        #region View Mentor Details
         [Fact]
         public async Task GetAccountDetailMentor_ShouldReturnResponse_WhenAccountIsMentor()
         {
@@ -122,6 +125,7 @@ namespace Imate.API.UnitTest.Services
             result.FullName.Should().Be("Mentor Name");
             result.TotalCompletedSessions.Should().Be(10);
         }
+        #endregion
 
         [Fact]
         public async Task SubmitMentorProfileAsync_ShouldUpdate_WhenMentorExists()
@@ -208,6 +212,7 @@ namespace Imate.API.UnitTest.Services
             await act.Should().ThrowAsync<BadRequestException>().WithMessage("Ngày sinh không được ở trong tương lai.");
         }
 
+        #region View Mentor Details (Additional)
         [Fact]
         public async Task GetAccountDetailMentor_ShouldThrowNotFound_WhenAccountDoesNotExist()
         {
@@ -234,5 +239,6 @@ namespace Imate.API.UnitTest.Services
             // Assert
             await act.Should().ThrowAsync<BadRequestException>();
         }
+        #endregion
     }
 }

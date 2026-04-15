@@ -31,6 +31,7 @@ namespace Imate.API.UnitTest.Services
             _service = new RecruiterService(_mockUnitOfWork.Object, _mockAuditLogService.Object, _mockEmailService.Object, _mockS3Service.Object);
         }
 
+        #region Submit Recruiter Application
         [Fact]
         public async Task SubmitRecruiterProfileAsync_ShouldCreateNewRecruiter_WhenRecruiterDoesNotExist()
         {
@@ -171,5 +172,6 @@ namespace Imate.API.UnitTest.Services
             // Assert
             await act.Should().ThrowAsync<BadRequestException>().WithMessage("Số điện thoại không được để trống.");
         }
+        #endregion
     }
 }
