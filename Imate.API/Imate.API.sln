@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Imate.API", "Imate.API.csproj", "{6A5ACE5A-1D6A-F268-9392-DD92CC92E314}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imate.API", "Imate.API.csproj", "{6A5ACE5A-1D6A-F268-9392-DD92CC92E314}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Imate.AI.Module", "..\Imate.AI.Module\Imate.AI.Module.csproj", "{8FCE4B6B-7667-46FD-995D-4F7CD14BDA1E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Imate.AI.Module", "..\Imate.AI.Module\Imate.AI.Module.csproj", "{8FCE4B6B-7667-46FD-995D-4F7CD14BDA1E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Imate.API.UnitTest", "..\Imate.API.UnitTest\Imate.API.UnitTest.csproj", "{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,18 @@ Global
 		{8FCE4B6B-7667-46FD-995D-4F7CD14BDA1E}.Release|x64.Build.0 = Release|Any CPU
 		{8FCE4B6B-7667-46FD-995D-4F7CD14BDA1E}.Release|x86.ActiveCfg = Release|Any CPU
 		{8FCE4B6B-7667-46FD-995D-4F7CD14BDA1E}.Release|x86.Build.0 = Release|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Debug|x64.Build.0 = Debug|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Debug|x86.Build.0 = Debug|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Release|x64.ActiveCfg = Release|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Release|x64.Build.0 = Release|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Release|x86.ActiveCfg = Release|Any CPU
+		{7D5BC215-5AA1-4008-96EC-E3AC964DFD1A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
