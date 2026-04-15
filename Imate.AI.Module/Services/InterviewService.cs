@@ -19,6 +19,7 @@ namespace Imate.AI.Module.Services
         private readonly IQuestionDataProvider _questionDataProvider;
 
         private const int MaxQuestionsPerSession = 10;
+        private const int MaxSessionDurationMinutes = 30;
         private static readonly string _questionSystemPrompt;
         private static readonly string _feedbackSystemPrompt;
         private static readonly string _feedbackSummarySystemPrompt;
@@ -80,6 +81,18 @@ namespace Imate.AI.Module.Services
             var existingResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
             var answeredCount = existingResponses.Count(r => !string.IsNullOrEmpty(r.UserAnswer));
             var turnNumber = existingResponses.Count + 1;
+
+            // Kiểm tra giới hạn thời gian (30 phút)
+            var elapsedTime = DateTimeOffset.UtcNow - session.StartTime;
+            if (elapsedTime.TotalMinutes >= MaxSessionDurationMinutes)
+            {
+                return new GenerateQuestionResult
+                {
+                    IsTerminated = true,
+                    TerminationReason = "TimeLimitReached",
+                    TerminationMessage = $"Buổi phỏng vấn đã quá thời gian quy định ({MaxSessionDurationMinutes} phút). Cảm ơn bạn đã tham gia! Hệ thống đang tạo báo cáo phản hồi..."
+                };
+            }
 
             // Lấy câu hỏi tham khảo từ DB theo chunk hiện tại
             var ragQuestions = await GetRagQuestionsForChunkAsync(
