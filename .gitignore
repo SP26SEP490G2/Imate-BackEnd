@@ -66,3 +66,5 @@ diff_vs_main.patch
 Thumbs.db
 Imate.API/appsettings.json
 Imate.API/serviceAccountKey.json
+Imate.API.UnitTest/coverage.json
+Imate.API.UnitTest/coverage.opencover.xml
