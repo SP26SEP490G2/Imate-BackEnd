@@ -19,14 +19,17 @@ namespace Imate.AI.Module.Services
         private readonly IQuestionDataProvider _questionDataProvider;
 
         private const int MaxQuestionsPerSession = 10;
+        private const int MaxSessionDurationMinutes = 30;
         private static readonly string _questionSystemPrompt;
         private static readonly string _feedbackSystemPrompt;
+        private static readonly string _feedbackSummarySystemPrompt;
 
         static InterviewService()
         {
             var basePath = AppDomain.CurrentDomain.BaseDirectory;
             var questionPromptPath = Path.Combine(basePath, "SystemMessages", "interview-question-system.txt");
             var feedbackPromptPath = Path.Combine(basePath, "SystemMessages", "interview-feedback-system.txt");
+            var feedbackSummaryPromptPath = Path.Combine(basePath, "SystemMessages", "interview-feedback-summary-system.txt");
 
             _questionSystemPrompt = File.Exists(questionPromptPath)
                 ? File.ReadAllText(questionPromptPath)
@@ -35,6 +38,9 @@ namespace Imate.AI.Module.Services
             _feedbackSystemPrompt = File.Exists(feedbackPromptPath)
                 ? File.ReadAllText(feedbackPromptPath)
                 : "Bạn là chuyên gia đánh giá phỏng vấn IT. Đánh giá câu trả lời và trả về JSON.";
+            _feedbackSummarySystemPrompt = File.Exists(feedbackSummaryPromptPath)
+                ? File.ReadAllText(feedbackSummaryPromptPath)
+                : "Bạn là chuyên gia phỏng vấn IT. Hãy tổng kết buổi phỏng vấn và trả về JSON gồm overall_comment, strengths, improvements.";
         }
 
         public InterviewService(
@@ -49,17 +55,18 @@ namespace Imate.AI.Module.Services
             _questionDataProvider = questionDataProvider;
         }
 
-        public async Task<string> GenerateWelcomeMessageAsync(string? positionName, string? companyName, string? language = null)
+        public async Task<string> GenerateWelcomeMessageAsync(string? CvContent, string? positionName, string? companyName, string? language = null)
         {
             var lang = language ?? "vi-VN";
-            var systemPrompt = "Bạn là phỏng vấn viên AI tên Bernie, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Trả về text thuần, KHÔNG trả JSON.";
+            var systemPrompt = "Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Trả về text thuần, KHÔNG trả JSON.";
 
             var sb = new StringBuilder();
             sb.AppendLine("Hãy tạo lời chào mừng cho buổi phỏng vấn với thông tin:");
             if (!string.IsNullOrEmpty(positionName)) sb.AppendLine($"- Vị trí: {positionName}");
             if (!string.IsNullOrEmpty(companyName)) sb.AppendLine($"- Công ty: {companyName}");
+            if (!string.IsNullOrEmpty(CvContent)) sb.AppendLine($"- Cv User: {CvContent}");
             sb.AppendLine($"- Ngôn ngữ: {(lang.StartsWith("vi") ? "Tiếng Việt" : "English")}");
-            sb.AppendLine("Giới thiệu bản thân là Bernie, giải thích ngắn gọn quy trình phỏng vấn. Tối đa 3-4 câu.");
+            sb.AppendLine("Giới thiệu bản thân là imAI, giải thích ngắn gọn quy trình phỏng vấn. Tối đa 3-4 câu.");
 
             var welcomeMessage = await _geminiService.GenerateContentAsync(systemPrompt, sb.ToString());
             return welcomeMessage.Trim();
@@ -73,7 +80,25 @@ namespace Imate.AI.Module.Services
 
             var existingResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
             var answeredCount = existingResponses.Count(r => !string.IsNullOrEmpty(r.UserAnswer));
-            var ragQuestions = await GetReferenceQuestionsAsync(session.SkillName ?? "General", session.LevelName ?? "Junior");
+            var turnNumber = existingResponses.Count + 1;
+
+            // Kiểm tra giới hạn thời gian (30 phút)
+            var elapsedTime = DateTimeOffset.UtcNow - session.StartTime;
+            if (elapsedTime.TotalMinutes >= MaxSessionDurationMinutes)
+            {
+                return new GenerateQuestionResult
+                {
+                    IsTerminated = true,
+                    TerminationReason = "TimeLimitReached",
+                    TerminationMessage = $"Buổi phỏng vấn đã quá thời gian quy định ({MaxSessionDurationMinutes} phút). Cảm ơn bạn đã tham gia! Hệ thống đang tạo báo cáo phản hồi..."
+                };
+            }
+
+            // Lấy câu hỏi tham khảo từ DB theo chunk hiện tại
+            var ragQuestions = await GetRagQuestionsForChunkAsync(
+                turnNumber,
+                session.SkillName ?? "General",
+                session.LevelName ?? "Junior");
 
             if (answeredCount >= MaxQuestionsPerSession)
             {
@@ -87,8 +112,25 @@ namespace Imate.AI.Module.Services
 
             var userPrompt = BuildQuestionUserPrompt(session, existingResponses, estimatedAbility, ragQuestions);
 
-            _logger.LogInformation("Generating question {Number}/{Max} for session {SessionId}",
-                existingResponses.Count + 1, MaxQuestionsPerSession, sessionId);
+            // Xác định chunk hiện tại cho log
+            string chunkName = turnNumber switch
+            {
+                <= 2 => "CHUNK 1 - Ice-breaker",
+                <= 4 => "CHUNK 2 - Technical",
+                <= 7 => "CHUNK 3 - Situational",
+                <= 9 => "CHUNK 4 - Deep-dive",
+                _    => "CHUNK 5 - Culture"
+            };
+
+            _logger.LogInformation(
+                "\n========== [INTERVIEW] GENERATING QUESTION ==========\n" +
+                "  Session: {SessionId}\n" +
+                "  Câu hỏi: {Turn}/{Max}\n" +
+                "  Giai đoạn: {Chunk}\n" +
+                "  RAG từ DB: {RagCount} câu tham khảo\n" +
+                "=====================================================",
+                sessionId, turnNumber, MaxQuestionsPerSession, chunkName, ragQuestions?.Count ?? 0);
+
             var delay = Random.Shared.Next(800, 1500);
             await Task.Delay(delay);
             var rawResponse = await _geminiService.GenerateContentAsync(_questionSystemPrompt, userPrompt);
@@ -109,8 +151,9 @@ namespace Imate.AI.Module.Services
             var savedId = await _dataProvider.CreateResponseAsync(newResponse);
             questionData.InterviewResponseId = savedId;
 
-            _logger.LogInformation("Question generated: ResponseId={ResponseId}, Topic={Topic}",
-                savedId, questionData.Topic);
+            _logger.LogInformation(
+                "[INTERVIEW] Câu hỏi đã lưu: ResponseId={ResponseId}, Turn={Turn}",
+                savedId, turnNumber);
 
             return questionData;
         }
@@ -122,50 +165,98 @@ namespace Imate.AI.Module.Services
                 .Where(r => !string.IsNullOrEmpty(r.UserAnswer))
                 .OrderBy(r => r.TurnNumber)
                 .ToList();
-
+    
             _logger.LogInformation("Generating feedback for {Count} answers in session {SessionId}",
                 answeredResponses.Count, sessionId);
 
-            var totalScores = new List<double>();
+            // 1. Tạo feedback cho từng câu hỏi SONG SONG (Parallelized) để tăng tốc
+            _logger.LogInformation("[FEEDBACK] Bắt đầu tạo feedback song song cho {Count} câu hỏi...", answeredResponses.Count);
 
-            foreach (var response in answeredResponses)
+            const int maxFeedbackRetries = 3;
+            const int feedbackRetryDelaySeconds = 15; // Giảm delay retry cho "real-time"
+
+            var feedbackTasks = answeredResponses.Select(async response =>
             {
-                try
+                for (int attempt = 1; attempt <= maxFeedbackRetries; attempt++)
                 {
-                    var userPrompt = BuildFeedbackUserPrompt(response);
-                    var rawFeedback = await _geminiService.GenerateContentAsync(_feedbackSystemPrompt, userPrompt);
-                    var feedback = ParseFeedbackResponse(rawFeedback);
+                    try
+                    {
+                        var userPrompt = BuildFeedbackUserPrompt(response);
+                        var rawFeedback = await _geminiService.GenerateContentAsync(_feedbackSystemPrompt, userPrompt);
+                        var feedback = ParseFeedbackResponse(rawFeedback);
 
-                    response.AIFeedback = feedback.OverallComment;
-                    response.SuggestedAnswer = feedback.SuggestedAnswer;
-                    response.BloomScore = feedback.BloomScore;
-                    response.DemonstratedBloomLevel = feedback.DemonstratedBloomLevel;
-                    response.TechnicalDepthScore = feedback.TechnicalDepthScore;
-                    response.ProblemSolvingScore = feedback.ProblemSolvingScore;
-                    response.CommunicationScore = feedback.CommunicationScore;
-                    response.PracticalExperienceScore = feedback.PracticalExperienceScore;
-                    response.StructuredFeedbackJson = rawFeedback;
+                        response.AIFeedback = feedback.OverallComment;
+                        response.SuggestedAnswer = feedback.SuggestedAnswer;
+                        response.BloomScore = feedback.BloomScore;
+                        response.DemonstratedBloomLevel = feedback.DemonstratedBloomLevel;
+                        response.TechnicalDepthScore = feedback.TechnicalDepthScore;
+                        response.ProblemSolvingScore = feedback.ProblemSolvingScore;
+                        response.CommunicationScore = feedback.CommunicationScore;
+                        response.PracticalExperienceScore = feedback.PracticalExperienceScore;
+                        response.StructuredFeedbackJson = rawFeedback;
 
-                    await _dataProvider.UpdateResponseAsync(response);
+                        await _dataProvider.UpdateResponseAsync(response);
 
-                    var avgScore = new[] { feedback.TechnicalDepthScore, feedback.ProblemSolvingScore, feedback.CommunicationScore, feedback.PracticalExperienceScore }
-                        .Where(s => s.HasValue).Select(s => s!.Value).DefaultIfEmpty(0).Average();
-                    totalScores.Add(avgScore);
+                        var avg = new[] { feedback.TechnicalDepthScore, feedback.ProblemSolvingScore, feedback.CommunicationScore, feedback.PracticalExperienceScore }
+                            .Where(s => s.HasValue).Select(s => s!.Value).DefaultIfEmpty(0).Average();
 
-                    _logger.LogInformation("Feedback generated for Response {ResponseId}, Turn {Turn}",
-                        response.Id, response.TurnNumber);
+                        _logger.LogInformation("[FEEDBACK] ✅ Câu {Turn} xong (attempt {Attempt})", response.TurnNumber, attempt);
+                        return avg;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (attempt < maxFeedbackRetries)
+                        {
+                            _logger.LogWarning("[FEEDBACK] ⚠ Câu {Turn} lỗi (attempt {Attempt}): {Message}. Thử lại sau {Delay}s...", 
+                                response.TurnNumber, attempt, ex.Message, feedbackRetryDelaySeconds);
+                            await Task.Delay(TimeSpan.FromSeconds(feedbackRetryDelaySeconds));
+                        }
+                        else
+                        {
+                            _logger.LogError(ex, "[FEEDBACK] ❌ Câu {Turn} thất bại sau {Max} lần thử.", response.TurnNumber, maxFeedbackRetries);
+                        }
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error generating feedback for Response {ResponseId}: {Message}",
-                        response.Id, ex.Message);
-                }
-            }
+                return 0.0;
+            });
+
+            var scoresArray = await Task.WhenAll(feedbackTasks);
+            var totalScores = scoresArray.ToList();
+            _logger.LogInformation("[FEEDBACK] Hoàn thành feedback cho tất cả câu hỏi.");
 
             var overallAvg = totalScores.Any() ? totalScores.Average() : 0.0;
-            return $"Bạn đã hoàn thành {answeredResponses.Count} câu hỏi. " +
-                $"Điểm trung bình tổng thể: {overallAvg:F2}/1.00. " +
-                $"Hãy xem chi tiết feedback cho từng câu hỏi để cải thiện kỹ năng của bạn.";
+
+            _logger.LogInformation("Generating OVERALL JSON summary for session {SessionId}", sessionId);
+            var sb = new StringBuilder();
+            sb.AppendLine("=== TỔNG KẾT PHIÊN PHỎNG VẤN ===");
+            sb.AppendLine($"Tổng số câu hỏi hoàn thành: {answeredResponses.Count}");
+            sb.AppendLine($"Điểm trung bình (Average Score): {overallAvg:F2}/1.00");
+            sb.AppendLine();
+            foreach (var r in answeredResponses)
+            {
+                sb.AppendLine($"Hỏi: {r.QuestionContent}");
+                sb.AppendLine($"Trả lời: {r.UserAnswer}");
+                sb.AppendLine($"Nhận xét AI: {r.AIFeedback}");
+                sb.AppendLine();
+            }
+            sb.AppendLine("Dựa vào toàn bộ lịch sử Q&A trên, hãy tổng kết và đưa ra nhận xét chung cho ứng viên theo đúng định dạng JSON yêu cầu.");
+
+            try 
+            {
+                var rawSummary = await _geminiService.GenerateContentAsync(_feedbackSummarySystemPrompt, sb.ToString());
+                return CleanJsonResponse(rawSummary);
+            } 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate Overall JSON Summary for session {SessionId}", sessionId);
+                var fallbackJson = new
+                {
+                    overall_comment = $"Bạn đã hoàn thành {answeredResponses.Count} câu hỏi. Điểm trung bình tổng thể: {overallAvg:F2}/1.00. Hãy xem chi tiết feedback cho từng câu hỏi để cải thiện kỹ năng của bạn.",
+                    strengths = new List<string>(),
+                    improvements = new List<string>()
+                };
+                return JsonSerializer.Serialize(fallbackJson);
+            }
         }
 
         // ── Private helpers ──
@@ -181,7 +272,7 @@ namespace Imate.AI.Module.Services
                 <= 2 => "Giai đoạn 1: Giới thiệu bản thân (Ice-breaker)",
                 <= 4 => "Giai đoạn 2: Câu hỏi kỹ thuật chuyên môn (Technical)",
                 <= 7 => "Giai đoạn 3: Tình huống giả định (Situational)",
-                8 => "Giai đoạn 4: Đào sâu tình huống từ câu trả lời trước (Deep-dive)",
+                <= 9 => "Giai đoạn 4: Đào sâu tình huống từ câu trả lời trước (Deep-dive)",
                 _ => "Giai đoạn 5: Văn hóa làm việc và mức độ phù hợp (Culture fit)"
             };
 
@@ -196,15 +287,23 @@ namespace Imate.AI.Module.Services
             sb.AppendLine($"\n**TRẠNG THÁI HIỆN TẠI: Đang ở Câu hỏi thứ {turnNumber}/{MaxQuestionsPerSession}**");
             sb.AppendLine($"**>>> YÊU CẦU: HÃY ĐẶT 1 CÂU HỎI THUỘC CHỦ ĐỀ CỦA [{currentPhase}] <<<**\n");
 
-
-            if (turnNumber >= 3 && turnNumber <= 4 && ragQuestions?.Count > 0)
+            // Inject câu hỏi tham khảo từ DB (nếu có)
+            if (ragQuestions?.Count > 0)
             {
                 sb.AppendLine("\n=== NGÂN HÀNG CÂU HỎI THAM KHẢO TỪ DATABASE ===");
-                sb.AppendLine("Hãy sử dụng các câu hỏi mẫu sau làm chất liệu tham khảo để biến tấu ra câu hỏi cho ứng viên sao cho phù hợp với cấp độ và JD (Không copy nguyên văn):");
+                sb.AppendLine("Hãy sử dụng các câu hỏi mẫu sau làm chất liệu tham khảo để biến tấu ra câu hỏi cho ứng viên sao cho phù hợp với cấp độ và JD.");
+                sb.AppendLine("KHÔNG copy nguyên văn — hãy paraphrase, thay đổi ngữ cảnh, hoặc kết hợp nhiều câu hỏi.");
                 foreach (var q in ragQuestions)
                 {
                     sb.AppendLine($"- Tham khảo: {q.Content}");
+                    if (!string.IsNullOrWhiteSpace(q.SampleAnswer))
+                        sb.AppendLine($"  Đáp án mẫu: {q.SampleAnswer}");
                 }
+                sb.AppendLine("=== HẾT THAM KHẢO ===");
+            }
+            else
+            {
+                sb.AppendLine("\n(Không có câu hỏi tham khảo từ DB — hãy TỰ sáng tạo câu hỏi dựa trên CV, JD và giai đoạn hiện tại.)");
             }
 
             // Thêm nội dung CV ứng viên để cá nhân hóa câu hỏi
@@ -242,16 +341,27 @@ namespace Imate.AI.Module.Services
 
             sb.AppendLine("\nDựa vào context trên (bao gồm CV và JD nếu có), hãy tạo câu hỏi phỏng vấn tiếp theo.");
             sb.AppendLine("Ưu tiên hỏi về kinh nghiệm thực tế trong CV kết hợp yêu cầu trong JD. KHÔNG lặp lại chủ đề câu trước.");
+            sb.AppendLine("QUAN TRỌNG: CHỈ trả về JSON câu hỏi. KHÔNG viết lời cảm ơn, nhận xét, hay phản hồi câu trả lời trước. Đi thẳng vào câu hỏi.");
             if (previousResponses.Count == 0)
-                sb.AppendLine("Đây là câu hỏi đầu tiên, hãy bắt đầu với độ khó vừa phải.");
-
+                sb.AppendLine("Đây là câu hỏi đầu tiên, hãy bắt đầu với độ khó vừa phải. LƯU Ý: Lời chào đã được gửi riêng, KHÔNG chào lại. Đi thẳng vào câu hỏi.");
+            Console.WriteLine(sb); 
             return sb.ToString();
         }
 
         private static string BuildFeedbackUserPrompt(InterviewResponseData response)
         {
+            string currentPhase = response.TurnNumber switch
+            {
+                <= 2 => "Giai đoạn 1: Giới thiệu bản thân (Ice-breaker)",
+                <= 4 => "Giai đoạn 2: Câu hỏi kỹ thuật chuyên môn (Technical)",
+                <= 7 => "Giai đoạn 3: Tình huống giả định (Situational)",
+                9 => "Giai đoạn 4: Đào sâu tình huống từ câu trả lời trước (Deep-dive)",
+                _ => "Giai đoạn 5: Văn hóa làm việc và mức độ phù hợp (Culture fit)"
+            };
+
             var sb = new StringBuilder();
             sb.AppendLine("=== ĐÁNH GIÁ CÂU TRẢ LỜI ===");
+            sb.AppendLine($"Bạn hãy phân tích theo tiêu chí của: [{currentPhase}]");
             sb.AppendLine($"Câu hỏi: {response.QuestionContent}");
             sb.AppendLine($"Câu trả lời: {response.UserAnswer}");
             if (!string.IsNullOrEmpty(response.ExpectedAnswerOutline))
@@ -363,7 +473,7 @@ Lưu ý:
 
         public async Task<string> GenerateReactionAsync(int sessionId, string question, string userAnswer)
         {
-            var systemPrompt = @"Bạn là phỏng vấn viên AI tên Bernie, chuyên phỏng vấn IT. 
+            var systemPrompt = @"Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. 
 Sau khi ứng viên trả lời, hãy phản hồi ngắn gọn (1-2 câu) một cách tự nhiên và chuyên nghiệp.
 
 QUY TẮC:
@@ -428,21 +538,52 @@ QUY TẮC:
             return cleaned.Trim();
         }
 
-        private async Task<List<QuestionBankItem>> GetReferenceQuestionsAsync(string field, string level)
+        /// <summary>
+        /// Lấy câu hỏi tham khảo từ DB theo chunk hiện tại.
+        /// 60% xác suất dùng DB, 40% để AI tự gen → giảm trùng lặp giữa các phiên.
+        /// </summary>
+        private async Task<List<QuestionBankItem>> GetRagQuestionsForChunkAsync(int turnNumber, string field, string level)
         {
+            // 40% xác suất AI tự gen (không query DB) → đa dạng câu hỏi
+            if (Random.Shared.NextDouble() < 0.4)
+            {
+                _logger.LogInformation("[RAG] Câu {Turn}: Chọn chế độ AI tự gen (40% random) để tránh trùng lặp", turnNumber);
+                return new List<QuestionBankItem>();
+            }
+
             try
             {
-                // Lấy 5 câu hỏi ngẫu nhiên trong DB đúng chuyên môn làm dữ liệu mồi (RAG)
-                if (_questionDataProvider != null)
+                if (_questionDataProvider == null)
+                    return new List<QuestionBankItem>();
+
+                // Số câu hỏi cần lấy từ DB tùy chunk
+                int maxCount = turnNumber switch
                 {
-                    return await _questionDataProvider.GetQuestionsAsync(field, level, 5);
+                    <= 2 => 0,   // Chunk 1: Ice-breaker — KHÔNG dùng DB (tránh câu tech)
+                    <= 4 => 5,   // Chunk 2: Tech — nhiều tham khảo
+                    <= 7 => 4,   // Chunk 3: Tình huống
+                    <= 9 => 0,   // Chunk 4: Deep-dive — dựa vào câu trước, không cần DB
+                    _    => 2,   // Chunk 5: Văn hóa
+                };
+
+                if (maxCount == 0)
+                {
+                    _logger.LogInformation("[RAG] Câu {Turn}: Chunk 4 (deep-dive) không cần câu hỏi DB", turnNumber);
+                    return new List<QuestionBankItem>();
                 }
+
+                var questions = await _questionDataProvider.GetQuestionsAsync(field, level, maxCount);
+                _logger.LogInformation(
+                    "[RAG] Câu {Turn}: Lấy được {Count}/{Max} câu hỏi từ DB (field={Field}, level={Level})",
+                    turnNumber, questions.Count, maxCount, field, level);
+
+                return questions;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Lỗi khi lấy câu hỏi mồi từ Database");
+                _logger.LogWarning(ex, "[RAG] Câu {Turn}: Lỗi khi lấy câu hỏi từ DB, fallback AI tự gen", turnNumber);
+                return new List<QuestionBankItem>();
             }
-            return new List<QuestionBankItem>();
         }
     }
 }

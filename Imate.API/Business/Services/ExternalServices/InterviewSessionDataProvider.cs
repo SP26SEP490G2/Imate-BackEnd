@@ -139,6 +139,135 @@ namespace Imate.API.Business.Services.ExternalServices
             return entities.Select(MapResponseToDto).ToList();
         }
 
+        // ── Limits & Usage ──
+
+        public async Task<InterviewLimitStatus> GetInterviewLimitStatusAsync(int accountId)
+        {
+            var now = DateTimeOffset.UtcNow;
+            
+            // Tìm subscription đang hoạt động
+            var activeSub = await _context.UserSubscriptions
+                .Include(s => s.Package)
+                .Where(s => s.CandidateId == accountId && s.IsActive)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            // Kiểm tra xem subscription có còn hiệu lực về thời gian không
+            bool hasValidPaidSub = activeSub != null && activeSub.PackageId != 1;
+            if (hasValidPaidSub)
+            {
+                // Kiểm tra EndDateTime từ CreatedAt + DurationDays
+                if (activeSub.Package.DurationDays.HasValue && activeSub.Package.DurationDays.Value > 0)
+                {
+                    var endDateTime = activeSub.CreatedAt.AddDays(activeSub.Package.DurationDays.Value);
+                    if (endDateTime <= now)
+                    {
+                        hasValidPaidSub = false;
+                    }
+                }
+            }
+
+            if (!hasValidPaidSub)
+            {
+                // TRƯỜNG HỢP: FREE (Không có sub hoặc sub package 1 hoặc sub hết hạn)
+                var freeLimitConfig = await _context.SystemConfigs
+                    .FirstOrDefaultAsync(sc => sc.Key == "FREE_INTERVIEW_LIMIT");
+                int limit = freeLimitConfig != null && int.TryParse(freeLimitConfig.Value, out var l) ? l : 3;
+
+                // Đếm số interview trong tháng này (giờ VN)
+                var vietnamNow = now.ToOffset(TimeSpan.FromHours(7));
+                var monthStart = new DateTimeOffset(vietnamNow.Year, vietnamNow.Month, 1, 0, 0, 0, TimeSpan.FromHours(7));
+                var nextMonthStart = monthStart.AddMonths(1);
+
+                var usedInMonth = await _context.InterviewSessions
+                    .CountAsync(s => s.AccountId == accountId &&
+                                    s.StartTime >= monthStart &&
+                                    s.StartTime < nextMonthStart);
+
+                return new InterviewLimitStatus
+                {
+                    IsFree = true,
+                    LimitCount = limit,
+                    UsedCount = usedInMonth,
+                    RemainingCount = Math.Max(0, limit - usedInMonth),
+                    CanStart = usedInMonth < limit,
+                    Message = usedInMonth < limit 
+                        ? $"Bạn còn {limit - usedInMonth} lượt phỏng vấn miễn phí trong tháng này."
+                        : "Bạn đã hết lượt phỏng vấn miễn phí trong tháng này. Hãy nâng cấp gói để tiếp tục!"
+                };
+            }
+            else
+            {
+                // TRƯỜNG HỢP: PAID SUB
+                // Reset số lượt dùng nếu đã sang tháng mới
+                await CheckAndResetMonthlyUsageAsync(activeSub);
+
+                int limit = activeSub.InitialMockLimit;
+                int used = activeSub.MockInterviewUsed;
+
+                return new InterviewLimitStatus
+                {
+                    IsFree = false,
+                    LimitCount = limit,
+                    UsedCount = used,
+                    RemainingCount = Math.Max(0, limit - used),
+                    CanStart = used < limit,
+                    Message = used < limit
+                        ? $"Bạn còn {limit - used} lượt phỏng vấn trong gói {activeSub.Package.Name}."
+                        : $"Gói {activeSub.Package.Name} của bạn đã hết lượt phỏng vấn."
+                };
+            }
+        }
+
+        public async Task IncrementMockInterviewUsageAsync(int accountId)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var activeSub = await _context.UserSubscriptions
+                .Include(s => s.Package)
+                .Where(s => s.CandidateId == accountId && s.IsActive && s.PackageId != 1)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (activeSub != null)
+            {
+                // Chỉ increment nếu sub còn hạn
+                bool isValid = true;
+                if (activeSub.Package.DurationDays.HasValue && activeSub.Package.DurationDays.Value > 0)
+                {
+                    var endDateTime = activeSub.CreatedAt.AddDays(activeSub.Package.DurationDays.Value);
+                    if (endDateTime <= now) isValid = false;
+                }
+
+                if (isValid)
+                {
+                    // Kiểm tra reset tháng trước khi tăng
+                    await CheckAndResetMonthlyUsageAsync(activeSub);
+
+                    activeSub.MockInterviewUsed++;
+                    activeSub.UpdatedAt = DateTimeOffset.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private async Task CheckAndResetMonthlyUsageAsync(UserSubscription sub)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var vietnamNow = now.ToOffset(TimeSpan.FromHours(7));
+
+            var lastUpdate = sub.UpdatedAt ?? sub.CreatedAt;
+            var vietnamLastUpdate = lastUpdate.ToOffset(TimeSpan.FromHours(7));
+
+            // Nếu năm hiện tại lớn hơn hoặc (cùng năm nhưng tháng hiện tại lớn hơn)
+            if (vietnamNow.Year > vietnamLastUpdate.Year || 
+                (vietnamNow.Year == vietnamLastUpdate.Year && vietnamNow.Month > vietnamLastUpdate.Month))
+            {
+                sub.MockInterviewUsed = 0;
+                sub.UpdatedAt = now;
+                await _context.SaveChangesAsync();
+            }
+        }
+
         // ── Mappers ──
 
         private static InterviewSessionData MapSessionToDto(InterviewSession entity) => new()

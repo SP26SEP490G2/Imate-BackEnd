@@ -32,7 +32,8 @@ namespace Imate.API.Configurations
                      .WithOrigins(
                     "http://localhost:7939",
                     "http://localhost:5173",
-                    "http://localhost:3000"
+                    "http://localhost:3000",
+                    "https://imate.vn"
                 )
                     .AllowAnyMethod()
                     .AllowAnyHeader()
