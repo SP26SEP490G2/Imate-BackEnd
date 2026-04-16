@@ -39,7 +39,7 @@ namespace Imate.API.DataAccess.Configurations
                 .HasColumnType("datetimeoffset");
 
             // Seed dữ liệu mặc định cho SystemConfig
-            var now = DateTimeOffset.UtcNow;
+            var now = new DateTimeOffset(new DateTime(2024, 1, 1), TimeSpan.Zero);
             builder.HasData(
                 new SystemConfig { Id = 1, Key = "COMMISSION_RATE", Value = "20.0", Description = "Tỷ lệ hoa hồng (%)", CreatedAt = now },
                 new SystemConfig { Id = 2, Key = "FREE_INTERVIEW_LIMIT", Value = "3", Description = "Số lượt phỏng vấn miễn phí mặc định", CreatedAt = now },

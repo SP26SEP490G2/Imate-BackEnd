@@ -33,6 +33,12 @@ namespace Imate.API.DataAccess.Configurations
                 .WithMany(m => m.Bookings)
                 .HasForeignKey(e => e.MentorId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Add Filtered Unique Index to prevent double booking
+            // Exclude Cancelled and Refunded bookings from the unique constraint
+            builder.HasIndex(e => new { e.MentorId, e.StartTime })
+                .HasFilter("[Status] <> 'Cancelled' AND [Status] <> 'Refunded'")
+                .IsUnique();
         }
     }
 }
