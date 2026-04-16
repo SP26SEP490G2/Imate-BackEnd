@@ -43,12 +43,13 @@ namespace Imate.API.DataAccess.Repositories.Mentors
             var localDateTimeStart = bookDate.ToDateTime(slot.StartTime);
             var slotStartDateTime = TimeZoneInfo.ConvertTimeToUtc(localDateTimeStart, localTimeZone);
 
-            // Check for existing booking
+            // Check for existing booking (Confirmed, Pending, or Completed all occupy the slot)
+            var occupyingStatuses = new[] { BookingStatus.Confirmed, BookingStatus.Pending, BookingStatus.Completed };
             var existingBooking = await _context.Bookings
                 .AnyAsync(b => b.MentorId == mentorId
                     && b.BookDate == bookDate
                     && b.StartTime == slotStartDateTime
-                    && b.Status == BookingStatus.Confirmed);
+                    && occupyingStatuses.Contains(b.Status));
 
             if (existingBooking)
             {
@@ -287,12 +288,13 @@ namespace Imate.API.DataAccess.Repositories.Mentors
 
             // Tìm tất cả bookings của mentor có:
             // - BookDate.DayOfWeek == slot.DayOfWeek
-            // - Status == Confirmed
+            // - Status == Confirmed, Pending, hoặc Completed
             // - StartTime >= DateTime.Now (chỉ lấy bookings tương lai)
+            var occupyingStatuses = new[] { BookingStatus.Confirmed, BookingStatus.Pending, BookingStatus.Completed };
             var bookings = await _context.Bookings
                 .Include(b => b.Candidate)
                 .Where(b => b.MentorId == mentorId
-                    && b.Status == BookingStatus.Confirmed
+                    && occupyingStatuses.Contains(b.Status)
                     && b.StartTime >= currentDateTime
                     && (int)b.BookDate.DayOfWeek == slotDayOfWeek)
                 .ToListAsync();

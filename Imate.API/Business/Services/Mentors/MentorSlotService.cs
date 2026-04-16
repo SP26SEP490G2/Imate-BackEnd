@@ -71,6 +71,12 @@ namespace Imate.API.Business.Services.Mentors
         }
         public async Task<bool> AddMentorRecurringSlotsAsync(int mentorId, List<int> slotIds)
         {
+            var mentor = await _unitOfWork.Mentors.GetMentorByIdAsync(mentorId);
+            if (mentor == null)
+            {
+                throw new KeyNotFoundException("Hồ sơ Mentor chưa được tạo. Vui lòng cập nhật hồ sơ cá nhân trước khi thiết lập lịch hẹn.");
+            }
+
             var existingSlots = await _unitOfWork.MentorRecurringSlots.GetByMentorIdAsync(mentorId);
             var existingSlotIds = existingSlots.Select(s => s.SlotId).ToHashSet();
 
