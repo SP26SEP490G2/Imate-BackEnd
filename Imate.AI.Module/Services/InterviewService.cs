@@ -508,21 +508,33 @@ Lưu ý:
 
         public async Task<string> GenerateReactionAsync(int sessionId, string question, string userAnswer)
         {
-            var systemPrompt = @"Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. 
-Sau khi ứng viên trả lời, hãy phản hồi ngắn gọn (1-2 câu) một cách tự nhiên và chuyên nghiệp.
+            var session = await _dataProvider.GetSessionByIdAsync(sessionId);
+            var gapAnalysis = session?.GapAnalysisJson;
 
-QUY TẮC:
-- Nhận xét tích cực nếu câu trả lời tốt (ví dụ: 'Câu trả lời rất chi tiết!', 'Tốt lắm!')
-- Gợi ý nhẹ nếu câu trả lời chung chung (ví dụ: 'Bạn có thể cho ví dụ cụ thể hơn không?')
-- Chuyển tiếp tự nhiên sang câu hỏi tiếp theo (ví dụ: 'Hay lắm! Tiếp theo tôi muốn hỏi về...')
-- KHÔNG đánh giá điểm, KHÔNG nói đáp án đúng/sai
-- KHÔNG hỏi câu hỏi mới trong phản hồi
-- Trả về text thuần, KHÔNG markdown, KHÔNG JSON";
+            var systemPrompt = @"Bạn là một Mentor (người hướng dẫn) và Senior Interviewer dày dạn kinh nghiệm. 
+Nhiệm vụ: Phản hồi lại câu trả lời của ứng viên một cách tự nhiên, mang tính khích lệ và dẫn dắt (Coaching).
 
-            var userPrompt = $"Câu hỏi phỏng vấn: {question}\nCâu trả lời của ứng viên: {userAnswer}\n\nHãy phản hồi ngắn gọn (1-2 câu):";
+QUY TẮC PHẢN HỒI:
+1. PHONG CÁCH MENTOR: Phản hồi chuyên nghiệp, thân thiện. Hãy coi ứng viên như một đồng nghiệp tiềm năng cần được chỉ dẫn.
+2. TẬP TRUNG VÀO NÂNG CẤP: Nếu ứng viên trả lời tốt, hãy khen ngợi cụ thể. Nếu chưa tốt, hãy đưa ra gợi ý nhẹ nhàng để họ tư duy sâu hơn.
+3. LIÊN KẾT VỚI GAP (NẾU CÓ): Sử dụng thông tin GAP ANALYSIS để biết ứng viên đang thiếu gì so với JD. Nếu câu trả lời thể hiện nỗ lực lấp đầy Gap, hãy ghi nhận.
+4. ĐỘ DÀI: Tối đa 1-2 câu ngắn gọn để không làm gián đoạn luồng phỏng vấn.
+5. CHUYỂN TIẾP: Kết thúc bằng một câu dẫn để chuẩn bị cho câu hỏi tiếp theo.
+6. CẤM: KHÔNG đánh giá điểm số, KHÔNG được hỏi câu hỏi mới ở đây, KHÔNG trả về JSON/Markdown.";
 
-            _logger.LogInformation("Generating AI reaction for session {SessionId}", sessionId);
-            var reaction = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(gapAnalysis))
+            {
+                sb.AppendLine("=== KHOẢNG TRỐNG NĂNG LỰC (GAP ANALYSIS) ===");
+                sb.AppendLine(gapAnalysis);
+                sb.AppendLine("=== HẾT GAP ANALYSIS ===\n");
+            }
+            sb.AppendLine($"Câu hỏi bạn vừa hỏi: {question}");
+            sb.AppendLine($"Câu trả lời của ứng viên: {userAnswer}");
+            sb.AppendLine("\nHãy đưa ra phản hồi mang tính Mentor (1-2 câu):");
+
+            _logger.LogInformation("Generating Mentor reaction for session {SessionId}", sessionId);
+            var reaction = await _geminiService.GenerateContentAsync(systemPrompt, sb.ToString());
             return reaction.Trim();
         }
 
