@@ -152,8 +152,6 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
 
         public async Task CreateContributedQuestionAsync(Question question)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-
             try
             {
                 await _context.Questions.AddAsync(question);

@@ -8,6 +8,7 @@ namespace Imate.API.Presentation.ResponseModels.QuestionBank
         public string? ApprovalStatus { get; set; }
         public string? SampleAnswer { get; set; }
         public int? ContributedDetailId { get; set; }
+        public string Difficulty { get; set; }
         public MyContributedDetailDto? ContributedDetail { get; set; }
         public List<string> CategoriesName { get; set; }
         public List<string> SkillsName { get; set; }

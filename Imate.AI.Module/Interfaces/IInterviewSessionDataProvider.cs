@@ -47,6 +47,7 @@ namespace Imate.AI.Module.Interfaces
         public int TotalQuestionsAnswered { get; set; }
         public string? CvContent { get; set; }
         public string? ExtractedSkillsJson { get; set; }
+        public string? GapAnalysisJson { get; set; }
     }
 
     /// <summary>

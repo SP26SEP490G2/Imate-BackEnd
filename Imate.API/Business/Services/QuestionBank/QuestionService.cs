@@ -795,6 +795,7 @@ namespace Imate.API.Business.Services.QuestionBank
                     Company = q.ContributedDetail.Company != null ? q.ContributedDetail.Company.Name : string.Empty,
                     CompanyURL = q.ContributedDetail.Company != null ? q.ContributedDetail.Company.ImageUrl : string.Empty,
                 } : null,
+                Difficulty = q.Difficulty.ToString(),
                 IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id)
             });
 
@@ -970,6 +971,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 Difficulty = request.Difficulty,
                 IsFromSystem = false,
                 IsActive = false,
+                CreatedAt = DateTime.UtcNow,
                 ApprovalStatus = QuestionApprovalStatus.Pending, // Mặc định là Pending khi tạo mới
                 ContributedDetail = contributedDetail,
                 QuestionSkills = request.SkillIds.Select(skillId => new QuestionSkill { SkillId = skillId }).ToList()
@@ -1051,6 +1053,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 SampleAnswer = request.SampleAnswer,
                 CreatorId = creatorId,
                 IsFromSystem = true,
+                CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
             var a = new List<int>();         
@@ -1802,6 +1805,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 IsActive = q.IsActive,
                 ApprovalStatus = q.ApprovalStatus.HasValue ? q.ApprovalStatus.Value.ToString() : null,
                 SampleAnswer = q.SampleAnswer,
+                Difficulty = q.Difficulty.ToString(),
                 ContributedDetailId = q.ContributedDetailId,
                 ContributedDetail = q.ContributedDetail != null ? new MyContributedDetailDto
                 {

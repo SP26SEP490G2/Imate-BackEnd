@@ -199,6 +199,9 @@ namespace Imate.API.Business.Services.ExternalServices
             else
             {
                 // TRƯỜNG HỢP: PAID SUB
+                // Reset số lượt dùng nếu đã sang tháng mới
+                await CheckAndResetMonthlyUsageAsync(activeSub);
+
                 int limit = activeSub.InitialMockLimit;
                 int used = activeSub.MockInterviewUsed;
 
@@ -237,10 +240,31 @@ namespace Imate.API.Business.Services.ExternalServices
 
                 if (isValid)
                 {
+                    // Kiểm tra reset tháng trước khi tăng
+                    await CheckAndResetMonthlyUsageAsync(activeSub);
+
                     activeSub.MockInterviewUsed++;
                     activeSub.UpdatedAt = DateTimeOffset.UtcNow;
                     await _context.SaveChangesAsync();
                 }
+            }
+        }
+
+        private async Task CheckAndResetMonthlyUsageAsync(UserSubscription sub)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var vietnamNow = now.ToOffset(TimeSpan.FromHours(7));
+
+            var lastUpdate = sub.UpdatedAt ?? sub.CreatedAt;
+            var vietnamLastUpdate = lastUpdate.ToOffset(TimeSpan.FromHours(7));
+
+            // Nếu năm hiện tại lớn hơn hoặc (cùng năm nhưng tháng hiện tại lớn hơn)
+            if (vietnamNow.Year > vietnamLastUpdate.Year || 
+                (vietnamNow.Year == vietnamLastUpdate.Year && vietnamNow.Month > vietnamLastUpdate.Month))
+            {
+                sub.MockInterviewUsed = 0;
+                sub.UpdatedAt = now;
+                await _context.SaveChangesAsync();
             }
         }
 
