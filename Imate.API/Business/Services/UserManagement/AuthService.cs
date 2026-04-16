@@ -94,7 +94,7 @@ namespace Imate.API.Business.Services
                     Email = request.Email,
                     Password = request.Password,
                     DisplayName = request.FullName,
-                    EmailVerified = true
+                    EmailVerified = false
                 };
                 firebaseUser = await _firebaseAuth.CreateUserAsync(args);
             }
@@ -169,11 +169,11 @@ namespace Imate.API.Business.Services
 
             string uid = decodedToken.Uid;
 
-            // bool isEmailVerified = decodedToken.Claims.GetValueOrDefault("email_verified", false) as bool? ?? false;
-            // if (!isEmailVerified)
-            // {
-            //     throw new UnauthorizedException("Vui lòng xác minh tài khoản email trước khi đăng nhập.");
-            // }
+            bool isEmailVerified = decodedToken.Claims.GetValueOrDefault("email_verified", false) as bool? ?? false;
+            if (!isEmailVerified)
+            {
+                throw new UnauthorizedException("Vui lòng xác minh tài khoản email trước khi đăng nhập.");
+            }
 
             // BƯỚC 3: TÌM TÀI KHOẢN TRONG DATABASE
             var account = await _accountRepository.GetByProviderIdAsync(uid);
@@ -654,7 +654,7 @@ namespace Imate.API.Business.Services
             try
             {
                 // Get backend base URL from configuration
-                var backendBaseUrl = _configuration["BackendUrl"] ?? 
+                var backendBaseUrl = _configuration["BackendUrl:BaseUrl"] ?? 
                                     _configuration["ASPNETCORE_URLS"]?.Split(';').FirstOrDefault() ??
                                     "http://localhost:4078";
                 
