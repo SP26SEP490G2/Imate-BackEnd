@@ -111,7 +111,7 @@ namespace Imate.API.UnitTest.Services
             var act = () => _service.GetListPreviewMentorsAsync(new CommonParams());
 
             // Assert
-            await act.Should().ThrowAsync<ApplicationException>().WithMessage("An error occurred while retrieving mentors.");
+           await act.Should().ThrowAsync<ApplicationException>().WithMessage("An error occurred while retrieving mentors.");
         }
         #endregion
 

@@ -77,15 +77,109 @@ namespace Imate.API.UnitTest.Services
             _mockBookingRepo.Verify(r => r.AddAsync(It.IsAny<Booking>()), Times.Once);
         }
 
-        [Fact] public async Task CreateBookingAsync_MentorNotFound() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Mentor?)null); await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1 }, 2)); }
-        [Fact] public async Task CreateBookingAsync_MentorAccountNotFound() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor()); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Account?)null); await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1 }, 2)); }
-        [Fact] public async Task CreateBookingAsync_CandidateAccountNotFound() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor()); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account()); _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync((Account?)null); await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1 }, 2)); }
-        [Fact] public async Task CreateBookingAsync_SlotNotBelongToMentor() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor()); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account()); _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account()); _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(false); await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1, SlotId = 10 }, 2)); }
-        [Fact] public async Task CreateBookingAsync_SlotNotFound() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor()); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account()); _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account()); _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true); _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync((Slot?)null); await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1, SlotId = 10 }, 2)); }
-        [Fact] public async Task CreateBookingAsync_DateTooFar() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor()); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account()); _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account()); _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true); _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot()); var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(15)) }; await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2)); }
-        [Fact] public async Task CreateBookingAsync_SlotUnavailable() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor()); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account()); _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account()); _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true); _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot { StartTime = new TimeOnly(23, 0) }); _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(false); var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) }; await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2)); }
-        [Fact] public async Task CreateBookingAsync_CandidateBusy() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor()); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account()); _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account()); _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true); _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot { StartTime = new TimeOnly(23, 0), EndTime = new TimeOnly(23, 30) }); _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(true); _mockBookingRepo.Setup(r => r.HasCandidateBookingAtTimeAsync(2, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(true); var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) }; await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2)); }
-        [Fact] public async Task CreateBookingAsync_InsufficientBalance() { _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor { PricePerSession = 100 }); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account()); _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account { Balance = 10 }); _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true); _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot { StartTime = new TimeOnly(23, 0) }); _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(true); _mockBookingRepo.Setup(r => r.HasCandidateBookingAtTimeAsync(2, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(false); var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) }; await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2)); }
+        [Fact]
+        public async Task CreateBookingAsync_MentorNotFound()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Mentor?)null);
+
+            await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1 }, 2));
+        }
+        [Fact]
+        public async Task CreateBookingAsync_MentorAccountNotFound()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Account?)null);
+
+            await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1 }, 2));
+        }
+        [Fact]
+        public async Task CreateBookingAsync_CandidateAccountNotFound()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync((Account?)null);
+
+            await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1 }, 2));
+        }
+        [Fact]
+        public async Task CreateBookingAsync_SlotNotBelongToMentor()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account());
+            _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(false);
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1, SlotId = 10 }, 2));
+        }
+        [Fact]
+        public async Task CreateBookingAsync_SlotNotFound()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account());
+            _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true);
+            _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync((Slot?)null);
+
+            await Assert.ThrowsAsync<NotFoundException>(() => _service.CreateBookingAsync(new BookingCreateRequest { MentorId = 1, SlotId = 10 }, 2));
+        }
+        [Fact]
+        public async Task CreateBookingAsync_DateTooFar()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(
+                new Mentor()); _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account());
+            _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true);
+            _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot());
+
+            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(15)) };
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2));
+        }
+        [Fact]
+        public async Task CreateBookingAsync_SlotUnavailable()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account());
+            _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true);
+            _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot { StartTime = new TimeOnly(23, 0) });
+            _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(false);
+
+            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) };
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2));
+
+        }
+        [Fact]
+        public async Task CreateBookingAsync_CandidateBusy()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account());
+            _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true);
+            _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot { StartTime = new TimeOnly(23, 0), EndTime = new TimeOnly(23, 30) });
+            _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(true);
+            _mockBookingRepo.Setup(r => r.HasCandidateBookingAtTimeAsync(2, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(true);
+
+            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) };
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2));
+        }
+        [Fact]
+        public async Task CreateBookingAsync_InsufficientBalance()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor { PricePerSession = 100 });
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Account());
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account { Balance = 10 });
+            _mockBookingRepo.Setup(r => r.HasMentorRecurringSlotAsync(1, 10)).ReturnsAsync(true);
+            _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot { StartTime = new TimeOnly(23, 0) });
+            _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(true);
+            _mockBookingRepo.Setup(r => r.HasCandidateBookingAtTimeAsync(2, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(false);
+
+            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) };
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2));
+        }
 
         #endregion
 
@@ -94,27 +188,27 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task GetCandidateBookingsAsync_ShouldReturnList()
         {
-            var bookings = new List<Booking> 
-            { 
-                new Booking 
-                { 
-                    Id = 1, CandidateId = 1, BookDate = new DateOnly(2026, 1, 1), 
-                    StartTime = DateTimeOffset.UtcNow, 
+            var bookings = new List<Booking>
+            {
+                new Booking
+                {
+                    Id = 1, CandidateId = 1, BookDate = new DateOnly(2026, 1, 1),
+                    StartTime = DateTimeOffset.UtcNow,
                     Mentor = new Mentor { Account = new Account { FullName = "M", AvatarUrl = "url" } },
                     AgoraChannelName = "room1", PriceAtBooking = 100
-                } 
+                }
             }.AsQueryable().BuildMock();
-            
+
             _mockBookingRepo.Setup(r => r.GetAllBookings()).Returns(bookings);
-            
-            var slots = new List<Slot> 
-            { 
-                new Slot { DayOfWeek = (int)new DateOnly(2026, 1, 1).DayOfWeek, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 0) } 
+
+            var slots = new List<Slot>
+            {
+                new Slot { DayOfWeek = (int)new DateOnly(2026, 1, 1).DayOfWeek, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 0) }
             }.AsQueryable().BuildMock();
             _mockSlotRepo.Setup(r => r.FindAll(false)).Returns(slots);
-            
+
             var result = await _service.GetCandidateBookingsAsync(1);
-            
+
             result.Should().HaveCount(1);
             result[0].ProfileName.Should().Be("M");
         }
@@ -122,12 +216,12 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task GetMentorBookingsAsync_ShouldReturnListAndExerciseAutoComplete()
         {
-            var bookings = new List<Booking> 
-            { 
-                new Booking 
-                { 
-                    Id = 1, MentorId = 1, BookDate = new DateOnly(2026, 1, 1), 
-                    StartTime = DateTimeOffset.UtcNow, 
+            var bookings = new List<Booking>
+            {
+                new Booking
+                {
+                    Id = 1, MentorId = 1, BookDate = new DateOnly(2026, 1, 1),
+                    StartTime = DateTimeOffset.UtcNow,
                     Candidate = new Account { FullName = "C", AvatarUrl = "url" },
                     AgoraChannelName = "room1", PriceAtBooking = 100
                 },
@@ -138,13 +232,13 @@ namespace Imate.API.UnitTest.Services
                     Candidate = new Account { FullName = "C2", AvatarUrl = "url2" }
                 }
             }.AsQueryable().BuildMock();
-            
+
             _mockBookingRepo.Setup(r => r.GetAllBookings()).Returns(bookings);
             _mockSlotRepo.Setup(r => r.FindAll(false)).Returns(new List<Slot>().AsQueryable().BuildMock());
-            
+
             var result = await _service.GetMentorBookingsAsync(1);
-            
-            result.Should().HaveCount(2); 
+
+            result.Should().HaveCount(2);
             result.Should().Contain(r => r.BookingId == 2 && r.Status == BookingStatus.Completed);
             _mockUnitOfWork.Verify(u => u.SaveChangesAsync(), Times.AtLeastOnce); // Due to auto-complete
         }
@@ -155,9 +249,9 @@ namespace Imate.API.UnitTest.Services
             var mentorId = 1;
             var bookings = new List<Booking>
             {
-                new Booking 
-                { 
-                    Id = 123, MentorId = mentorId, BookDate = new DateOnly(2026, 1, 1), 
+                new Booking
+                {
+                    Id = 123, MentorId = mentorId, BookDate = new DateOnly(2026, 1, 1),
                     StartTime = DateTimeOffset.UtcNow, Status = BookingStatus.Confirmed,
                     Candidate = new Account { FullName = "C" }
                 }
@@ -179,9 +273,9 @@ namespace Imate.API.UnitTest.Services
             var mentorId = 1;
             var bookings = new List<Booking>
             {
-                new Booking 
-                { 
-                    Id = 101, MentorId = mentorId, CandidateId = 2, 
+                new Booking
+                {
+                    Id = 101, MentorId = mentorId, CandidateId = 2,
                     Status = BookingStatus.Completed, StartTime = DateTimeOffset.UtcNow,
                     Candidate = new Account { FullName = "Candidate 2" }
                 }
@@ -210,8 +304,8 @@ namespace Imate.API.UnitTest.Services
             var candidateId = 1;
             var bookings = new List<Booking>
             {
-                new Booking 
-                { 
+                new Booking
+                {
                     Id = 201, CandidateId = candidateId, Status = BookingStatus.Completed,
                     Mentor = new Mentor { Account = new Account { FullName = "Mentor 1" } }
                 }
@@ -238,7 +332,12 @@ namespace Imate.API.UnitTest.Services
             result.MeetingRoomId.Should().Be("r");
         }
 
-        [Fact] public async Task GetCandidateSessionDetailAsync_Unauthorized() { _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 10 }); await Assert.ThrowsAsync<BadRequestException>(() => _service.GetCandidateSessionDetailAsync(1, 1)); }
+        [Fact]
+        public async Task GetCandidateSessionDetailAsync_Unauthorized()
+        {
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 10 });
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.GetCandidateSessionDetailAsync(1, 1));
+        }
 
         [Fact]
         public async Task GetMentorSessionDetailAsync_Success()
@@ -266,12 +365,12 @@ namespace Imate.API.UnitTest.Services
             await Assert.ThrowsAsync<NotFoundException>(() => _service.GetMentorSessionDetailAsync(1, 1));
         }
 
-        [Fact] 
-        public async Task GetMentorSessionDetailAsync_Unauthorized() 
-        { 
-            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor()); 
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { MentorId = 10 }); 
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.GetMentorSessionDetailAsync(1, 1)); 
+        [Fact]
+        public async Task GetMentorSessionDetailAsync_Unauthorized()
+        {
+            _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { MentorId = 10 });
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.GetMentorSessionDetailAsync(1, 1));
         }
 
         [Fact]
@@ -280,19 +379,23 @@ namespace Imate.API.UnitTest.Services
             // Thursday 10:00 SE Asia (UTC+7) = 03:00 UTC
             var startTime = new DateTimeOffset(2026, 1, 1, 3, 0, 0, TimeSpan.Zero);
             var bookDate = new DateOnly(2026, 1, 1);
-            var booking = new Booking 
-            { 
-                Id = 1, MentorId = 1, CandidateId = 5, BookDate = bookDate, StartTime = startTime,
+            var booking = new Booking
+            {
+                Id = 1,
+                MentorId = 1,
+                CandidateId = 5,
+                BookDate = bookDate,
+                StartTime = startTime,
                 Candidate = new Account { FullName = "C" }
             };
             var slot = new Slot { DayOfWeek = (int)bookDate.DayOfWeek, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 30) };
-            
+
             _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
             _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(booking);
             _mockSlotRepo.Setup(r => r.FindAll(false)).Returns(new List<Slot> { slot }.AsQueryable().BuildMock());
-            
+
             var result = await _service.GetMentorSessionDetailAsync(1, 1);
-            
+
             // 11:30 SE Asia = 04:30 UTC
             result.EndTime.Should().Be(new DateTimeOffset(2026, 1, 1, 4, 30, 0, TimeSpan.Zero));
         }
@@ -300,13 +403,17 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task GetMentorSessionDetailAsync_Success_WithMultipleFiles()
         {
-            var booking = new Booking 
-            { 
-                Id = 1, MentorId = 1, CandidateId = 5, BookDate = new DateOnly(2026, 1, 1), StartTime = DateTimeOffset.UtcNow,
+            var booking = new Booking
+            {
+                Id = 1,
+                MentorId = 1,
+                CandidateId = 5,
+                BookDate = new DateOnly(2026, 1, 1),
+                StartTime = DateTimeOffset.UtcNow,
                 Candidate = new Account { FullName = "C" },
-                AudioRecordKey = "{\"files\": [{\"fileName\": \"f1.mp4\"}, {\"fileName\": \"f2.mp4\"}]}" 
+                AudioRecordKey = "{\"files\": [{\"fileName\": \"f1.mp4\"}, {\"fileName\": \"f2.mp4\"}]}"
             };
-            
+
             _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
             _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(booking);
             _mockSlotRepo.Setup(r => r.FindAll(false)).Returns(new List<Slot>().AsQueryable().BuildMock());
@@ -322,13 +429,17 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task GetMentorSessionDetailAsync_Success_WithJsonObjectMetadata()
         {
-            var booking = new Booking 
-            { 
-                Id = 1, MentorId = 1, CandidateId = 5, BookDate = new DateOnly(2026, 1, 1), StartTime = DateTimeOffset.UtcNow,
+            var booking = new Booking
+            {
+                Id = 1,
+                MentorId = 1,
+                CandidateId = 5,
+                BookDate = new DateOnly(2026, 1, 1),
+                StartTime = DateTimeOffset.UtcNow,
                 Candidate = new Account { FullName = "C" },
                 AudioRecordKey = "{\"files\": [{\"fileName\": \"f1.mp4\"}], \"sid\": \"sid123\"}" // Object instead of Array
             };
-            
+
             _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
             _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(booking);
             _mockSlotRepo.Setup(r => r.FindAll(false)).Returns(new List<Slot>().AsQueryable().BuildMock());
@@ -343,13 +454,17 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task GetMentorSessionDetailAsync_Success_WithSidFallback()
         {
-            var booking = new Booking 
-            { 
-                Id = 123, MentorId = 1, CandidateId = 5, BookDate = new DateOnly(2026, 1, 1), StartTime = DateTimeOffset.UtcNow,
+            var booking = new Booking
+            {
+                Id = 123,
+                MentorId = 1,
+                CandidateId = 5,
+                BookDate = new DateOnly(2026, 1, 1),
+                StartTime = DateTimeOffset.UtcNow,
                 Candidate = new Account { FullName = "C" },
                 AudioRecordKey = "{\"sid\": \"sid789\"}" // No files array, but has sid
             };
-            
+
             _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
             _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(booking);
             _mockSlotRepo.Setup(r => r.FindAll(false)).Returns(new List<Slot>().AsQueryable().BuildMock());
@@ -380,10 +495,30 @@ namespace Imate.API.UnitTest.Services
             account.Balance.Should().Be(100);
         }
 
-        [Fact] public async Task CancelBookingAsync_NotFound() { _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync((Booking?)null); await Assert.ThrowsAsync<NotFoundException>(() => _service.CancelBookingAsync(1, 1)); }
-        [Fact] public async Task CancelBookingAsync_Unauthorized() { _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 10 }); await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1)); }
-        [Fact] public async Task CancelBookingAsync_WrongStatus() { _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 1, Status = BookingStatus.Completed }); await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1)); }
-        [Fact] public async Task CancelBookingAsync_TooLate() { _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 1, Status = BookingStatus.Confirmed, StartTime = DateTimeOffset.UtcNow.AddHours(2) }); await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1)); }
+        [Fact]
+        public async Task CancelBookingAsync_NotFound()
+        {
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync((Booking?)null);
+            await Assert.ThrowsAsync<NotFoundException>(() => _service.CancelBookingAsync(1, 1));
+        }
+        [Fact]
+        public async Task CancelBookingAsync_Unauthorized()
+        {
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 10 });
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1));
+        }
+        [Fact]
+        public async Task CancelBookingAsync_WrongStatus()
+        {
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 1, Status = BookingStatus.Completed });
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1));
+        }
+        [Fact]
+        public async Task CancelBookingAsync_TooLate()
+        {
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 1, Status = BookingStatus.Confirmed, StartTime = DateTimeOffset.UtcNow.AddHours(2) });
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1));
+        }
 
         #endregion
 
@@ -402,7 +537,12 @@ namespace Imate.API.UnitTest.Services
             mentor.AvgRatings.Should().Be(5);
         }
 
-        [Fact] public async Task RateMentorAsync_AlreadyRated() { _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 1, RatingCreatedAt = DateTime.UtcNow }); await Assert.ThrowsAsync<BadRequestException>(() => _service.RateMentorAsync(1, 1, new RateMentorRequest())); }
+        [Fact]
+        public async Task RateMentorAsync_AlreadyRated()
+        {
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 1, RatingCreatedAt = DateTime.UtcNow });
+            await Assert.ThrowsAsync<BadRequestException>(() => _service.RateMentorAsync(1, 1, new RateMentorRequest()));
+        }
 
         #endregion
 
@@ -413,21 +553,21 @@ namespace Imate.API.UnitTest.Services
             // This tests the catch block in the private method. 
             // We trigger it via GetMentorBookingsAsync which calls AutoComplete...
             // Mock SaveChangesAsync to throw - this is inside the try-catch of AutoComplete...
-            
-            var bookings = new List<Booking> 
-            { 
-                new Booking 
-                { 
+
+            var bookings = new List<Booking>
+            {
+                new Booking
+                {
                     Id = 2, MentorId = 1, StartTime = DateTimeOffset.UtcNow.AddHours(-2),
                     Status = BookingStatus.Confirmed, BookDate = new DateOnly(2026, 1, 1),
                     Candidate = new Account { FullName = "C2", AvatarUrl = "url2" }
                 }
             }.AsQueryable().BuildMock();
-            
+
             _mockBookingRepo.Setup(r => r.GetAllBookings()).Returns(bookings);
             _mockUnitOfWork.Setup(u => u.SaveChangesAsync()).Throws(new Exception("DB Error"));
             _mockSlotRepo.Setup(r => r.FindAll(false)).Returns(new List<Slot>().AsQueryable().BuildMock());
-            
+
             // Should not throw because of try-catch in AutoCompleteExpiredBookingsAsync
             var act = () => _service.GetMentorBookingsAsync(1);
             await act.Should().NotThrowAsync();
@@ -438,9 +578,11 @@ namespace Imate.API.UnitTest.Services
         {
             // Use reflection or a public method that calls it if possible, 
             // but here we can just test the public method GetCandidateSessionDetailAsync which uses it.
-            var booking = new Booking 
-            { 
-                Id = 1, CandidateId = 1, Status = BookingStatus.Completed, 
+            var booking = new Booking
+            {
+                Id = 1,
+                CandidateId = 1,
+                Status = BookingStatus.Completed,
                 MentorId = 2,
                 Mentor = new Mentor { Account = new Account { FullName = "M", AvatarUrl = "url" } },
                 AudioRecordKey = "{\"files\": [{\"fileName\": \"f1.mp4\"}]}",

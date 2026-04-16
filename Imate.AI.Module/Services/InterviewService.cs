@@ -81,6 +81,21 @@ namespace Imate.AI.Module.Services
             var existingResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
             var answeredCount = existingResponses.Count(r => !string.IsNullOrEmpty(r.UserAnswer));
             var turnNumber = existingResponses.Count + 1;
+            
+            // Tự động phân tích Gap nếu chưa có (Chỉ thực hiện ở câu đầu tiên hoặc nếu dữ liệu trống)
+            if (string.IsNullOrEmpty(session.GapAnalysisJson) && !string.IsNullOrEmpty(session.CvContent) && !string.IsNullOrEmpty(session.JobDescriptionText))
+            {
+                try 
+                {
+                    session.GapAnalysisJson = await AnalyzeGapsAsync(session.CvContent, session.JobDescriptionText);
+                    await _dataProvider.UpdateSessionAsync(session);
+                    _logger.LogInformation("[GAP-ANALYSIS] Đã cập nhật kết quả phân tích Gap cho Session {SessionId}", sessionId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[GAP-ANALYSIS] Lỗi khi phân tích Gap cho Session {SessionId}", sessionId);
+                }
+            }
 
             // Kiểm tra giới hạn thời gian (30 phút)
             var elapsedTime = DateTimeOffset.UtcNow - session.StartTime;
@@ -165,7 +180,10 @@ namespace Imate.AI.Module.Services
                 .Where(r => !string.IsNullOrEmpty(r.UserAnswer))
                 .OrderBy(r => r.TurnNumber)
                 .ToList();
-    
+
+            var session = await _dataProvider.GetSessionByIdAsync(sessionId);
+            var gapAnalysis = session?.GapAnalysisJson;
+
             _logger.LogInformation("Generating feedback for {Count} answers in session {SessionId}",
                 answeredResponses.Count, sessionId);
 
@@ -181,7 +199,7 @@ namespace Imate.AI.Module.Services
                 {
                     try
                     {
-                        var userPrompt = BuildFeedbackUserPrompt(response);
+                        var userPrompt = BuildFeedbackUserPrompt(response, gapAnalysis);
                         var rawFeedback = await _geminiService.GenerateContentAsync(_feedbackSystemPrompt, userPrompt);
                         var feedback = ParseFeedbackResponse(rawFeedback);
 
@@ -306,6 +324,16 @@ namespace Imate.AI.Module.Services
                 sb.AppendLine("\n(Không có câu hỏi tham khảo từ DB — hãy TỰ sáng tạo câu hỏi dựa trên CV, JD và giai đoạn hiện tại.)");
             }
 
+            // Inject Gap Analysis (nếu có) để AI tập trung huấn luyện phần thiếu
+            if (!string.IsNullOrEmpty(session.GapAnalysisJson))
+            {
+                sb.AppendLine("\n=== KẾT QUẢ PHÂN TÍCH GAP (CV vs JD) ===");
+                sb.AppendLine("Dưới đây là các điểm thiếu hụt năng lực của ứng viên so với JD.");
+                sb.AppendLine("HÃY SỬ DỤNG THÔNG TIN NÀY ĐỂ ĐẶT CÂU HỎI TRỌNG TÂM VÀO VIỆC HUẤN LUYỆN/KIỂM TRA CÁC GAP NÀY.");
+                sb.AppendLine(session.GapAnalysisJson);
+                sb.AppendLine("=== HẾT PHÂN TÍCH GAP ===");
+            }
+
             // Thêm nội dung CV ứng viên để cá nhân hóa câu hỏi
             if (!string.IsNullOrEmpty(session.CvContent))
             {
@@ -348,7 +376,7 @@ namespace Imate.AI.Module.Services
             return sb.ToString();
         }
 
-        private static string BuildFeedbackUserPrompt(InterviewResponseData response)
+        private static string BuildFeedbackUserPrompt(InterviewResponseData response, string? gapAnalysis = null)
         {
             string currentPhase = response.TurnNumber switch
             {
@@ -361,6 +389,13 @@ namespace Imate.AI.Module.Services
 
             var sb = new StringBuilder();
             sb.AppendLine("=== ĐÁNH GIÁ CÂU TRẢ LỜI ===");
+            if (!string.IsNullOrEmpty(gapAnalysis))
+            {
+                sb.AppendLine("\n=== CONTEXT: KHOẢNG TRỐNG NĂNG LỰC (GAP ANALYSIS) ===");
+                sb.AppendLine("Dưới đây là các điểm thiếu hụt của ứng viên so với JD. Hãy sử dụng thông tin này để đưa ra nhận xét mang tính huấn luyện (coaching) để giúp ứng viên lấp đầy gap.");
+                sb.AppendLine(gapAnalysis);
+                sb.AppendLine("=== HẾT CONTEXT GAP ===\n");
+            }
             sb.AppendLine($"Bạn hãy phân tích theo tiêu chí của: [{currentPhase}]");
             sb.AppendLine($"Câu hỏi: {response.QuestionContent}");
             sb.AppendLine($"Câu trả lời: {response.UserAnswer}");
@@ -473,21 +508,33 @@ Lưu ý:
 
         public async Task<string> GenerateReactionAsync(int sessionId, string question, string userAnswer)
         {
-            var systemPrompt = @"Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. 
-Sau khi ứng viên trả lời, hãy phản hồi ngắn gọn (1-2 câu) một cách tự nhiên và chuyên nghiệp.
+            var session = await _dataProvider.GetSessionByIdAsync(sessionId);
+            var gapAnalysis = session?.GapAnalysisJson;
 
-QUY TẮC:
-- Nhận xét tích cực nếu câu trả lời tốt (ví dụ: 'Câu trả lời rất chi tiết!', 'Tốt lắm!')
-- Gợi ý nhẹ nếu câu trả lời chung chung (ví dụ: 'Bạn có thể cho ví dụ cụ thể hơn không?')
-- Chuyển tiếp tự nhiên sang câu hỏi tiếp theo (ví dụ: 'Hay lắm! Tiếp theo tôi muốn hỏi về...')
-- KHÔNG đánh giá điểm, KHÔNG nói đáp án đúng/sai
-- KHÔNG hỏi câu hỏi mới trong phản hồi
-- Trả về text thuần, KHÔNG markdown, KHÔNG JSON";
+            var systemPrompt = @"Bạn là một Mentor (người hướng dẫn) và Senior Interviewer dày dạn kinh nghiệm. 
+Nhiệm vụ: Phản hồi lại câu trả lời của ứng viên một cách tự nhiên, mang tính khích lệ và dẫn dắt (Coaching).
 
-            var userPrompt = $"Câu hỏi phỏng vấn: {question}\nCâu trả lời của ứng viên: {userAnswer}\n\nHãy phản hồi ngắn gọn (1-2 câu):";
+QUY TẮC PHẢN HỒI:
+1. PHONG CÁCH MENTOR: Phản hồi chuyên nghiệp, thân thiện. Hãy coi ứng viên như một đồng nghiệp tiềm năng cần được chỉ dẫn.
+2. TẬP TRUNG VÀO NÂNG CẤP: Nếu ứng viên trả lời tốt, hãy khen ngợi cụ thể. Nếu chưa tốt, hãy đưa ra gợi ý nhẹ nhàng để họ tư duy sâu hơn.
+3. LIÊN KẾT VỚI GAP (NẾU CÓ): Sử dụng thông tin GAP ANALYSIS để biết ứng viên đang thiếu gì so với JD. Nếu câu trả lời thể hiện nỗ lực lấp đầy Gap, hãy ghi nhận.
+4. ĐỘ DÀI: Tối đa 1-2 câu ngắn gọn để không làm gián đoạn luồng phỏng vấn.
+5. CHUYỂN TIẾP: Kết thúc bằng một câu dẫn để chuẩn bị cho câu hỏi tiếp theo.
+6. CẤM: KHÔNG đánh giá điểm số, KHÔNG được hỏi câu hỏi mới ở đây, KHÔNG trả về JSON/Markdown.";
 
-            _logger.LogInformation("Generating AI reaction for session {SessionId}", sessionId);
-            var reaction = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(gapAnalysis))
+            {
+                sb.AppendLine("=== KHOẢNG TRỐNG NĂNG LỰC (GAP ANALYSIS) ===");
+                sb.AppendLine(gapAnalysis);
+                sb.AppendLine("=== HẾT GAP ANALYSIS ===\n");
+            }
+            sb.AppendLine($"Câu hỏi bạn vừa hỏi: {question}");
+            sb.AppendLine($"Câu trả lời của ứng viên: {userAnswer}");
+            sb.AppendLine("\nHãy đưa ra phản hồi mang tính Mentor (1-2 câu):");
+
+            _logger.LogInformation("Generating Mentor reaction for session {SessionId}", sessionId);
+            var reaction = await _geminiService.GenerateContentAsync(systemPrompt, sb.ToString());
             return reaction.Trim();
         }
 
@@ -584,6 +631,23 @@ QUY TẮC:
                 _logger.LogWarning(ex, "[RAG] Câu {Turn}: Lỗi khi lấy câu hỏi từ DB, fallback AI tự gen", turnNumber);
                 return new List<QuestionBankItem>();
             }
+        }
+        public async Task<string> AnalyzeGapsAsync(string cvContent, string jobDescriptionText)
+        {
+            var systemPrompt = @"Bạn là chuyên gia phân tích nhân sự và đào tạo IT. 
+Nhiệm vụ: So sánh CV ứng viên với JD (Mô tả công việc) để tìm ra các khoảng trống năng lực (Gaps).
+Trả về JSON với format (KHÔNG giải thích):
+{
+  ""hardSkillsGaps"": [""Kỹ năng thiếu 1"", ""Kỹ năng thiếu 2""],
+  ""experienceGaps"": [""Kinh nghiệm thiếu 1""],
+  ""suitabilityStrengths"": [""Điểm phù hợp 1""],
+  ""trainingFocus"": ""Trọng tâm cần huấn luyện để ứng viên đạt yêu cầu của JD""
+}";
+            var userPrompt = $"=== CV CHI TIẾT ===\n{cvContent}\n\n=== JD YÊU CẦU ===\n{jobDescriptionText}\n\nPhân tích Gaps:";
+            
+            _logger.LogInformation("[GAP-ANALYSIS] Bắt đầu phân tích Gap CV vs JD...");
+            var result = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
+            return CleanJsonResponse(result);
         }
     }
 }

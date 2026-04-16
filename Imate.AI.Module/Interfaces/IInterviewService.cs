@@ -22,5 +22,8 @@ namespace Imate.AI.Module.Interfaces
 
         /// <summary>Tạo phản hồi ngắn gọn của AI sau khi ứng viên trả lời (tương tác tự nhiên)</summary>
         Task<string> GenerateReactionAsync(int sessionId, string question, string userAnswer);
+
+        /// <summary>Phân tích khoảng cách năng lực (Gap Analysis) giữa CV và JD</summary>
+        Task<string> AnalyzeGapsAsync(string cvContent, string jobDescriptionText);
     }
 }
