@@ -61,7 +61,7 @@ namespace Imate.AI.Module.Controllers
         }
 
         /// <summary>
-        /// Thiết lập phỏng vấn — AI phân loại JD
+        /// Thiết lập phỏng vấn — AI phân loại JD + validate CV
         /// POST /api/ai-interview/setup
         /// </summary>
         [HttpPost("ai-interview/setup")]
@@ -69,7 +69,12 @@ namespace Imate.AI.Module.Controllers
         {
             try
             {
+                var accountId = GetAccountId();
+                if (accountId == null)
+                    return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
+
                 string? jdText = null;
+                int? cvId = null;
                 var contentType = Request.ContentType ?? "";
 
                 if (contentType.Contains("multipart/form-data", StringComparison.OrdinalIgnoreCase))
@@ -84,6 +89,11 @@ namespace Imate.AI.Module.Controllers
                     {
                         jdText = Request.Form["jobDescriptionText"].FirstOrDefault();
                     }
+
+                    // Parse cvId from form
+                    var cvIdStr = Request.Form["cvId"].FirstOrDefault();
+                    if (!string.IsNullOrEmpty(cvIdStr) && int.TryParse(cvIdStr, out var parsedCvId))
+                        cvId = parsedCvId;
                 }
                 else
                 {
@@ -95,6 +105,10 @@ namespace Imate.AI.Module.Controllers
                         jdText = jdProp.GetString();
                     else if (json.TryGetProperty("jobDescriptionUrl", out var urlProp))
                         return BadRequest(new { success = false, message = "Chức năng đọc JD từ URL đang được phát triển." });
+
+                    // Parse cvId from JSON
+                    if (json.TryGetProperty("cvId", out var cvIdProp) && cvIdProp.ValueKind == JsonValueKind.Number)
+                        cvId = cvIdProp.GetInt32();
                 }
 
                 if (string.IsNullOrWhiteSpace(jdText) || jdText.Length < 10)
@@ -102,9 +116,15 @@ namespace Imate.AI.Module.Controllers
                     return BadRequest(new { success = false, message = "Nội dung JD quá ngắn hoặc trống." });
                 }
 
-                var result = await _orchestrator.SetupInterviewAsync(jdText);
+                var result = await _orchestrator.SetupInterviewAsync(accountId.Value, jdText, cvId);
 
                 return Ok(new { success = true, data = result, message = "Phân loại JD thành công." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Validation error (CV không IT, level gap quá lớn)
+                _logger.LogWarning("[SETUP] Validation failed: {Message}", ex.Message);
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {

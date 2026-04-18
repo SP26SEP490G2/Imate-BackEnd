@@ -17,16 +17,30 @@ namespace Imate.AI.Module.Orchestrators
         private readonly IInterviewAgent _interviewAgent;
         private readonly IFeedbackAgent _feedbackAgent;
         private readonly IInterviewSessionDataProvider _dataProvider;
+        private readonly ICvDataProvider _cvDataProvider;
         private readonly IAzureSpeechSynthesisService _speechSynthesisService;
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<InterviewOrchestrator> _logger;
 
         private const int MaxSessionDurationMinutes = 30;
 
+        /// <summary>Level mapping for gap comparison</summary>
+        private static readonly Dictionary<string, int> LevelOrder = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Intern"] = 0,
+            ["Fresher"] = 1,
+            ["Junior"] = 2,
+            ["Middle"] = 3,
+            ["Senior"] = 4,
+            ["Lead"] = 5,
+            ["Manager"] = 6
+        };
+
         public InterviewOrchestrator(
             IInterviewAgent interviewAgent,
             IFeedbackAgent feedbackAgent,
             IInterviewSessionDataProvider dataProvider,
+            ICvDataProvider cvDataProvider,
             IAzureSpeechSynthesisService speechSynthesisService,
             IServiceScopeFactory serviceScopeFactory,
             ILogger<InterviewOrchestrator> logger)
@@ -34,6 +48,7 @@ namespace Imate.AI.Module.Orchestrators
             _interviewAgent = interviewAgent;
             _feedbackAgent = feedbackAgent;
             _dataProvider = dataProvider;
+            _cvDataProvider = cvDataProvider;
             _speechSynthesisService = speechSynthesisService;
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
@@ -44,9 +59,69 @@ namespace Imate.AI.Module.Orchestrators
             return await _dataProvider.GetInterviewLimitStatusAsync(accountId);
         }
 
-        public async Task<SetupInterviewResult> SetupInterviewAsync(string jobDescriptionText)
+        public async Task<SetupInterviewResult> SetupInterviewAsync(int accountId, string jobDescriptionText, int? cvId = null)
         {
-            return await _interviewAgent.ClassifyJobDescriptionAsync(jobDescriptionText);
+            // 1. Lấy CV text nếu có cvId
+            string? cvText = null;
+            if (cvId.HasValue)
+            {
+                try
+                {
+                    cvText = await _cvDataProvider.GetCvTextAsync(accountId, cvId.Value);
+                    _logger.LogInformation("[SETUP] Loaded CV text for account {AccountId}, cvId {CvId} ({Length} chars)",
+                        accountId, cvId.Value, cvText?.Length ?? 0);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[SETUP] Không thể đọc CV {CvId}, bỏ qua validation CV", cvId.Value);
+                }
+            }
+
+            // 2. Gọi AI phân loại JD + CV
+            var result = await _interviewAgent.ClassifyJobDescriptionAsync(jobDescriptionText, cvText);
+
+            // 3. Validate: JD không thuộc ngành IT
+            if (!result.IsItRelatedJd)
+            {
+                throw new InvalidOperationException(
+                    "Mô tả công việc (JD) không thuộc ngành Công nghệ thông tin (IT). " +
+                    "Hệ thống IMATE chỉ hỗ trợ phỏng vấn cho các vị trí trong ngành IT. " +
+                    "Vui lòng nhập JD cho vị trí IT (lập trình viên, kỹ sư phần mềm, DevOps, QA, BA, Data...).");
+            }
+
+            // 4. Validate: CV không thuộc ngành IT
+            if (!string.IsNullOrEmpty(cvText) && !result.IsItRelatedCv)
+            {
+                throw new InvalidOperationException(
+                    "CV của bạn không thuộc ngành Công nghệ thông tin (IT). " +
+                    "Hệ thống IMATE chỉ hỗ trợ phỏng vấn cho các vị trí trong ngành IT. " +
+                    "Vui lòng tải lên CV phù hợp với ngành IT.");
+            }
+
+            // 5. Validate: Chênh lệch level giữa CV và JD >= 2
+            if (!string.IsNullOrEmpty(cvText) && !string.IsNullOrEmpty(result.CvEstimatedLevel))
+            {
+                var jdLevel = result.Level ?? "Junior";
+                var cvLevel = result.CvEstimatedLevel;
+
+                if (LevelOrder.TryGetValue(jdLevel, out var jdLevelIdx) &&
+                    LevelOrder.TryGetValue(cvLevel, out var cvLevelIdx))
+                {
+                    var gap = Math.Abs(jdLevelIdx - cvLevelIdx);
+                    _logger.LogInformation("[SETUP] Level comparison: CV={CvLevel}({CvIdx}) vs JD={JdLevel}({JdIdx}), Gap={Gap}",
+                        cvLevel, cvLevelIdx, jdLevel, jdLevelIdx, gap);
+
+                    if (gap >= 2)
+                    {
+                        throw new InvalidOperationException(
+                            $"CV của bạn ở mức {cvLevel} nhưng JD yêu cầu cấp bậc {jdLevel} — " +
+                            $"chênh lệch {gap} bậc. Vui lòng chọn JD phù hợp hơn với kinh nghiệm hiện tại của bạn, " +
+                            $"hoặc cập nhật CV để phản ánh đúng năng lực.");
+                    }
+                }
+            }
+
+            return result;
         }
 
         public async Task<int> CreateSessionAsync(int accountId, CreateInterviewSessionRequest request)

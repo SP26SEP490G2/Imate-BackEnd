@@ -84,6 +84,15 @@ namespace Imate.AI.Module.Models.Responses
         public string? Company { get; set; }
         public string[]? Requirements { get; set; }
         public string? LevelMismatchWarning { get; set; }
+
+        /// <summary>CV có thuộc ngành IT không? (false nếu ngành khác)</summary>
+        public bool IsItRelatedCv { get; set; } = true;
+
+        /// <summary>JD có thuộc ngành IT không? (false nếu ngành khác)</summary>
+        public bool IsItRelatedJd { get; set; } = true;
+
+        /// <summary>Level ước tính từ CV (Intern/Fresher/Junior/Middle/Senior/Lead)</summary>
+        public string? CvEstimatedLevel { get; set; }
     }
 
     /// <summary>

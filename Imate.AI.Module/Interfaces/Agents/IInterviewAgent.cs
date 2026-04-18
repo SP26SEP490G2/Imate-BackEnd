@@ -15,7 +15,7 @@ namespace Imate.AI.Module.Interfaces.Agents
         Task<GenerateQuestionResult> GenerateQuestionAsync(InterviewSessionData session, List<InterviewResponseData> existingResponses, double? estimatedAbility = null);
 
         /// <summary>Phân loại JD bằng AI — trích xuất vị trí, kỹ năng, cấp độ</summary>
-        Task<SetupInterviewResult> ClassifyJobDescriptionAsync(string jobDescriptionText);
+        Task<SetupInterviewResult> ClassifyJobDescriptionAsync(string jobDescriptionText, string? cvText = null);
 
         /// <summary>Tạo phản hồi ngắn gọn của AI sau khi ứng viên trả lời (mentor reaction)</summary>
         Task<string> GenerateReactionAsync(string? gapAnalysisJson, string question, string userAnswer);

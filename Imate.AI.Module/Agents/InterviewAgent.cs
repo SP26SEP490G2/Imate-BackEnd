@@ -114,9 +114,9 @@ namespace Imate.AI.Module.Agents
             return questionData;
         }
 
-        public async Task<SetupInterviewResult> ClassifyJobDescriptionAsync(string jobDescriptionText)
+        public async Task<SetupInterviewResult> ClassifyJobDescriptionAsync(string jobDescriptionText, string? cvText = null)
         {
-            var systemPrompt = @"Bạn là chuyên gia phân tích tuyển dụng IT. Nhiệm vụ của bạn là phân tích Job Description (JD) và trích xuất thông tin chính.
+            var systemPrompt = @"Bạn là chuyên gia phân tích tuyển dụng IT. Nhiệm vụ của bạn là phân tích Job Description (JD) và CV (nếu có) để trích xuất thông tin chính.
 Trả về JSON với format chính xác sau (KHÔNG markdown, KHÔNG giải thích):
 {
   ""position"": ""Tên vị trí công việc"",
@@ -125,19 +125,47 @@ Trả về JSON với format chính xác sau (KHÔNG markdown, KHÔNG giải th�
   ""level"": ""Junior/Middle/Senior/Lead/Manager"",
   ""company"": ""Tên công ty (null nếu không có)"",
   ""requirements"": [""Yêu cầu 1"", ""Yêu cầu 2""],
-  ""levelMismatchWarning"": null
+  ""levelMismatchWarning"": null,
+  ""isItRelatedJd"": true,
+  ""isItRelatedCv"": true,
+  ""cvEstimatedLevel"": ""Junior""
 }
 Lưu ý:
 - position: Xác định vị trí chính xác nhất, ví dụ: Backend Developer, Frontend Engineer, DevOps Engineer
 - skills: Liệt kê 3-7 kỹ năng kỹ thuật chính
-- level: Phán đoán từ yêu cầu kinh nghiệm (0-1 năm: Junior, 2-4: Middle, 5+: Senior)
+- level: Phán đoán từ yêu cầu kinh nghiệm trong JD (0-1 năm: Junior, 2-4: Middle, 5+: Senior)
 - requirements: Tóm tắt 3-5 yêu cầu chính
+- isItRelatedJd: JD có thuộc ngành CNTT/Công nghệ thông tin/IT/Phần mềm không?
+  + Nếu JD tuyển lập trình viên, kỹ sư phần mềm, DevOps, QA, BA, Data, AI/ML, Designer UI/UX → true
+  + Nếu JD tuyển Bác sĩ, Luật sư, Kế toán, Giáo viên, Kiến trúc sư xây dựng, Y tá, Dược sĩ v.v. → false
+- isItRelatedCv: Phân tích CV xem ứng viên có thuộc ngành CNTT/Công nghệ thông tin/IT không. 
+  + Nếu CV chứa các kỹ năng lập trình, phần mềm, hệ thống, mạng, data, AI/ML, DevOps, QA, BA trong IT → true
+  + Nếu CV thuộc ngành Y tế, Luật, Kế toán, Marketing thuần, Xây dựng, Cơ khí v.v. → false
+  + Nếu không có CV (null) → true (mặc định)
+- cvEstimatedLevel: Ước tính level kinh nghiệm trong CV dựa trên số năm kinh nghiệm và dự án thực tế:
+  + 0 năm hoặc sinh viên: ""Intern""
+  + Dưới 1 năm: ""Fresher""  
+  + 1-2 năm: ""Junior""
+  + 2-4 năm: ""Middle""
+  + 5+ năm: ""Senior""
+  + 8+ năm có kinh nghiệm quản lý: ""Lead""
+  + Nếu không có CV → null
 - Nếu JD quá ngắn hoặc không rõ ràng, vẫn cố gắng phân loại hợp lý nhất";
 
-            var userPrompt = $"Hãy phân tích JD sau:\n\n{jobDescriptionText}";
+            var userPrompt = new StringBuilder();
+            userPrompt.AppendLine("Hãy phân tích JD sau:");
+            userPrompt.AppendLine(jobDescriptionText);
 
-            _logger.LogInformation("Classifying JD ({Length} chars)", jobDescriptionText.Length);
-            var rawResponse = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
+            if (!string.IsNullOrWhiteSpace(cvText))
+            {
+                userPrompt.AppendLine("\n=== CV ỨNG VIÊN ===");
+                userPrompt.AppendLine(cvText.Length > 3000 ? cvText.Substring(0, 3000) + "..." : cvText);
+                userPrompt.AppendLine("=== HẾT CV ===");
+            }
+
+            _logger.LogInformation("Classifying JD ({JdLength} chars) + CV ({CvLength} chars)",
+                jobDescriptionText.Length, cvText?.Length ?? 0);
+            var rawResponse = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt.ToString());
 
             return ParseSetupResponse(rawResponse);
         }
@@ -348,7 +376,10 @@ Trả về JSON với format (KHÔNG giải thích):
                     Level = root.TryGetProperty("level", out var level) ? level.GetString() ?? "Junior" : "Junior",
                     Company = root.TryGetProperty("company", out var company) && company.ValueKind != JsonValueKind.Null ? company.GetString() : null,
                     Requirements = requirements,
-                    LevelMismatchWarning = root.TryGetProperty("levelMismatchWarning", out var warn) && warn.ValueKind != JsonValueKind.Null ? warn.GetString() : null
+                    LevelMismatchWarning = root.TryGetProperty("levelMismatchWarning", out var warn) && warn.ValueKind != JsonValueKind.Null ? warn.GetString() : null,
+                    IsItRelatedJd = root.TryGetProperty("isItRelatedJd", out var itJd) && itJd.ValueKind == JsonValueKind.False ? false : true,
+                    IsItRelatedCv = root.TryGetProperty("isItRelatedCv", out var itCv) && itCv.ValueKind == JsonValueKind.False ? false : true,
+                    CvEstimatedLevel = root.TryGetProperty("cvEstimatedLevel", out var cvLvl) && cvLvl.ValueKind != JsonValueKind.Null ? cvLvl.GetString() : null
                 };
             }
             catch (Exception ex)

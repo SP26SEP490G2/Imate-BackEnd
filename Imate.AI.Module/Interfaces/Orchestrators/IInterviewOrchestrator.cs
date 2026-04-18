@@ -9,8 +9,8 @@ namespace Imate.AI.Module.Interfaces.Orchestrators
     /// </summary>
     public interface IInterviewOrchestrator
     {
-        /// <summary>Phân loại JD bằng AI</summary>
-        Task<SetupInterviewResult> SetupInterviewAsync(string jobDescriptionText);
+        /// <summary>Phân loại JD + validate CV bằng AI</summary>
+        Task<SetupInterviewResult> SetupInterviewAsync(int accountId, string jobDescriptionText, int? cvId = null);
 
         /// <summary>Tạo phiên phỏng vấn mới</summary>
         Task<int> CreateSessionAsync(int accountId, CreateInterviewSessionRequest request);
