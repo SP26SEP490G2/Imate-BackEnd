@@ -2,83 +2,49 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Interfaces.Agents;
+using Imate.AI.Module.Interfaces.AIServices;
 using Imate.AI.Module.Models.Requests;
 using Imate.AI.Module.Models.Responses;
 using Microsoft.Extensions.Logging;
 
-namespace Imate.AI.Module.Services
+namespace Imate.AI.Module.Agents
 {
     /// <summary>
-    /// Practice Test Service - sinh bài test luyện tập bằng Gemini AI + RAG từ Question Bank
-    /// UC-30: Practice Test
+    /// Agent tạo bài test luyện tập (Tầng 3 - Agents)
+    /// Chịu trách nhiệm: build prompt, gọi AI Service, parse response
+    /// Nhận dữ liệu đã chuẩn bị từ Orchestrator (cvContext, ragQuestions)
     /// </summary>
-    public class PracticeTestService : IPracticeTestService
+    public class PracticeTestAgent : IPracticeTestAgent
     {
         private readonly IGeminiService _geminiService;
-        private readonly ICvDataProvider? _cvDataProvider;
-        private readonly IQuestionDataProvider? _questionDataProvider;
-        private readonly ILogger<PracticeTestService> _logger;
+        private readonly ILogger<PracticeTestAgent> _logger;
 
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             PropertyNameCaseInsensitive = true
         };
 
-        public PracticeTestService(
-            IGeminiService geminiService,
-            ILogger<PracticeTestService> logger,
-            ICvDataProvider? cvDataProvider = null,
-            IQuestionDataProvider? questionDataProvider = null)
+        public PracticeTestAgent(IGeminiService geminiService, ILogger<PracticeTestAgent> logger)
         {
             _geminiService = geminiService;
             _logger = logger;
-            _cvDataProvider = cvDataProvider;
-            _questionDataProvider = questionDataProvider;
         }
 
-        public async Task<PracticeTestResponse> GenerateTestAsync(int accountId, GeneratePracticeTestRequest request)
+        public async Task<PracticeTestResponse> GenerateTestAsync(
+            GeneratePracticeTestRequest request,
+            string? cvContext,
+            List<QuestionBankItem> ragQuestions)
         {
-            ValidateRequest(request);
-
-            // 1. Lấy CV context nếu cần
-            string? cvContext = null;
-            if (request.UseCV && !string.IsNullOrWhiteSpace(request.CvText))
-            {
-                cvContext = request.CvText;
-            }
-
-            // 2. RAG: Lấy câu hỏi mẫu từ Question Bank trong DB
-            List<QuestionBankItem> ragQuestions = new();
-            if (_questionDataProvider != null)
-            {
-                try
-                {
-                    ragQuestions = await _questionDataProvider.GetQuestionsAsync(
-                        request.Field, request.Level, request.NumberOfQuestions);
-                    _logger.LogInformation(
-                        "RAG: Retrieved {Count} reference questions from Question Bank for field={Field}, level={Level}",
-                        ragQuestions.Count, request.Field, request.Level);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "RAG: Failed to retrieve questions from DB, falling back to AI-only mode");
-                }
-            }
-            else
-            {
-                _logger.LogInformation("RAG: IQuestionDataProvider not registered, using AI-only mode");
-            }
-
-            // 3. Build prompts
+            // Build prompts
             var systemPrompt = BuildSystemPrompt(request, cvContext, ragQuestions);
             var userPrompt = BuildUserPrompt(request, cvContext, ragQuestions);
-            _logger.LogInformation("System Prompt: {SystemPrompt}", systemPrompt);
-            _logger.LogInformation("User Prompt: {UserPrompt}", userPrompt);
+
             _logger.LogInformation(
                 "Generating practice test: Type={TestType}, Field={Field}, Level={Level}, Questions={Count}, RAG={RagCount}",
                 request.TestType, request.Field, request.Level, request.NumberOfQuestions, ragQuestions.Count);
 
-            // 4. Gọi Gemini
+            // Gọi Gemini
             var rawResponse = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
             var result = ParseResponse(rawResponse, request);
 
@@ -88,17 +54,7 @@ namespace Imate.AI.Module.Services
             return result;
         }
 
-        private static void ValidateRequest(GeneratePracticeTestRequest request)
-        {
-            if (string.IsNullOrWhiteSpace(request.Field))
-                throw new ArgumentException("Vui lòng chọn lĩnh vực chuyên môn.");
-
-            if (string.IsNullOrWhiteSpace(request.Level))
-                throw new ArgumentException("Vui lòng chọn cấp bậc ứng tuyển.");
-
-            if (request.NumberOfQuestions < 5 || request.NumberOfQuestions > 20)
-                request.NumberOfQuestions = 10;
-        }
+        // ── Private helpers ──
 
         private static string BuildSystemPrompt(GeneratePracticeTestRequest request, string? cvContext, List<QuestionBankItem> ragQuestions)
         {

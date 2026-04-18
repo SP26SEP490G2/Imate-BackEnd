@@ -1,8 +1,7 @@
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Interfaces.Orchestrators;
 using Imate.AI.Module.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Security.Claims;
@@ -11,7 +10,8 @@ using System.Text.Json;
 namespace Imate.AI.Module.Controllers
 {
     /// <summary>
-    /// Controller phỏng vấn AI — UC-35: Practice Mock Interview
+    /// Controller phỏng vấn AI : Practice Mock Interview (Tầng 1 - Controllers)
+    /// Thin controller: chỉ xử lý HTTP concerns, delegate business logic cho Orchestrator
     /// Route: /api/ai-interview/*
     /// </summary>
     [ApiController]
@@ -19,23 +19,14 @@ namespace Imate.AI.Module.Controllers
     [Authorize]
     public class AIInterviewController : ControllerBase
     {
-        private readonly IInterviewService _interviewService;
-        private readonly IInterviewSessionDataProvider _dataProvider;
-        private readonly IServiceScopeFactory _serviceScopeFactory;
-        private readonly IAzureSpeechSynthesisService _speechSynthesisService;
+        private readonly IInterviewOrchestrator _orchestrator;
         private readonly ILogger<AIInterviewController> _logger;
 
         public AIInterviewController(
-            IInterviewService interviewService,
-            IInterviewSessionDataProvider dataProvider,
-            IServiceScopeFactory serviceScopeFactory,
-            IAzureSpeechSynthesisService speechSynthesisService,
+            IInterviewOrchestrator orchestrator,
             ILogger<AIInterviewController> logger)
         {
-            _interviewService = interviewService;
-            _dataProvider = dataProvider;
-            _serviceScopeFactory = serviceScopeFactory;
-            _speechSynthesisService = speechSynthesisService;
+            _orchestrator = orchestrator;
             _logger = logger;
         }
 
@@ -50,14 +41,14 @@ namespace Imate.AI.Module.Controllers
             if (accountId == null)
                 return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-            var status = await _dataProvider.GetInterviewLimitStatusAsync(accountId.Value);
+            var status = await _orchestrator.CheckInterviewCostAsync(accountId.Value);
 
             return Ok(new
             {
                 success = true,
                 data = new
                 {
-                    requiresPayment = !status.CanStart && status.IsFree, // Thêm logic nếu cần thanh toán
+                    requiresPayment = !status.CanStart && status.IsFree,
                     isFree = status.IsFree,
                     usedMock = status.UsedCount,
                     limit = status.LimitCount,
@@ -72,7 +63,6 @@ namespace Imate.AI.Module.Controllers
         /// <summary>
         /// Thiết lập phỏng vấn — AI phân loại JD
         /// POST /api/ai-interview/setup
-        /// Tự động detect JSON body (text/url) hoặc FormData (file upload)
         /// </summary>
         [HttpPost("ai-interview/setup")]
         public async Task<IActionResult> SetupInterview()
@@ -84,7 +74,6 @@ namespace Imate.AI.Module.Controllers
 
                 if (contentType.Contains("multipart/form-data", StringComparison.OrdinalIgnoreCase))
                 {
-                    // FormData — file upload
                     var file = Request.Form.Files.FirstOrDefault();
                     if (file != null && file.Length > 0)
                     {
@@ -98,7 +87,6 @@ namespace Imate.AI.Module.Controllers
                 }
                 else
                 {
-                    // JSON body
                     using var reader = new StreamReader(Request.Body);
                     var body = await reader.ReadToEndAsync();
                     var json = JsonDocument.Parse(body).RootElement;
@@ -114,14 +102,9 @@ namespace Imate.AI.Module.Controllers
                     return BadRequest(new { success = false, message = "Nội dung JD quá ngắn hoặc trống." });
                 }
 
-                var result = await _interviewService.ClassifyJobDescriptionAsync(jdText);
+                var result = await _orchestrator.SetupInterviewAsync(jdText);
 
-                return Ok(new
-                {
-                    success = true,
-                    data = result,
-                    message = "Phân loại JD thành công."
-                });
+                return Ok(new { success = true, data = result, message = "Phân loại JD thành công." });
             }
             catch (Exception ex)
             {
@@ -143,35 +126,7 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                // Kiểm tra giới hạn lượt phỏng vấn
-                var limitStatus = await _dataProvider.GetInterviewLimitStatusAsync(accountId.Value);
-                if (!limitStatus.CanStart)
-                {
-                    return BadRequest(new { success = false, message = limitStatus.Message });
-                }
-
-                var session = new InterviewSessionData
-                {
-                    AccountId = accountId.Value,
-                    StartTime = DateTimeOffset.UtcNow,
-                    Status = "InProgress",
-                    InterviewType = "FullSession",
-                    PositionName = request.PositionName,
-                    SkillName = request.SkillName ?? (request.SkillNames != null ? string.Join(", ", request.SkillNames) : null),
-                    LevelName = request.LevelName,
-                    CompanyName = request.CompanyName,
-                    JobDescriptionText = request.JobDescriptionText,
-                    UserCvId = request.CvId,
-                    CvContent = request.CvContent
-                };
-
-                var sessionId = await _dataProvider.CreateSessionAsync(session);
-
-                _logger.LogInformation("Interview session created: {SessionId} for account {AccountId}",
-                    sessionId, accountId.Value);
-
-                // Tăng số lượt đã sử dụng (cho gói trả phí)
-                await _dataProvider.IncrementMockInterviewUsageAsync(accountId.Value);
+                var sessionId = await _orchestrator.CreateSessionAsync(accountId.Value, request);
 
                 return Ok(new
                 {
@@ -179,6 +134,10 @@ namespace Imate.AI.Module.Controllers
                     data = new { sessionId, language = request.Language ?? "vi-VN" },
                     message = "Tạo phiên phỏng vấn thành công."
                 });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -196,36 +155,18 @@ namespace Imate.AI.Module.Controllers
         {
             try
             {
-                var session = await _dataProvider.GetSessionByIdAsync(sessionId);
-                if (session == null)
-                    return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {sessionId}" });
-
-                var welcomeMessage = await _interviewService.GenerateWelcomeMessageAsync( session.CvContent,
-                    session.PositionName, session.CompanyName);
-
-                string? audioBase64 = null;
-                string? mimeType = null;
-                // [TTS DISABLED FOR TESTING]
-                try
-                {
-                    var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
-                        welcomeMessage,
-                        language: "vi-VN",
-                        cancellationToken: CancellationToken.None);
-                    audioBase64 = speechResult.AudioBase64;
-                    mimeType = speechResult.MimeType;
-                }
-                catch (Exception ttsEx)
-                {
-                    _logger.LogWarning(ttsEx, "Lỗi khi gọi TTS cho lời chào");
-                }
+                var result = await _orchestrator.GetWelcomeMessageAsync(sessionId, cancellationToken);
 
                 return Ok(new
                 {
                     success = true,
-                    data = new { welcomeMessage, audioBase64, mimeType },
+                    data = new { welcomeMessage = result.WelcomeMessage, audioBase64 = result.AudioBase64, mimeType = result.MimeType },
                     message = "Tạo lời chào thành công."
                 });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -247,33 +188,11 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                var session = await _dataProvider.GetSessionByIdAsync(request.InterviewSessionId);
-                if (session == null)
-                    return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {request.InterviewSessionId}" });
-
-                if (session.AccountId != accountId.Value)
-                    return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên phỏng vấn này." });
-
-                var result = await _interviewService.GenerateQuestionAsync(
-                    request.InterviewSessionId, request.EstimatedAbility);
+                var result = await _orchestrator.GenerateQuestionAsync(
+                    accountId.Value, request.InterviewSessionId, request.EstimatedAbility, cancellationToken);
 
                 if (result.IsTerminated)
                 {
-                    // [TTS DISABLED FOR TESTING]
-                    try
-                    {
-                        var speechTermResult = await _speechSynthesisService.SynthesizeToBase64Async(
-                            result.TerminationMessage ?? "Buổi phỏng vấn kết thúc.",
-                            language: "vi-VN",
-                            cancellationToken: CancellationToken.None);
-                        result.AudioBase64 = speechTermResult.AudioBase64;
-                        result.MimeType = speechTermResult.MimeType;
-                    }
-                    catch (Exception ttsEx)
-                    {
-                        _logger.LogWarning(ttsEx, "Lỗi TTS thông báo kết thúc phỏng vấn");
-                    }
-
                     return Ok(new
                     {
                         success = true,
@@ -285,26 +204,15 @@ namespace Imate.AI.Module.Controllers
                     });
                 }
 
-                // [TTS DISABLED FOR TESTING]
-                try
-                {
-                    var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
-                        result.QuestionText,
-                        language: "vi-VN",
-                        cancellationToken: CancellationToken.None);
-                    result.AudioBase64 = speechResult.AudioBase64;
-                    result.MimeType = speechResult.MimeType;
-                }
-                catch (Exception ttsEx)
-                {
-                    _logger.LogWarning(ttsEx, "Lỗi TTS cho câu hỏi phỏng vấn");
-                }
-
                 return Ok(new { success = true, data = result, message = "Tạo câu hỏi thành công." });
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên phỏng vấn này." });
             }
             catch (Exception ex)
             {
@@ -312,7 +220,6 @@ namespace Imate.AI.Module.Controllers
                 return StatusCode(500, new { success = false, message = $"Lỗi hệ thống: {ex.Message}" });
             }
         }
-
 
         /// <summary>
         /// Lưu câu trả lời người dùng
@@ -327,51 +234,7 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                var session = await _dataProvider.GetSessionByIdAsync(request.InterviewSessionId);
-                if (session == null)
-                    return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {request.InterviewSessionId}" });
-
-                if (session.AccountId != accountId.Value)
-                    return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
-
-                var response = await _dataProvider.GetResponseByIdAsync(request.InterviewResponseId);
-                if (response == null)
-                    return NotFound(new { success = false, message = $"Không tìm thấy câu hỏi {request.InterviewResponseId}" });
-
-                response.UserAnswer = request.UserAnswer;
-                response.AnswerTimestamp = DateTimeOffset.UtcNow;
-                await _dataProvider.UpdateResponseAsync(response);
-
-                session.TotalQuestionsAnswered += 1;
-                await _dataProvider.UpdateSessionAsync(session);
-
-                // Tạo phản hồi AI cho câu trả lời (tương tác tự nhiên)
-                string? aiReaction = null;
-                string? aiReactionAudioBase64 = null;
-                string? mimeType = null;
-
-                try
-                {
-                    aiReaction = await _interviewService.GenerateReactionAsync(
-                        request.InterviewSessionId,
-                        response.QuestionContent,
-                        request.UserAnswer);
-
-                    // [TTS DISABLED FOR TESTING]
-                    if (!string.IsNullOrEmpty(aiReaction))
-                    {
-                        var speechResult = await _speechSynthesisService.SynthesizeToBase64Async(
-                            aiReaction,
-                            language: "vi-VN",
-                            cancellationToken: CancellationToken.None);
-                        aiReactionAudioBase64 = speechResult.AudioBase64;
-                        mimeType = speechResult.MimeType;
-                    }
-                }
-                catch (Exception reactionEx)
-                {
-                    _logger.LogWarning(reactionEx, "Lỗi khi gọi dịch vụ tạo câu phản hồi hoặc TTS, bỏ qua.");
-                }
+                var result = await _orchestrator.SubmitAnswerAsync(accountId.Value, request, cancellationToken);
 
                 return Ok(new
                 {
@@ -379,12 +242,20 @@ namespace Imate.AI.Module.Controllers
                     data = new
                     {
                         message = "Câu trả lời đã được ghi nhận.",
-                        aiReaction = aiReaction,
-                        aiReactionAudioBase64 = aiReactionAudioBase64,
-                        mimeType = mimeType
+                        aiReaction = result.AiReaction,
+                        aiReactionAudioBase64 = result.AiReactionAudioBase64,
+                        mimeType = result.MimeType
                     },
                     message = "Gửi câu trả lời thành công."
                 });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
             }
             catch (Exception ex)
             {
@@ -406,46 +277,7 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                var session = await _dataProvider.GetSessionByIdAsync(sessionId);
-                if (session == null)
-                    return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {sessionId}" });
-
-                if (session.AccountId != accountId.Value)
-                    return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
-
-                if (session.Status == "Completed")
-                    return Ok(new { success = true, data = new { sessionId, message = "Phỏng vấn đã hoàn thành." }, message = "Phỏng vấn đã hoàn thành." });
-
-                session.EndTime = DateTimeOffset.UtcNow;
-                await _dataProvider.UpdateSessionAsync(session);
-
-                // Chạy nền tạo feedback
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        using var scope = _serviceScopeFactory.CreateScope();
-                        var svc = scope.ServiceProvider.GetRequiredService<IInterviewService>();
-                        var dp = scope.ServiceProvider.GetRequiredService<IInterviewSessionDataProvider>();
-                        var log = scope.ServiceProvider.GetRequiredService<ILogger<AIInterviewController>>();
-
-                        log.LogInformation("Background feedback started for session {SessionId}", sessionId);
-                        var overallFeedback = await svc.GenerateFeedbackForSessionAsync(sessionId);
-
-                        var s = await dp.GetSessionByIdAsync(sessionId);
-                        if (s != null)
-                        {
-                            s.Status = "Completed";
-                            s.OverallFeedback = overallFeedback;
-                            await dp.UpdateSessionAsync(s);
-                        }
-                        log.LogInformation("Background feedback completed for session {SessionId}", sessionId);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Background feedback error for session {SessionId}", sessionId);
-                    }
-                });
+                await _orchestrator.EndInterviewAsync(accountId.Value, sessionId);
 
                 return Ok(new
                 {
@@ -453,6 +285,14 @@ namespace Imate.AI.Module.Controllers
                     data = new { sessionId, status = "Processing", message = "Phỏng vấn đã kết thúc. Kết quả đang được tạo." },
                     message = "Kết thúc phỏng vấn thành công."
                 });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
             }
             catch (Exception ex)
             {
@@ -474,49 +314,17 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                var session = await _dataProvider.GetSessionByIdAsync(sessionId);
-                if (session == null)
-                    return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {sessionId}" });
+                var result = await _orchestrator.GetInterviewResultAsync(accountId.Value, sessionId);
 
-                if (session.AccountId != accountId.Value)
-                    return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
-
-                var allResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
-                var answered = allResponses.Where(r => !string.IsNullOrEmpty(r.UserAnswer)).OrderBy(r => r.TurnNumber).ToList();
-                var withFeedback = answered.Select((r, i) => new
-                    {
-                        id = r.Id, questionNumber = i + 1, turnNumber = r.TurnNumber,
-                        questionContent = r.QuestionContent, userAnswer = r.UserAnswer,
-                        answerTimestamp = r.AnswerTimestamp,
-                        expectedBloomLevel = r.ExpectedBloomLevel, demonstratedBloomLevel = r.DemonstratedBloomLevel,
-                        bloomScore = r.BloomScore, difficultyScore = r.DifficultyScore,
-                        cognitiveLoadScore = r.CognitiveLoadScore,
-                        technicalDepthScore = r.TechnicalDepthScore, problemSolvingScore = r.ProblemSolvingScore,
-                        communicationScore = r.CommunicationScore, practicalExperienceScore = r.PracticalExperienceScore,
-                        starSituationScore = r.StarSituationScore, starTaskScore = r.StarTaskScore,
-                        starActionScore = r.StarActionScore, starResultScore = r.StarResultScore,
-                        structuredFeedbackJson = r.StructuredFeedbackJson, aiFeedback = r.AIFeedback,
-                        expectedAnswerOutline = r.ExpectedAnswerOutline
-                    }).ToList();
-
-                return Ok(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        session = new
-                        {
-                            id = session.Id, positionName = session.PositionName, skillName = session.SkillName,
-                            levelName = session.LevelName, companyName = session.CompanyName,
-                            startTime = session.StartTime, endTime = session.EndTime,
-                            status = session.Status, totalQuestions = answered.Count,
-                            totalQuestionsAnswered = withFeedback.Count,
-                            overallFeedback = session.OverallFeedback, estimatedAbility = session.EstimatedAbility
-                        },
-                        responses = withFeedback
-                    },
-                    message = "Lấy kết quả phỏng vấn thành công."
-                });
+                return Ok(new { success = true, data = result, message = "Lấy kết quả phỏng vấn thành công." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
             }
             catch (Exception ex)
             {
@@ -528,7 +336,6 @@ namespace Imate.AI.Module.Controllers
         /// <summary>
         /// Khôi phục trạng thái phiên phỏng vấn khi reload trang
         /// GET /api/ai-interview/resume-session/{sessionId}
-        /// Trả về session info + tất cả responses (kể cả chưa feedback) để frontend rebuild chat
         /// </summary>
         [HttpGet("ai-interview/resume-session/{sessionId}")]
         public async Task<IActionResult> ResumeSession(int sessionId)
@@ -539,52 +346,17 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                var session = await _dataProvider.GetSessionByIdAsync(sessionId);
-                if (session == null)
-                    return NotFound(new { success = false, message = $"Không tìm thấy phiên phỏng vấn {sessionId}" });
+                var result = await _orchestrator.ResumeSessionAsync(accountId.Value, sessionId);
 
-                if (session.AccountId != accountId.Value)
-                    return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
-
-                var allResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
-                var orderedResponses = allResponses.OrderBy(r => r.TurnNumber).ToList();
-
-                // Xác định câu hỏi cuối cùng chưa được trả lời (nếu có)
-                var lastUnanswered = orderedResponses.LastOrDefault(r => string.IsNullOrEmpty(r.UserAnswer));
-                var answeredCount = orderedResponses.Count(r => !string.IsNullOrEmpty(r.UserAnswer));
-
-                var responseList = orderedResponses.Select(r => new
-                {
-                    id = r.Id,
-                    turnNumber = r.TurnNumber,
-                    questionContent = r.QuestionContent,
-                    userAnswer = r.UserAnswer,
-                    answerTimestamp = r.AnswerTimestamp,
-                }).ToList();
-
-                return Ok(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        session = new
-                        {
-                            id = session.Id,
-                            positionName = session.PositionName,
-                            skillName = session.SkillName,
-                            levelName = session.LevelName,
-                            companyName = session.CompanyName,
-                            startTime = session.StartTime,
-                            endTime = session.EndTime,
-                            status = session.Status,
-                        },
-                        responses = responseList,
-                        answeredCount,
-                        currentResponseId = lastUnanswered?.Id,
-                        hasUnansweredQuestion = lastUnanswered != null,
-                    },
-                    message = "Khôi phục phiên phỏng vấn thành công."
-                });
+                return Ok(new { success = true, data = result, message = "Khôi phục phiên phỏng vấn thành công." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return StatusCode(403, new { success = false, message = "Bạn không có quyền truy cập phiên này." });
             }
             catch (Exception ex)
             {
@@ -595,7 +367,6 @@ namespace Imate.AI.Module.Controllers
 
         /// <summary>
         /// Danh sách lịch sử phỏng vấn
-
         /// GET /api/ai-interview/history
         /// </summary>
         [HttpGet("ai-interview/history")]
@@ -607,17 +378,7 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                var sessions = await _dataProvider.GetSessionsByAccountIdAsync(accountId.Value);
-                var history = sessions.Select(s => new
-                {
-                    id = s.Id, positionName = s.PositionName, skillName = s.SkillName,
-                    levelName = s.LevelName, companyName = s.CompanyName,
-                    startTime = s.StartTime, endTime = s.EndTime,
-                    totalQuestionsAnswered = s.TotalQuestionsAnswered,
-                    estimatedAbility = s.EstimatedAbility, status = s.Status,
-                    interviewType = s.QuestionId != null ? "Single_Question" : (s.UserCvId != null ? "CV_JD" : "Text"),
-                    questionContent = (string?)null, difficulty = (string?)null, isFromSystem = (bool?)null
-                }).ToList();
+                var history = await _orchestrator.GetInterviewHistoryAsync(accountId.Value);
 
                 return Ok(new { success = true, data = history, message = "Lấy lịch sử phỏng vấn thành công." });
             }

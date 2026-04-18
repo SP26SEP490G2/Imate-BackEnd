@@ -1,4 +1,4 @@
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Interfaces.AIServices;
 using Imate.AI.Module.Models.Responses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -6,29 +6,23 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace Imate.AI.Module.Services
+namespace Imate.AI.Module.AIServices
 {
     /// <summary>
-    /// Gemini AI Service - gọi qua Beeknoee OpenAI-compatible API
-    /// (API cũ key4u.shop đã được comment lại bên dưới)
+    /// Gemini AI Service (Tầng 4 - AI Services)
+    /// Gọi qua Beeknoee OpenAI-compatible API
     /// </summary>
     public class GeminiService : IGeminiService
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<GeminiService> _logger;
 
-        // ===== NEW: Beeknoee API config =====
+        // ===== Beeknoee API config =====
         private readonly string _beeknoeeApiUrl;
         private readonly string _beeknoeeApiKey;
         private readonly string _beeknoeeModel;
         private readonly double _temperature;
         private readonly int _maxTokens;
-
-        // ===== OLD: Gemini native API config (commented out) =====
-        // private readonly string _apiKey;
-        // private readonly string _apiUrl;
-        // private readonly double _topP;
-        // private readonly int _thinkingBudget;
 
         public GeminiService(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiService> logger)
         {
@@ -37,19 +31,11 @@ namespace Imate.AI.Module.Services
 
             var settings = configuration.GetSection("GeminiSettings");
 
-            // ===== NEW: Beeknoee API settings =====
             _beeknoeeApiUrl = settings["BeeknoeeApiUrl"] ?? "https://platform.beeknoee.com/api/v1/chat/completions";
             _beeknoeeApiKey = settings["BeeknoeeApiKey"] ?? "sk-bee-163ac7606c7e46db8cfd15087fdc4b12";
             _beeknoeeModel = settings["BeeknoeeModel"] ?? "gemini-3-flash";
             _temperature = double.TryParse(settings["Temperature"], out var temp) ? temp : 0.7;
             _maxTokens = int.TryParse(settings["MaxTokens"], out var maxTok) ? maxTok : 8192;
-
-            // ===== OLD: Gemini native API settings (commented out) =====
-            // _apiKey = settings["ApiKey"] ?? throw new InvalidOperationException("GeminiSettings:ApiKey is required");
-            // _apiUrl = settings["ApiUrl"] ?? "https://api.key4u.shop/v1beta/models/gemini-2.5-pro:generateContent";
-            // _temperature = double.TryParse(settings["Temperature"], out var temp) ? temp : 1.0;
-            // _topP = double.TryParse(settings["TopP"], out var topP) ? topP : 1.0;
-            // _thinkingBudget = int.TryParse(settings["ThinkingBudget"], out var budget) ? budget : 26240;
         }
 
         /// <summary>
@@ -62,7 +48,6 @@ namespace Imate.AI.Module.Services
             const int maxRetries = 3;
             const int retryDelaySeconds = 30;
 
-            // ===== NEW: Beeknoee OpenAI-compatible request =====
             var requestBody = new
             {
                 model = _beeknoeeModel,
@@ -82,7 +67,6 @@ namespace Imate.AI.Module.Services
             {
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                // ===== NEW: Bearer token auth =====
                 using var request = new HttpRequestMessage(HttpMethod.Post, _beeknoeeApiUrl);
                 request.Content = content;
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _beeknoeeApiKey);
@@ -112,42 +96,10 @@ namespace Imate.AI.Module.Services
                     throw new Exception($"Beeknoee API error: {response.StatusCode}");
                 }
 
-                // ── Thành công → parse OpenAI-compatible response ──
                 return ParseBeeknoeeResponse(responseBody);
             }
 
             throw new Exception("Beeknoee API: max retries exhausted");
-
-            // ===== OLD: Gemini native API request (commented out) =====
-            // var requestUrl = $"{_apiUrl}?key={_apiKey}";
-            // var requestBody = new
-            // {
-            //     systemInstruction = new
-            //     {
-            //         parts = new[] { new { text = systemPrompt } }
-            //     },
-            //     contents = new[]
-            //     {
-            //         new
-            //         {
-            //             role = "user",
-            //             parts = new[] { new { text = userPrompt } }
-            //         }
-            //     },
-            //     generationConfig = new
-            //     {
-            //         temperature = _temperature,
-            //         topP = _topP,
-            //         thinkingConfig = new
-            //         {
-            //             includeThoughts = true,
-            //             thinkingBudget = _thinkingBudget
-            //         }
-            //     }
-            // };
-            // var jsonContent = JsonSerializer.Serialize(requestBody);
-            // ... (retry loop calling _httpClient.PostAsync(requestUrl, content))
-            // return ParseGeminiResponse(responseBody);
         }
 
         /// <summary>
@@ -181,48 +133,11 @@ namespace Imate.AI.Module.Services
             return resultText;
         }
 
-        // ===== OLD: ParseGeminiResponse (commented out) =====
-        // /// <summary>
-        // /// Parse response JSON từ Gemini API, lọc bỏ thought parts.
-        // /// </summary>
-        // private string ParseGeminiResponse(string responseBody)
-        // {
-        //     using var doc = JsonDocument.Parse(responseBody);
-        //     var parts = doc.RootElement
-        //         .GetProperty("candidates")[0]
-        //         .GetProperty("content")
-        //         .GetProperty("parts");
-        //
-        //     string? resultText = null;
-        //     foreach (var part in parts.EnumerateArray())
-        //     {
-        //         if (part.TryGetProperty("thought", out var thought) && thought.GetBoolean())
-        //             continue;
-        //         if (part.TryGetProperty("text", out var text))
-        //         {
-        //             resultText = text.GetString();
-        //             break;
-        //         }
-        //     }
-        //     if (string.IsNullOrEmpty(resultText))
-        //     {
-        //         var lastPart = parts[parts.GetArrayLength() - 1];
-        //         resultText = lastPart.GetProperty("text").GetString();
-        //     }
-        //     if (string.IsNullOrEmpty(resultText))
-        //     {
-        //         throw new Exception("Không nhận được phản hồi từ Gemini AI");
-        //     }
-        //     _logger.LogInformation("Gemini API response received ({Length} chars)", resultText.Length);
-        //     return resultText;
-        // }
-
         public async Task<string> GenerateContentForCommentAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
         {
             const int maxRetries = 3;
             const int retryDelaySeconds = 30;
 
-            // ===== NEW: Beeknoee OpenAI-compatible request =====
             var requestBody = new
             {
                 model = _beeknoeeModel,
@@ -247,7 +162,6 @@ namespace Imate.AI.Module.Services
                 {
                     var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                    // ===== NEW: Bearer token auth =====
                     using var request = new HttpRequestMessage(HttpMethod.Post, _beeknoeeApiUrl);
                     request.Content = content;
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _beeknoeeApiKey);
@@ -285,35 +199,6 @@ namespace Imate.AI.Module.Services
                 _logger.LogError("Beeknoee API bị timeout hoặc bị hủy bởi người dùng.");
                 throw new Exception("Yêu cầu quá thời gian xử lý, vui lòng thử lại.");
             }
-
-            // ===== OLD: Gemini native API for comment (commented out) =====
-            // var requestUrl = $"{_apiUrl}?key={_apiKey}";
-            // var requestBody = new
-            // {
-            //     systemInstruction = new
-            //     {
-            //         parts = new[] { new { text = systemPrompt } }
-            //     },
-            //     contents = new[]
-            //     {
-            //         new
-            //         {
-            //             role = "user",
-            //             parts = new[] { new { text = userPrompt } }
-            //         }
-            //     },
-            //     generationConfig = new
-            //     {
-            //         temperature = _temperature,
-            //         topP = _topP,
-            //         thinkingConfig = new
-            //         {
-            //             includeThoughts = true,
-            //             thinkingBudget = _thinkingBudget
-            //         }
-            //     }
-            // };
-            // ... (retry loop + ParseGeminiResponse)
         }
 
         public async Task<CommentModerationResult> ModerateCommentAsync(string commentContent)
@@ -423,13 +308,5 @@ Bạn PHẢI trả lời bằng định dạng JSON chính xác sau. KHÔNG thê
                 throw new Exception($"Lỗi khi kiểm duyệt comment: {ex.Message}", ex);
             }
         }
-
-        // --- BLOOM'S TAXONOMY FRAMEWORK METHODS ---
-        // Paper Section 2.2: "LLM Generation Engine and Theoretical Calibration"
-
-        /// <summary>
-        /// Generate question aligned with Bloom's Taxonomy level
-        /// Paper Section 2.2.1: "Bloom's Taxonomy for Content Depth"
-        /// </summary>
     }
 }

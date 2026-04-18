@@ -1,6 +1,5 @@
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Interfaces.Orchestrators;
 using Imate.AI.Module.Models.Requests;
-using Imate.AI.Module.Models.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -9,19 +8,20 @@ using System.Security.Claims;
 namespace Imate.AI.Module.Controllers
 {
     /// <summary>
-    /// Controller cho các chức năng AI liên quan đến CV
+    /// Controller cho các chức năng AI liên quan đến CV (Tầng 1 - Controllers)
+    /// Thin controller: delegate business logic cho Orchestrator
     /// </summary>
     [ApiController]
     [Route("api")]
     [Authorize]
     public class CvAnalysisController : ControllerBase
     {
-        private readonly ICvAnalysisService _cvAnalysisService;
+        private readonly ICvAnalysisOrchestrator _orchestrator;
         private readonly ILogger<CvAnalysisController> _logger;
 
-        public CvAnalysisController(ICvAnalysisService cvAnalysisService, ILogger<CvAnalysisController> logger)
+        public CvAnalysisController(ICvAnalysisOrchestrator orchestrator, ILogger<CvAnalysisController> logger)
         {
-            _cvAnalysisService = cvAnalysisService;
+            _orchestrator = orchestrator;
             _logger = logger;
         }
 
@@ -38,7 +38,7 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                var result = await _cvAnalysisService.AnalyseCvAsync(accountId.Value, request);
+                var result = await _orchestrator.AnalyseCvAsync(accountId.Value, request);
 
                 return Ok(new
                 {
