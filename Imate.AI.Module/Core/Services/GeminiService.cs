@@ -18,12 +18,19 @@ namespace Imate.AI.Module.Core.Services
         private readonly HttpClient _httpClient;
         private readonly ILogger<GeminiService> _logger;
 
-        // ===== Beeknoee API config =====
+        // Default settings (GeminiSettings)
         private readonly string _beeknoeeApiUrl;
         private readonly string _beeknoeeApiKey;
         private readonly string _beeknoeeModel;
         private readonly double _temperature;
         private readonly int _maxTokens;
+
+        // CV-specific settings (CVGeminiSettings)
+        private readonly string _cvApiUrl;
+        private readonly string _cvApiKey;
+        private readonly string _cvModel;
+        private readonly double _cvTemperature;
+        private readonly int _cvMaxTokens;
 
         public GeminiService(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiService> logger)
         {
@@ -31,158 +38,78 @@ namespace Imate.AI.Module.Core.Services
             _logger = logger;
 
             var settings = configuration.GetSection("GeminiSettings");
-
             _beeknoeeApiUrl = settings["BeeknoeeApiUrl"] ?? "https://platform.beeknoee.com/api/v1/chat/completions";
-            _beeknoeeApiKey = settings["BeeknoeeApiKey"] ?? "sk-bee-163ac7606c7e46db8cfd15087fdc4b12";
+            _beeknoeeApiKey = settings["BeeknoeeApiKey"] ?? "";
             _beeknoeeModel = settings["BeeknoeeModel"] ?? "gemini-3-flash";
             _temperature = double.TryParse(settings["Temperature"], out var temp) ? temp : 0.7;
             _maxTokens = int.TryParse(settings["MaxTokens"], out var maxTok) ? maxTok : 8192;
+
+            // Đọc CVGeminiSettings, fallback về GeminiSettings nếu chưa config
+            var cvSettings = configuration.GetSection("CVGeminiSettings");
+            _cvApiUrl = cvSettings["BeeknoeeApiUrl"] ?? _beeknoeeApiUrl;
+            _cvApiKey = cvSettings["BeeknoeeApiKey"] ?? _beeknoeeApiKey;
+            _cvModel = cvSettings["BeeknoeeModel"] ?? _beeknoeeModel;
+            _cvTemperature = double.TryParse(cvSettings["Temperature"], out var cvTemp) ? cvTemp : 0;
+            _cvMaxTokens = int.TryParse(cvSettings["MaxTokens"], out var cvMax) ? cvMax : 8192;
         }
 
         /// <summary>
-        /// Gọi Beeknoee API (OpenAI-compatible) với system prompt và user prompt.
-        /// Retry logic: nếu bị rate-limit (429) hoặc server error (5xx),
-        /// chờ 30 giây rồi thử lại, tối đa 3 lần.
+        /// Gọi AI với settings mặc định (GeminiSettings) - dùng cho các feature khác
         /// </summary>
         public async Task<string> GenerateContentAsync(string systemPrompt, string userPrompt)
         {
-            const int maxRetries = 3;
-            const int retryDelaySeconds = 30;
-
-            var requestBody = new
-            {
-                model = _beeknoeeModel,
-                messages = new object[]
-                {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = userPrompt }
-                },
-                temperature = _temperature,
-                max_tokens = _maxTokens,
-                stream = false
-            };
-
-            var jsonContent = JsonSerializer.Serialize(requestBody);
-
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                using var request = new HttpRequestMessage(HttpMethod.Post, _beeknoeeApiUrl);
-                request.Content = content;
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _beeknoeeApiKey);
-
-                _logger.LogInformation("Calling Beeknoee API (attempt {Attempt}/{Max})...", attempt, maxRetries);
-                var response = await _httpClient.SendAsync(request);
-                var responseBody = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var statusCode = (int)response.StatusCode;
-                    var isRetryable = statusCode == 429 || statusCode >= 500;
-
-                    _logger.LogWarning(
-                        "Beeknoee API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
-                        response.StatusCode, attempt, maxRetries, responseBody);
-
-                    if (isRetryable && attempt < maxRetries)
-                    {
-                        _logger.LogInformation(
-                            "Rate-limit or server error. Retrying in {Delay}s...", retryDelaySeconds);
-                        await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds));
-                        continue;
-                    }
-
-                    _logger.LogError("Beeknoee API failed after {Attempt} attempt(s). Giving up.", attempt);
-                    throw new Exception($"Beeknoee API error: {response.StatusCode}");
-                }
-
-                return ParseBeeknoeeResponse(responseBody);
-            }
-
-            throw new Exception("Beeknoee API: max retries exhausted");
+            return await CallBeeknoeeAsync(
+                systemPrompt, userPrompt,
+                _beeknoeeApiUrl, _beeknoeeApiKey, _beeknoeeModel, _temperature, _maxTokens,
+                callerName: "GenerateContent");
         }
 
         /// <summary>
-        /// Parse response JSON từ Beeknoee API (OpenAI-compatible format).
-        /// Format: { choices: [{ message: { content: "..." } }] }
+        /// Gọi AI với CVGeminiSettings (Temperature=0.1) - dùng riêng cho Analyse CV
         /// </summary>
-        private string ParseBeeknoeeResponse(string responseBody)
+        public async Task<string> GenerateContentForCvAnalysisAsync(string systemPrompt, string userPrompt)
         {
-            using var doc = JsonDocument.Parse(responseBody);
+            _logger.LogInformation(
+                "[CvAnalysis] Using CVGeminiSettings: Model={Model}, Temp={Temp}",
+                _cvModel, _cvTemperature);
 
-            if (!doc.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
-            {
-                throw new Exception("Không nhận được phản hồi từ Beeknoee API (no choices)");
-            }
-
-            var firstChoice = choices[0];
-            if (!firstChoice.TryGetProperty("message", out var message) ||
-                !message.TryGetProperty("content", out var contentEl))
-            {
-                throw new Exception("Không nhận được phản hồi từ Beeknoee API (no message content)");
-            }
-
-            var resultText = contentEl.GetString();
-
-            if (string.IsNullOrEmpty(resultText))
-            {
-                throw new Exception("Không nhận được phản hồi từ Beeknoee AI");
-            }
-
-            _logger.LogInformation("Beeknoee API response received ({Length} chars)", resultText.Length);
-            return resultText;
+            return await CallBeeknoeeAsync(
+                systemPrompt, userPrompt,
+                _cvApiUrl, _cvApiKey, _cvModel, _cvTemperature, _cvMaxTokens,
+                callerName: "CvAnalysis");
         }
 
+        /// <summary>
+        /// Gọi AI cho Comment (có CancellationToken + timeout 3s)
+        /// </summary>
         public async Task<string> GenerateContentForCommentAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
         {
             const int maxRetries = 3;
             const int retryDelaySeconds = 30;
 
-            var requestBody = new
-            {
-                model = _beeknoeeModel,
-                messages = new object[]
-                {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = userPrompt }
-                },
-                temperature = _temperature,
-                max_tokens = _maxTokens,
-                stream = false
-            };
+            var jsonContent = BuildRequestJson(_beeknoeeModel, systemPrompt, userPrompt, _temperature, _maxTokens);
 
-            var jsonContent = JsonSerializer.Serialize(requestBody);
-
-            _logger.LogInformation("Calling Beeknoee API for Comment...");
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(3));
+
             try
             {
                 for (int attempt = 1; attempt <= maxRetries; attempt++)
                 {
-                    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                    using var request = new HttpRequestMessage(HttpMethod.Post, _beeknoeeApiUrl);
-                    request.Content = content;
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _beeknoeeApiKey);
+                    using var request = BuildHttpRequest(_beeknoeeApiUrl, _beeknoeeApiKey, jsonContent);
 
                     _logger.LogInformation("Beeknoee Comment API (attempt {Attempt}/{Max})...", attempt, maxRetries);
-                    var response = await _httpClient.SendAsync(request);
+                    var response = await _httpClient.SendAsync(request, cts.Token);
                     var responseBody = await response.Content.ReadAsStringAsync();
 
                     if (!response.IsSuccessStatusCode)
                     {
                         var statusCode = (int)response.StatusCode;
-                        var isRetryable = statusCode == 429 || statusCode >= 500;
-
-                        _logger.LogWarning(
-                            "Beeknoee Comment API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
+                        _logger.LogWarning("Beeknoee Comment API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
                             response.StatusCode, attempt, maxRetries, responseBody);
 
-                        if (isRetryable && attempt < maxRetries)
+                        if ((statusCode == 429 || statusCode >= 500) && attempt < maxRetries)
                         {
-                            _logger.LogInformation("Retrying in {Delay}s...", retryDelaySeconds);
                             await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds));
                             continue;
                         }
@@ -197,7 +124,7 @@ namespace Imate.AI.Module.Core.Services
             }
             catch (OperationCanceledException)
             {
-                _logger.LogError("Beeknoee API bị timeout hoặc bị hủy bởi người dùng.");
+                _logger.LogError("Beeknoee API bị timeout hoặc bị hủy.");
                 throw new Exception("Yêu cầu quá thời gian xử lý, vui lòng thử lại.");
             }
         }
@@ -254,60 +181,131 @@ Bạn PHẢI trả lời bằng định dạng JSON chính xác sau. KHÔNG thê
             {
                 responseMessage = await GenerateContentForCommentAsync(systemPrompt, userPrompt);
 
-                // Clean response - remove markdown code blocks if present
                 var cleanedResponse = responseMessage.Trim();
                 if (cleanedResponse.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-                {
                     cleanedResponse = cleanedResponse.Substring(7);
-                }
                 if (cleanedResponse.StartsWith("```", StringComparison.OrdinalIgnoreCase))
-                {
                     cleanedResponse = cleanedResponse.Substring(3);
-                }
                 if (cleanedResponse.EndsWith("```", StringComparison.OrdinalIgnoreCase))
-                {
                     cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
-                }
                 cleanedResponse = cleanedResponse.Trim();
 
-                // Parse JSON response
                 var jsonDoc = JsonDocument.Parse(cleanedResponse);
                 var root = jsonDoc.RootElement;
 
-                var isSafe = root.TryGetProperty("is_safe", out var isSafeEl) && isSafeEl.GetBoolean();
-                var violationCategory = root.TryGetProperty("violation_category", out var violationCat)
-                    ? violationCat.GetString() ?? "None"
-                    : "None";
-                var reasoning = root.TryGetProperty("reasoning", out var reasoningEl)
-                    ? reasoningEl.GetString() ?? ""
-                    : "";
-                var suggestedAction = root.TryGetProperty("suggested_action", out var actionEl)
-                    ? actionEl.GetString() ?? ""
-                    : "";
-
-                var result = new CommentModerationResult
+                return new CommentModerationResult
                 {
-                    IsSafe = isSafe,
-                    ViolationCategory = violationCategory,
-                    Reasoning = reasoning,
-                    SuggestedAction = suggestedAction
+                    IsSafe = root.TryGetProperty("is_safe", out var isSafeEl) && isSafeEl.GetBoolean(),
+                    ViolationCategory = root.TryGetProperty("violation_category", out var violationCat)
+                        ? violationCat.GetString() ?? "None" : "None",
+                    Reasoning = root.TryGetProperty("reasoning", out var reasoningEl)
+                        ? reasoningEl.GetString() ?? "" : "",
+                    SuggestedAction = root.TryGetProperty("suggested_action", out var actionEl)
+                        ? actionEl.GetString() ?? "" : ""
                 };
-
-                return result;
             }
             catch (JsonException ex)
             {
-                var errorMsg = $"Không thể parse JSON response từ Beeknoee API";
+                var errorMsg = "Không thể parse JSON response từ Beeknoee API";
                 if (!string.IsNullOrEmpty(responseMessage))
-                {
                     errorMsg += $". Response gốc: {responseMessage.Substring(0, Math.Min(500, responseMessage.Length))}";
-                }
                 throw new Exception(errorMsg);
             }
             catch (Exception ex)
             {
                 throw new Exception($"Lỗi khi kiểm duyệt comment: {ex.Message}", ex);
             }
+        }
+
+        // =====================================================================
+        // PRIVATE HELPERS - tránh lặp code giữa các method
+        // =====================================================================
+
+        private async Task<string> CallBeeknoeeAsync(
+            string systemPrompt, string userPrompt,
+            string apiUrl, string apiKey, string model, double temperature, int maxTokens,
+            string callerName = "Gemini")
+        {
+            const int maxRetries = 3;
+            const int retryDelaySeconds = 30;
+
+            var jsonContent = BuildRequestJson(model, systemPrompt, userPrompt, temperature, maxTokens);
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                using var request = BuildHttpRequest(apiUrl, apiKey, jsonContent);
+
+                _logger.LogInformation("[{Caller}] Calling Beeknoee API (attempt {Attempt}/{Max})...",
+                    callerName, attempt, maxRetries);
+
+                var response = await _httpClient.SendAsync(request);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var statusCode = (int)response.StatusCode;
+                    _logger.LogWarning("[{Caller}] Beeknoee API error {StatusCode} (attempt {Attempt}/{Max}): {Body}",
+                        callerName, response.StatusCode, attempt, maxRetries, responseBody);
+
+                    if ((statusCode == 429 || statusCode >= 500) && attempt < maxRetries)
+                    {
+                        _logger.LogInformation("[{Caller}] Retrying in {Delay}s...", callerName, retryDelaySeconds);
+                        await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds));
+                        continue;
+                    }
+
+                    _logger.LogError("[{Caller}] Beeknoee API failed after {Attempt} attempt(s). Giving up.", callerName, attempt);
+                    throw new Exception($"Beeknoee API error: {response.StatusCode}");
+                }
+
+                return ParseBeeknoeeResponse(responseBody);
+            }
+
+            throw new Exception("Beeknoee API: max retries exhausted");
+        }
+
+        private static string BuildRequestJson(string model, string systemPrompt, string userPrompt, double temperature, int maxTokens)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                model,
+                messages = new object[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user",   content = userPrompt }
+                },
+                temperature,
+                max_tokens = maxTokens,
+                stream = false
+            });
+        }
+
+        private static HttpRequestMessage BuildHttpRequest(string apiUrl, string apiKey, string jsonContent)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+            request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            return request;
+        }
+
+        private string ParseBeeknoeeResponse(string responseBody)
+        {
+            using var doc = JsonDocument.Parse(responseBody);
+
+            if (!doc.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                throw new Exception("Không nhận được phản hồi từ Beeknoee API (no choices)");
+
+            var firstChoice = choices[0];
+            if (!firstChoice.TryGetProperty("message", out var message) ||
+                !message.TryGetProperty("content", out var contentEl))
+                throw new Exception("Không nhận được phản hồi từ Beeknoee API (no message content)");
+
+            var resultText = contentEl.GetString();
+            if (string.IsNullOrEmpty(resultText))
+                throw new Exception("Không nhận được phản hồi từ Beeknoee AI");
+
+            _logger.LogInformation("Beeknoee API response received ({Length} chars)", resultText.Length);
+            return resultText;
         }
     }
 }

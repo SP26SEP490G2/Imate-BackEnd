@@ -1,5 +1,6 @@
 using Imate.AI.Module.Models.Requests;
 using Imate.AI.Module.Models.Responses;
+using Microsoft.AspNetCore.Http;
 
 
 namespace Imate.AI.Module.Core.Interfaces
@@ -12,5 +13,6 @@ namespace Imate.AI.Module.Core.Interfaces
     {
         /// <summary>Phân tích CV — check cache, gọi Agent, save cache</summary>
         Task<CvAnalysisResponse> AnalyseCvAsync(int accountId, AnalyseCvRequest request);
+        Task ValidateCvIsItAsync(IFormFile file);
     }
 }

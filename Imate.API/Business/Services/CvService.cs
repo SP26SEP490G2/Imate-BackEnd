@@ -1,3 +1,4 @@
+using Imate.AI.Module.Core.Interfaces;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.DataAccess.Interfaces.UserManagement;
@@ -9,6 +10,7 @@ namespace Imate.API.Business.Services
     {
         private readonly IUserCvRepository _cvRepository;
         private readonly IAwsS3StorageService _s3Storage;
+        private readonly ICvAnalysisOrchestrator _cvAnalysisOrchestrator;
 
         // File validation constants
         private const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5MB
@@ -20,10 +22,14 @@ namespace Imate.API.Business.Services
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         };
 
-        public CvService(IUserCvRepository cvRepository, IAwsS3StorageService s3Storage)
+        public CvService(
+            IUserCvRepository cvRepository,
+            IAwsS3StorageService s3Storage,
+            ICvAnalysisOrchestrator cvAnalysisOrchestrator)
         {
             _cvRepository = cvRepository;
             _s3Storage = s3Storage;
+            _cvAnalysisOrchestrator = cvAnalysisOrchestrator;
         }
 
         /// <summary>
@@ -31,13 +37,14 @@ namespace Imate.API.Business.Services
         /// </summary>
         public async Task<UserCv> UploadCvAsync(int accountId, IFormFile file, string fileName)
         {
-            // 1. Validate file type and size
+            // 1. Validate file type và size
             ValidateFile(file);
+            await _cvAnalysisOrchestrator.ValidateCvIsItAsync(file);
 
-            // 2. Upload to S3
+            // 3. Upload lên S3
             var fileUrl = await _s3Storage.UploadFileAsync(file, "cv");
 
-            // 3. Create entity — use user-provided fileName if available, fallback to original
+            // 4. Lưu vào DB
             var displayName = !string.IsNullOrWhiteSpace(fileName) ? fileName : file.FileName;
             var userCv = new UserCv
             {
@@ -45,12 +52,11 @@ namespace Imate.API.Business.Services
                 FileName = displayName,
                 FileUrl = fileUrl,
                 UploadDate = DateTimeOffset.UtcNow,
-                ScannedData = string.Empty, // Placeholder – AI Engine integration later
+                ScannedData = string.Empty,
                 CreatedAt = DateTimeOffset.UtcNow,
             };
 
             await _cvRepository.AddAsync(userCv);
-
             return userCv;
         }
 

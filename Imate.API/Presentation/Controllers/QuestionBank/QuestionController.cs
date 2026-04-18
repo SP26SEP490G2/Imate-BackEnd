@@ -104,7 +104,7 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
                 });
             }
         }
-
+        [Authorize(Roles = "Staff, Admin")]
         [HttpGet(APIConfig.Question.GetAllSystemQuestionsForStaff)]
         public async Task<IActionResult> GetAllSystemQuestionsForStaffAsync([FromQuery] GetSystemQuestionParams questionParams)
         {
@@ -121,7 +121,7 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
 
             return Ok(pagedResult);
         }
-
+        [Authorize(Roles = "Staff, Admin")]
         [HttpGet(APIConfig.Question.GetAllContributedQuestionsForStaff)]
         public async Task<IActionResult> GetAllContributedQuestionsForStaffAsync([FromQuery] GetContributedQuestionParams questionParams)
         {
@@ -138,7 +138,7 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
 
             return Ok(pagedResult);
         }
-
+        [Authorize(Roles = "Staff, Admin")]
         [HttpPost(APIConfig.Question.CreateSystemQuestionForStaff)]
         public async Task<IActionResult> CreateSystemQuestionForStaffAsync([FromBody] CreateSystemQuestionForStaffRequest request)
         {
@@ -175,261 +175,262 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
                 Message = "Tạo câu hỏi hệ thống cho staff thành công.",
                 QuestionId = question.Id
 
-    });
-        }
-
-[HttpPut(APIConfig.Question.UpdateSystemQuestionForStaff)]
-public async Task<IActionResult> UpdateSystemQuestionForStaffAsync(int questionId, [FromBody] UpdateSystemQuestionForStaffRequest request)
-{
-
-    if (!ModelState.IsValid)
-    {
-
-        return BadRequest(ModelState);
-    }
-
-    var updatedQuestion = await _questionService.UpdateSystemQuestionForStaffAsync(questionId, request);
-
-    return Ok(new
-    {
-        Message = $"Cập nhật câu hỏi ID {questionId} thành công.",
-        QuestionId = updatedQuestion.Id
-    });
-}
-
-[HttpGet(APIConfig.Question.GetSystemQuestionById)]
-public async Task<IActionResult> GetSystemQuestionForStaffByIdAsync(int questionId)
-{
-    var accountId = GetCurrentAccountId();
-    var question = await _questionService.GetSystemQuestionByIdAsync(questionId, accountId);
-
-    return Ok(question);
-}
-
-[HttpGet(APIConfig.Question.GetContributedQuestionById)]
-public async Task<IActionResult> GetContributedQuestionForStaffByIdAsync(int questionId)
-{
-    var accountId = GetCurrentAccountId();
-    var question = await _questionService.GetContributedQuestionByIdAsync(questionId, accountId);
-
-    return Ok(question);
-}
-
-[HttpGet(APIConfig.Question.GetPublicSystemQuestionBanks)]
-public async Task<IActionResult> GetPublicSystemQuestionBanks([FromQuery] GetPublicSystemQuestionParams questionParams)
-{
-    try
-    {
-        var accountId = GetCurrentAccountId();
-        var subscription = User.FindFirstValue("SubscriptionPackage");
-
-        // Nếu có pagination params, sử dụng endpoint mới với pagination
-        if (questionParams.PageNumber > 0 && questionParams.PageSize > 0)
-        {
-            var pagedResult = await _questionService.GetPublicSystemQuestionBanksWithPaginationAsync(subscription, accountId, questionParams);
-            Response.Headers.Add("X-Pagination",
-                System.Text.Json.JsonSerializer.Serialize(
-                    new
-                    {
-                        pagedResult.TotalCount,
-                        pagedResult.PageSize,
-                        pagedResult.PageNumber,
-                        pagedResult.TotalPages
-                    }));
-            return Ok(new
-            {
-                success = true,
-                data = pagedResult,
-                message = "Lấy danh sách câu hỏi thành công"
             });
         }
-        else
+        [Authorize(Roles = "Staff, Admin")]
+        [HttpPut(APIConfig.Question.UpdateSystemQuestionForStaff)]
+        public async Task<IActionResult> UpdateSystemQuestionForStaffAsync(int questionId, [FromBody] UpdateSystemQuestionForStaffRequest request)
         {
-            // Giữ lại endpoint cũ cho backward compatibility
-            var questions = await _questionService.GetPublicSystemQuestionBanksAsync(subscription, accountId);
+
+            if (!ModelState.IsValid)
+            {
+
+                return BadRequest(ModelState);
+            }
+
+            var updatedQuestion = await _questionService.UpdateSystemQuestionForStaffAsync(questionId, request);
+
             return Ok(new
             {
-                success = true,
-                data = questions,
-                message = "Lấy danh sách câu hỏi thành công" + subscription
+                Message = $"Cập nhật câu hỏi ID {questionId} thành công.",
+                QuestionId = updatedQuestion.Id
             });
         }
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new
+        [Authorize(Roles = "Staff, Admin")]
+        [HttpGet(APIConfig.Question.GetSystemQuestionById)]
+        public async Task<IActionResult> GetSystemQuestionForStaffByIdAsync(int questionId)
         {
-            success = false,
-            message = "Có lỗi xảy ra khi lấy danh sách câu hỏi",
-            error = ex.Message
-        });
-    }
-}
+            var accountId = GetCurrentAccountId();
+            var question = await _questionService.GetSystemQuestionByIdAsync(questionId, accountId);
 
-[HttpGet(APIConfig.Question.GetPublicContributedQuestionBanks)]
-public async Task<IActionResult> GetPublicContributedQuestionBanks([FromQuery] GetPublicContributedQuestionParams questionParams)
-{
-    try
-    {
-        var accountId = GetCurrentAccountId();
-        var subscription = User.FindFirstValue("SubscriptionPackage");
+            return Ok(question);
+        }
 
-        // Nếu có pagination params, sử dụng endpoint mới với pagination
-        if (questionParams.PageNumber > 0 && questionParams.PageSize > 0)
+        [HttpGet(APIConfig.Question.GetContributedQuestionById)]
+        public async Task<IActionResult> GetContributedQuestionForStaffByIdAsync(int questionId)
         {
-            var pagedResult = await _questionService.GetPublicContributedQuestionBanksWithPaginationAsync(subscription, accountId, questionParams);
-            Response.Headers.Add("X-Pagination",
-                System.Text.Json.JsonSerializer.Serialize(
-                    new
-                    {
-                        pagedResult.TotalCount,
-                        pagedResult.PageSize,
-                        pagedResult.PageNumber,
-                        pagedResult.TotalPages
-                    }));
-            return Ok(new
+            var accountId = GetCurrentAccountId();
+            var question = await _questionService.GetContributedQuestionByIdAsync(questionId, accountId);
+
+            return Ok(question);
+        }
+
+        [HttpGet(APIConfig.Question.GetPublicSystemQuestionBanks)]
+        public async Task<IActionResult> GetPublicSystemQuestionBanks([FromQuery] GetPublicSystemQuestionParams questionParams)
+        {
+            try
             {
-                success = true,
-                data = pagedResult,
-                message = "Lấy danh sách câu hỏi thành công"
-            });
-        }
-        else
-        {
-            // Giữ lại endpoint cũ cho backward compatibility
-            var questions = await _questionService.GetAllPublicContributedQuestionAsync(subscription, accountId);
-            return Ok(new
-            {
-                success = true,
-                data = questions,
-                //total = questions.Count,
-                message = "Lấy danh sách câu hỏi thành công" + subscription
-            });
-        }
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new
-        {
-            success = false,
-            message = "Có lỗi xảy ra khi lấy danh sách câu hỏi",
-            error = ex.Message
-        });
-    }
-}
+                var accountId = GetCurrentAccountId();
+                var subscription = User.FindFirstValue("SubscriptionPackage");
 
-[HttpPost(APIConfig.Question.ContributeQuestion)]
-public async Task<IActionResult> ContributeQuestion([FromBody] ContributeQuestionRequestModel request)
-{
-    var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-    if (!int.TryParse(accountIdClaim, out var userId))
-    {
-        return Unauthorized("User ID is invalid.");
-    }
-
-    await _questionService.CreateContributedQuestionAsync(request, userId);
-    return StatusCode(201, new { message = "Your question has been contributed successfully!" });
-}
-
-[HttpGet(APIConfig.Question.ExportSystemQuestions)]
-public async Task<IActionResult> ExportSystemQuestionsAsync([FromQuery] GetSystemQuestionParams questionParams)
-{
-    try
-    {
-        var fileBytes = await _questionService.ExportSystemQuestionsToExcelAsync(questionParams);
-
-        // Đặt tên file với timestamp
-        string fileName = $"System_Questions_Export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-
-        // Trả về file với Content-Type chính xác
-        return File(
-            fileBytes,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            fileName
-        );
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new { message = "Failed to export questions: " + ex.Message });
-    }
-}
-
-[HttpGet(APIConfig.Question.GetMyContributedQuestions)]
-public async Task<IActionResult> GetMyContributedQuestionsAsync([FromQuery] GetMyContributedQuestionsParams questionParams)
-{
-    try
-    {
-        var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(accountIdClaim) || !int.TryParse(accountIdClaim, out int accountId))
-        {
-            return Unauthorized(new { message = "Invalid user authentication." });
-        }
-
-        var pagedResult = await _questionService.GetMyContributedQuestionsAsync(accountId, questionParams);
-        Response.Headers.Add("X-Pagination",
-            System.Text.Json.JsonSerializer.Serialize(
-                new
+                // Nếu có pagination params, sử dụng endpoint mới với pagination
+                if (questionParams.PageNumber > 0 && questionParams.PageSize > 0)
                 {
-                    pagedResult.TotalCount,
-                    pagedResult.PageSize,
-                    pagedResult.PageNumber,
-                    pagedResult.TotalPages
-                }));
-
-        return Ok(pagedResult);
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new
-        {
-            success = false,
-            message = "Có lỗi xảy ra khi lấy danh sách câu hỏi đóng góp của bạn",
-            error = ex.Message
-        });
-    }
-}
-
-[HttpGet(APIConfig.Question.GetAllPendingContributedQuestionsForStaff)]
-public async Task<IActionResult> GetAllPendingContributedQuestionForStaffAsync([FromQuery] PendingContributedParams questionParams)
-{
-    var pagedResult = await _questionService.GetAllPendingContributedQuestionForStaffAsync(questionParams);
-    Response.Headers.Add("X-Pagination",
-         System.Text.Json.JsonSerializer.Serialize(
-     new
-     {
-         pagedResult.TotalCount,
-         pagedResult.PageSize,
-         pagedResult.PageNumber,
-         pagedResult.TotalPages
-     }));
-
-    return Ok(pagedResult);
-}
-
-[HttpPut(APIConfig.Question.ChangeContributedQuestionStatusForStaff)]
-public async Task<IActionResult> UpdateContributedQuestionStatusAsync(int questionId, bool status)
-{
-    try
-    {
-        var accountIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!int.TryParse(accountIdString, out var staffId))
-        {
-            return Unauthorized("Token không hợp lệ.");
+                    var pagedResult = await _questionService.GetPublicSystemQuestionBanksWithPaginationAsync(subscription, accountId, questionParams);
+                    Response.Headers.Add("X-Pagination",
+                        System.Text.Json.JsonSerializer.Serialize(
+                            new
+                            {
+                                pagedResult.TotalCount,
+                                pagedResult.PageSize,
+                                pagedResult.PageNumber,
+                                pagedResult.TotalPages
+                            }));
+                    return Ok(new
+                    {
+                        success = true,
+                        data = pagedResult,
+                        message = "Lấy danh sách câu hỏi thành công"
+                    });
+                }
+                else
+                {
+                    // Giữ lại endpoint cũ cho backward compatibility
+                    var questions = await _questionService.GetPublicSystemQuestionBanksAsync(subscription, accountId);
+                    return Ok(new
+                    {
+                        success = true,
+                        data = questions,
+                        message = "Lấy danh sách câu hỏi thành công" + subscription
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Có lỗi xảy ra khi lấy danh sách câu hỏi",
+                    error = ex.Message
+                });
+            }
         }
 
-        var question = await _questionService.UpdateContributedQuestionStatusAsync(questionId, status, staffId);
-        return Ok(new
+        [HttpGet(APIConfig.Question.GetPublicContributedQuestionBanks)]
+        public async Task<IActionResult> GetPublicContributedQuestionBanks([FromQuery] GetPublicContributedQuestionParams questionParams)
         {
-            Message = $"Cập nhật trạng thái câu hỏi ID {questionId} thành công.",
-            QuestionId = question.Id,
-            NewStatus = question.IsActive
-        });
-    }
-    catch (BadRequestException ex)
-    {
-        return BadRequest(new { message = ex.Message });
-    }
-}
+            try
+            {
+                var accountId = GetCurrentAccountId();
+                var subscription = User.FindFirstValue("SubscriptionPackage");
+
+                // Nếu có pagination params, sử dụng endpoint mới với pagination
+                if (questionParams.PageNumber > 0 && questionParams.PageSize > 0)
+                {
+                    var pagedResult = await _questionService.GetPublicContributedQuestionBanksWithPaginationAsync(subscription, accountId, questionParams);
+                    Response.Headers.Add("X-Pagination",
+                        System.Text.Json.JsonSerializer.Serialize(
+                            new
+                            {
+                                pagedResult.TotalCount,
+                                pagedResult.PageSize,
+                                pagedResult.PageNumber,
+                                pagedResult.TotalPages
+                            }));
+                    return Ok(new
+                    {
+                        success = true,
+                        data = pagedResult,
+                        message = "Lấy danh sách câu hỏi thành công"
+                    });
+                }
+                else
+                {
+                    // Giữ lại endpoint cũ cho backward compatibility
+                    var questions = await _questionService.GetAllPublicContributedQuestionAsync(subscription, accountId);
+                    return Ok(new
+                    {
+                        success = true,
+                        data = questions,
+                        //total = questions.Count,
+                        message = "Lấy danh sách câu hỏi thành công" + subscription
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Có lỗi xảy ra khi lấy danh sách câu hỏi",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [Authorize(Roles = "Candidate")]
+        [HttpPost(APIConfig.Question.ContributeQuestion)]
+        public async Task<IActionResult> ContributeQuestion([FromBody] ContributeQuestionRequestModel request)
+        {
+            var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(accountIdClaim, out var userId))
+            {
+                return Unauthorized("User ID is invalid.");
+            }
+
+            await _questionService.CreateContributedQuestionAsync(request, userId);
+            return StatusCode(201, new { message = "Your question has been contributed successfully!" });
+        }
+
+        [HttpGet(APIConfig.Question.ExportSystemQuestions)]
+        public async Task<IActionResult> ExportSystemQuestionsAsync([FromQuery] GetSystemQuestionParams questionParams)
+        {
+            try
+            {
+                var fileBytes = await _questionService.ExportSystemQuestionsToExcelAsync(questionParams);
+
+                // Đặt tên file với timestamp
+                string fileName = $"System_Questions_Export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+                // Trả về file với Content-Type chính xác
+                return File(
+                    fileBytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName
+                );
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to export questions: " + ex.Message });
+            }
+        }
+        [Authorize(Roles = "Candidate")]
+        [HttpGet(APIConfig.Question.GetMyContributedQuestions)]
+        public async Task<IActionResult> GetMyContributedQuestionsAsync([FromQuery] GetMyContributedQuestionsParams questionParams)
+        {
+            try
+            {
+                var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(accountIdClaim) || !int.TryParse(accountIdClaim, out int accountId))
+                {
+                    return Unauthorized(new { message = "Invalid user authentication." });
+                }
+
+                var pagedResult = await _questionService.GetMyContributedQuestionsAsync(accountId, questionParams);
+                Response.Headers.Add("X-Pagination",
+                    System.Text.Json.JsonSerializer.Serialize(
+                        new
+                        {
+                            pagedResult.TotalCount,
+                            pagedResult.PageSize,
+                            pagedResult.PageNumber,
+                            pagedResult.TotalPages
+                        }));
+
+                return Ok(pagedResult);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Có lỗi xảy ra khi lấy danh sách câu hỏi đóng góp của bạn",
+                    error = ex.Message
+                });
+            }
+        }
+        [Authorize(Roles = "Staff, Admin")]
+        [HttpGet(APIConfig.Question.GetAllPendingContributedQuestionsForStaff)]
+        public async Task<IActionResult> GetAllPendingContributedQuestionForStaffAsync([FromQuery] PendingContributedParams questionParams)
+        {
+            var pagedResult = await _questionService.GetAllPendingContributedQuestionForStaffAsync(questionParams);
+            Response.Headers.Add("X-Pagination",
+                 System.Text.Json.JsonSerializer.Serialize(
+             new
+             {
+                 pagedResult.TotalCount,
+                 pagedResult.PageSize,
+                 pagedResult.PageNumber,
+                 pagedResult.TotalPages
+             }));
+
+            return Ok(pagedResult);
+        }
+        [Authorize(Roles = "Staff, Admin")]
+        [HttpPut(APIConfig.Question.ChangeContributedQuestionStatusForStaff)]
+        public async Task<IActionResult> UpdateContributedQuestionStatusAsync(int questionId, bool status)
+        {
+            try
+            {
+                var accountIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(accountIdString, out var staffId))
+                {
+                    return Unauthorized("Token không hợp lệ.");
+                }
+
+                var question = await _questionService.UpdateContributedQuestionStatusAsync(questionId, status, staffId);
+                return Ok(new
+                {
+                    Message = $"Cập nhật trạng thái câu hỏi ID {questionId} thành công.",
+                    QuestionId = question.Id,
+                    NewStatus = question.IsActive
+                });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
 
         [HttpPost(APIConfig.Question.ValidateQuestionsFromExcel)]
         public async Task<IActionResult> ValidateQuestionsFromExcel(IFormFile file)

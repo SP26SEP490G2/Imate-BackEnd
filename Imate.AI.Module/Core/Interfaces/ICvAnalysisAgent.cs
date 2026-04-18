@@ -1,4 +1,5 @@
 using Imate.AI.Module.Models.Responses;
+using Microsoft.AspNetCore.Http;
 
 
 namespace Imate.AI.Module.Core.Interfaces
