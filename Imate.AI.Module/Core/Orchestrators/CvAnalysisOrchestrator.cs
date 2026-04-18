@@ -54,9 +54,18 @@ namespace Imate.AI.Module.Core.Orchestrators
                 var cached = await _cvDataProvider.GetCachedAnalysisAsync(accountId, request.CvId.Value);
                 if (!string.IsNullOrWhiteSpace(cached))
                 {
-                    _logger.LogInformation("Returning cached CV analysis for account {AccountId}, cvId {CvId}", accountId, request.CvId.Value);
-                    return JsonSerializer.Deserialize<CvAnalysisResponse>(cached, JsonOptions)
-                        ?? throw new Exception("Cannot parse cached analysis");
+                    try
+                    {
+                        _logger.LogInformation("Returning cached CV analysis for account {AccountId}, cvId {CvId}", accountId, request.CvId.Value);
+                        var parsed = JsonSerializer.Deserialize<CvAnalysisResponse>(cached, JsonOptions);
+                        if (parsed != null) return parsed;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Cached CV analysis data is invalid JSON for cvId {CvId}, will re-analyze.", request.CvId.Value);
+                        // Cache bị hỏng → xóa cache cũ và phân tích lại
+                        await _cvDataProvider.SaveAnalysisResultAsync(accountId, request.CvId.Value, null);
+                    }
                 }
             }
 
