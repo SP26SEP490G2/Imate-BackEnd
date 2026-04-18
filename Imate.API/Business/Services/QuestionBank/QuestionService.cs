@@ -512,16 +512,7 @@ namespace Imate.API.Business.Services.QuestionBank
 
         public async Task<IEnumerable<PublicSystemQuestionResponseModel>> GetPublicSystemQuestionBanksAsync(string subscription, int? accountId = null)
         {
-            IEnumerable<Question> questions; // (Giả sử Entity tên là Question)
-            if (subscription == "Gói Thường" || subscription == null)
-            {
-                // 1. GÓI FREE: Gọi phương thức Repository mới (Lấy 10 câu / thể loại)
-                questions = await _unitOfWork.Questions.GetLimitedPublicSystemQuestionBanksAsync();
-            }
-            else
-            {
-                questions = await _unitOfWork.Questions.GetPublicSystemQuestionBanksAsync();
-            }
+            IEnumerable<Question> questions = await _unitOfWork.Questions.GetPublicSystemQuestionBanksAsync();
 
             var savedQuestionIds = new HashSet<int>();
 
@@ -729,6 +720,11 @@ namespace Imate.API.Business.Services.QuestionBank
             {
                 query = query.Where(q => q.ContributedDetail != null && q.ContributedDetail.Level == questionParams.Level.Value);
             }
+            if (questionParams.Difficulty.HasValue)
+            {
+                query = query.Where(q => q.Difficulty == questionParams.Difficulty.Value);
+            }
+
 
             // 8. Sorting
             if (!string.IsNullOrWhiteSpace(questionParams.SortBy))
