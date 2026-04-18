@@ -656,7 +656,7 @@ namespace Imate.API.Business.Services
                 // Get backend base URL from configuration
                 var backendBaseUrl = _configuration["BackendUrl"] ??
                                      _configuration["BackendUrl:BaseUrl"] ?? 
-                                     _configuration["BackendSettings:BaseUrl"] ?? 
+                                     _configuration["BackendSettings"] ?? 
                                      _configuration["BackendSettings:BaseUrl"] ??
                                     _configuration["ASPNETCORE_URLS"]?.Split(';').FirstOrDefault() ??
                                     "http://localhost:4078";
