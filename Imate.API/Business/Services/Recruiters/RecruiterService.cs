@@ -179,20 +179,20 @@ namespace Imate.API.Business.Services.Recruiters
 					}
 
 					var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-					var extension = Path.GetExtension(request.CompanyLogo.FileName).ToLowerInvariant();
+                    var extension = Path.GetExtension(request.CompanyLogo.FileName).ToLowerInvariant();
 
-					if (!request.CompanyLogo.ContentType.StartsWith("image/") || !allowedExtensions.Contains(extension))
-					{
-						throw new BadRequestException($"File không hợp lệ. Chỉ chấp nhận các định dạng ảnh: {string.Join(", ", allowedExtensions)}.");
-					}
+                    if (!request.CompanyLogo.ContentType.StartsWith("image/") || !allowedExtensions.Contains(extension))
+                    {
+                        throw new BadRequestException($"File không hợp lệ. Chỉ chấp nhận các định dạng ảnh: {string.Join(", ", allowedExtensions)}.");
+                    }
 
-					const long maxFileSize = 5 * 1024 * 1024; // 5MB
-					if (request.CompanyLogo.Length > maxFileSize)
-					{
-						throw new BadRequestException("Dung lượng ảnh quá lớn. Vui lòng tải lên ảnh nhỏ hơn 5MB.");
-					}
+                    const long maxFileSize = 5 * 1024 * 1024; // 5MB
+                    if (request.CompanyLogo.Length > maxFileSize)
+                    {
+                        throw new BadRequestException("Dung lượng ảnh quá lớn. Vui lòng tải lên ảnh nhỏ hơn 5MB.");
+                    }
 
-					if (!string.IsNullOrEmpty(recruiter.CompanyLogo))
+                    if (!string.IsNullOrEmpty(recruiter.CompanyLogo))
 					{
 						await _s3StorageService.DeleteFileAsync(recruiter.CompanyLogo);
 					}
@@ -210,7 +210,15 @@ namespace Imate.API.Business.Services.Recruiters
 				await _unitOfWork.Recruiters.UpdateRecruiterAsync(recruiter);
 				await _unitOfWork.SaveChangesAsync();
 			}
-			catch (Exception ex)
+			catch (NotFoundException)
+			{
+				throw;
+            }
+            catch (BadRequestException)
+            {
+                throw;
+            }
+            catch (Exception ex)
 			{
 				throw new ApplicationException("An error occurred while Updating Recruiter profile.", ex);
 
