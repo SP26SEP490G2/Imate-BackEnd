@@ -1,6 +1,6 @@
 using Amazon.S3;
-using Imate.AI.Module.Interfaces;
-using Imate.AI.Module.Interfaces.AIServices;
+using Imate.AI.Module.Core.Interfaces;
+using Imate.AI.Module.Core.Interfaces;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Applications;
 using Imate.API.Business.Interfaces.Classification;

@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Core.Interfaces;
 using Imate.AI.Module.Models.Responses;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;

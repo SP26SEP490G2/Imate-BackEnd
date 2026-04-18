@@ -5,7 +5,7 @@ using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels.Comunity;
 using Imate.API.DataAccess.ApplicationDbContext;
-using Imate.AI.Module.Interfaces.AIServices;
+using Imate.AI.Module.Core.Interfaces;
 using Imate.API.Business.Exceptions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;

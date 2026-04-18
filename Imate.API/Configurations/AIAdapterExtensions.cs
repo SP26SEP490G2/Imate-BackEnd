@@ -1,5 +1,5 @@
-using Imate.AI.Module.Extensions;
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Configuration;
+using Imate.AI.Module.Core.Interfaces;
 using Imate.API.Business.Services;
 using Imate.API.Business.Services.ExternalServices;
 using Microsoft.Extensions.DependencyInjection;
