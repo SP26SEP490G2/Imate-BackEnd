@@ -8,19 +8,9 @@ namespace Imate.AI.Module.Interfaces.AIServices
     /// </summary>
     public interface IGeminiService
     {
-        /// <summary>
-        /// Gọi Gemini API với system prompt và user prompt
-        /// </summary>
         Task<string> GenerateContentAsync(string systemPrompt, string userPrompt);
-
-        /// <summary>
-        /// Gọi Gemini API cho comment moderation (có timeout ngắn)
-        /// </summary>
+        Task<string> GenerateContentForCvAnalysisAsync(string systemPrompt, string userPrompt);
         Task<string> GenerateContentForCommentAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Kiểm duyệt nội dung comment
-        /// </summary>
         Task<CommentModerationResult> ModerateCommentAsync(string commentContent);
     }
 }
