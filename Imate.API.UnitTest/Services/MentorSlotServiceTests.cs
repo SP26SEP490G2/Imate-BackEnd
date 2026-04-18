@@ -16,6 +16,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IMentorRecurringSlotRepository> _mockMentorRecurringSlotRepo;
         private readonly Mock<ISlotRepository> _mockSlotRepo;
+        private readonly Mock<IMentorRepository> _mockMentorRepo;
         private readonly MentorSlotService _service;
 
         public MentorSlotServiceTests()
@@ -23,9 +24,11 @@ namespace Imate.API.UnitTest.Services
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockMentorRecurringSlotRepo = new Mock<IMentorRecurringSlotRepository>();
             _mockSlotRepo = new Mock<ISlotRepository>();
+            _mockMentorRepo = new Mock<IMentorRepository>();
 
             _mockUnitOfWork.Setup(u => u.MentorRecurringSlots).Returns(_mockMentorRecurringSlotRepo.Object);
             _mockUnitOfWork.Setup(u => u.Slots).Returns(_mockSlotRepo.Object);
+            _mockUnitOfWork.Setup(u => u.Mentors).Returns(_mockMentorRepo.Object);
 
             _service = new MentorSlotService(_mockUnitOfWork.Object);
         }
@@ -93,11 +96,13 @@ namespace Imate.API.UnitTest.Services
             // Arrange
             var mentorId = 1;
             var slotIds = new List<int> { 10, 11 };
+            var existingMentor = new Mentor { AccountId = mentorId };
             var existingSlots = new List<MentorRecurringSlot>
             {
                 new MentorRecurringSlot { MentorId = mentorId, SlotId = 10 }
             };
 
+            _mockMentorRepo.Setup(r => r.GetMentorByIdAsync(mentorId)).ReturnsAsync(existingMentor);
             _mockMentorRecurringSlotRepo.Setup(r => r.GetByMentorIdAsync(mentorId)).ReturnsAsync(existingSlots);
             _mockUnitOfWork.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
 
