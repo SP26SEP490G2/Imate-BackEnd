@@ -1,11 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Imate.API.Business.Interfaces.Comunity;
 using Imate.API.DataAccess;
 using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels.Comunity;
 using Imate.API.DataAccess.ApplicationDbContext;
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Interfaces.AIServices;
 using Imate.API.Business.Exceptions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;

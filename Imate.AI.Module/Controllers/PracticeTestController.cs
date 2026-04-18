@@ -1,4 +1,4 @@
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Interfaces.Orchestrators;
 using Imate.AI.Module.Models.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +8,8 @@ using System.Security.Claims;
 namespace Imate.AI.Module.Controllers
 {
     /// <summary>
-    /// Controller cho Practice Test AI
+    /// Controller cho Practice Test AI (Tầng 1 - Controllers)
+    /// Thin controller: delegate business logic cho Orchestrator
     /// UC-30: Practice Test
     /// </summary>
     [ApiController]
@@ -16,12 +17,12 @@ namespace Imate.AI.Module.Controllers
     [Authorize]
     public class PracticeTestController : ControllerBase
     {
-        private readonly IPracticeTestService _practiceTestService;
+        private readonly IPracticeTestOrchestrator _orchestrator;
         private readonly ILogger<PracticeTestController> _logger;
 
-        public PracticeTestController(IPracticeTestService practiceTestService, ILogger<PracticeTestController> logger)
+        public PracticeTestController(IPracticeTestOrchestrator orchestrator, ILogger<PracticeTestController> logger)
         {
-            _practiceTestService = practiceTestService;
+            _orchestrator = orchestrator;
             _logger = logger;
         }
 
@@ -38,7 +39,7 @@ namespace Imate.AI.Module.Controllers
                 if (accountId == null)
                     return Unauthorized(new { success = false, message = "Không thể xác định thông tin người dùng." });
 
-                var result = await _practiceTestService.GenerateTestAsync(accountId.Value, request);
+                var result = await _orchestrator.GenerateTestAsync(accountId.Value, request);
 
                 return Ok(new
                 {
