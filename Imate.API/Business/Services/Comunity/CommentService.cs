@@ -1,11 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Imate.API.Business.Interfaces.Comunity;
 using Imate.API.DataAccess;
 using Imate.API.DataAccess.Interfaces.Comunity;
 using Imate.API.Models.Entities;
 using Imate.API.Presentation.RequestModels.Comunity;
 using Imate.API.DataAccess.ApplicationDbContext;
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Interfaces.AIServices;
 using Imate.API.Business.Exceptions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -79,31 +79,32 @@ namespace Imate.API.Business.Services.Comunity
             }
 
             // Kiểm duyệt comment trước khi tạo
-            try
-            {
-                var moderationResult = await _geminiService.ModerateCommentAsync(request.Content);
+            //try
+            //{
+            //    var moderationResult = await _geminiService.ModerateCommentAsync(request.Content);
 
-                if (!moderationResult.IsSafe)
-                {
-                    throw new BadRequestException("Nội dung không phù hợp. Vui lòng điều chỉnh nội dung.");
-                }
-            }
-            catch (BadRequestException)
-            {
-                throw; // Re-throw BadRequestException as is
-            }
-            catch (Exception ex)
-            {
-                // Nếu có lỗi khi kiểm duyệt (ví dụ: OpenAI API lỗi), vẫn cho phép tạo comment
-                // để tránh block người dùng khi service kiểm duyệt gặp sự cố
-                // Có thể log lỗi ở đây để theo dõi
-            }
+            //    if (!moderationResult.IsSafe)
+            //    {
+            //        throw new BadRequestException("Nội dung không phù hợp. Vui lòng điều chỉnh nội dung.");
+            //    }
+            //}
+            //catch (BadRequestException)
+            //{
+            //    throw; // Re-throw BadRequestException as is
+            //}
+            //catch (Exception ex)
+            //{
+            //    // Nếu có lỗi khi kiểm duyệt (ví dụ: Gemini API lỗi), vẫn cho phép tạo comment
+            //    // để tránh block người dùng khi service kiểm duyệt gặp sự cố
+            //    // Có thể log lỗi ở đây để theo dõi
+            //}
 
             var newComment = new Comment
             {
                 UserId = userId,
                 QuestionId = request.QuestionId,
                 Content = request.Content,
+                CreatedAt = now,
                 UpdatedAt = now
             };
 
@@ -179,25 +180,25 @@ namespace Imate.API.Business.Services.Comunity
             }
 
             // Kiểm duyệt comment trước khi tạo
-            try
-            {
-                var moderationResult = await _geminiService.ModerateCommentAsync(request.Content);
+            //try
+            //{
+            //    var moderationResult = await _geminiService.ModerateCommentAsync(request.Content);
 
-                if (!moderationResult.IsSafe)
-                {
-                    throw new BadRequestException("Nội dung không phù hợp. Vui lòng điều chỉnh nội dung.");
-                }
-            }
-            catch (BadRequestException)
-            {
-                throw; // Re-throw BadRequestException as is
-            }
-            catch (Exception ex)
-            {
-                // Nếu có lỗi khi kiểm duyệt (ví dụ: OpenAI API lỗi), vẫn cho phép tạo comment
-                // để tránh block người dùng khi service kiểm duyệt gặp sự cố
-                // Có thể log lỗi ở đây để theo dõi
-            }
+            //    if (!moderationResult.IsSafe)
+            //    {
+            //        throw new BadRequestException("Nội dung không phù hợp. Vui lòng điều chỉnh nội dung.");
+            //    }
+            //}
+            //catch (BadRequestException)
+            //{
+            //    throw; // Re-throw BadRequestException as is
+            //}
+            //catch (Exception ex)
+            //{
+            //    // Nếu có lỗi khi kiểm duyệt (ví dụ: OpenAI API lỗi), vẫn cho phép tạo comment
+            //    // để tránh block người dùng khi service kiểm duyệt gặp sự cố
+            //    // Có thể log lỗi ở đây để theo dõi
+            //}
             comment.Content = request.Content;
             comment.UpdatedAt = DateTime.UtcNow; // Cập nhật thời gian sửa đổi
 

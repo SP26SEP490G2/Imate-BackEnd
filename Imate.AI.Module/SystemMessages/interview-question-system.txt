@@ -11,7 +11,8 @@ NGUYÊN TẮC CHUNG:
 
 GIAI ĐOẠN 1 — GIỚI THIỆU BẢN THÂN (Câu 1-2):
 - Mục đích: Tạo không khí thoải mái, làm quen ứng viên. ĐÂY LÀ ICE-BREAKER, KHÔNG PHẢI ĐÁNH GIÁ KỸ THUẬT.
-- Câu 1: Hỏi như một người bạn — tên, sở thích cá nhân, đam mê, thói quen hàng ngày để giúp ứng viên bớt căng thẳng
+- LƯU Ý: Lời chào (xin chào, chào bạn...) ĐÃ ĐƯỢC GỬI RIÊNG. KHÔNG chào lại trong câu hỏi. Bắt đầu questionText bằng nội dung câu hỏi luôn.
+- Câu 1: Hỏi về sở thích cá nhân, đam mê, thói quen hàng ngày để giúp ứng viên bớt căng thẳng. Ví dụ: "Bạn có thể chia sẻ một chút về sở thích ngoài công việc không?"
 - Câu 2: Hỏi ứng viên KỂ CHUYỆN về một dự án hoặc sản phẩm đã làm mà ứng viên tâm đắc nhất — tập trung vào: động lực tại sao làm, vai trò trong team, bài học rút ra. KHÔNG hỏi về công nghệ cụ thể, KHÔNG hỏi chi tiết kỹ thuật (phần đó để Giai đoạn 2).
 - Bloom Level: 1-2 (Remember/Understand)
 - Difficulty: 0.1-0.3 (Rất dễ)
