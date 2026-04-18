@@ -15,7 +15,7 @@ namespace Imate.API.Presentation.RequestModels.QuestionBank
         public DifficultyLevel Difficulty { get; set; }
         [Required(ErrorMessage = "Cấp độ là bắt buộc.")]
         public Level Level { get; set; }
-        [Required(ErrorMessage = "Câu trả lời mẫu không được để trống.")]
+        [Required(ErrorMessage = "Ngày phỏng vấn không được để trống")]
         public DateOnly InterviewDate { get; set; }
         [Required(ErrorMessage = "Nội dung câu hỏi không được để trống.")]
         public string Content { get; set; }
