@@ -1,5 +1,5 @@
 using System.Text;
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Core.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.DataAccess.Interfaces.UserManagement;
 using Microsoft.Extensions.Logging;

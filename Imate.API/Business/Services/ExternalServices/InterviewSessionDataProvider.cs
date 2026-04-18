@@ -1,7 +1,7 @@
 using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.Business.Services.ExternalServices

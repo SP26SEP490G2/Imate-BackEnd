@@ -1,4 +1,4 @@
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Core.Interfaces;
 using Imate.API.DataAccess.ApplicationDbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

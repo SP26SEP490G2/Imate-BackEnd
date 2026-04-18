@@ -38,7 +38,7 @@ builder.Services.AddHostedService<Imate.API.Business.Services.Mentors.AutoComple
 builder.Services.AddTransient<GlobalExceptionMiddleware>();
 
 builder.Services.AddControllers()
-    .AddApplicationPart(typeof(Imate.AI.Module.Controllers.CvAnalysisController).Assembly);
+    .AddApplicationPart(typeof(Imate.AI.Module.API.Controllers.CvAnalysisController).Assembly);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 // builder.Services.AddSwaggerGen();

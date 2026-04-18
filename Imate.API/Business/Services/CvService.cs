@@ -1,5 +1,4 @@
-using Imate.AI.Module.Interfaces;
-using Imate.AI.Module.Interfaces.Orchestrators;
+using Imate.AI.Module.Core.Interfaces;
 using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.DataAccess.Interfaces.UserManagement;

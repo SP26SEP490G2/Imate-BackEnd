@@ -1,4 +1,4 @@
-using Imate.AI.Module.Interfaces;
+using Imate.AI.Module.Core.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.Extensions.Caching.Memory;
