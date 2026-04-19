@@ -17,7 +17,7 @@ namespace Imate.AI.Module.Core.Interfaces
         Task<int> CreateSessionAsync(int accountId, CreateInterviewSessionRequest request);
 
         /// <summary>Lấy lời chào AI + TTS</summary>
-        Task<WelcomeMessageResult> GetWelcomeMessageAsync(int sessionId, CancellationToken cancellationToken);
+        Task<WelcomeMessageResult> GetWelcomeMessageAsync(int accountId, int sessionId, CancellationToken cancellationToken);
 
         /// <summary>Tạo câu hỏi tiếp theo + TTS</summary>
         Task<GenerateQuestionResult> GenerateQuestionAsync(int accountId, int sessionId, double? estimatedAbility, CancellationToken cancellationToken);
