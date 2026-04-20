@@ -36,7 +36,6 @@ namespace Imate.API.Business.Services
         private readonly IAuditLogService _auditLogService;
         private readonly ISystemNotificationService _systemNotificationService;
 
-
         public AuthService(
             IAccountRepository accountRepository,
             IMentorRepository mentorRepository,
@@ -65,6 +64,8 @@ namespace Imate.API.Business.Services
             _auditLogService = auditLogService;
             _systemNotificationService = systemNotificationService;
         }
+
+        
 
         public async Task<AuthResponse> RegisterWithEmailAsync(RegisterWithEmailRequest request)
         {
