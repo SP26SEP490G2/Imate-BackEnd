@@ -16,6 +16,7 @@ namespace Imate.API.Business.Interfaces.UserManagement
         Task<AccountStaffResponse> GetAccountDetailStaff(int accountId);
         Task<AccountMentorResponse> GetAccountDetailMentor(int accountId);
         Task<AccountCandidateResponse> GetAccountDetailCandidate(int accountId);
+        Task<AccountRecruiterResponse> GetAccountDetailRecruiter(int accountId);
         Task<AccountDashboardResponseModel> GetAccountOverview();
         Task UpdateUserRoleAsync(int accountId, string role);
 
