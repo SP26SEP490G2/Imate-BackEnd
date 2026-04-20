@@ -176,7 +176,11 @@ namespace Imate.AI.Module.API.Controllers
         {
             try
             {
-                var result = await _orchestrator.GetWelcomeMessageAsync(sessionId, cancellationToken);
+                var accountId = GetAccountId();
+                if (accountId == null)
+                    return Unauthorized(new { success = false, message = "Bạn cần đăng nhập để thao tác." });
+
+                var result = await _orchestrator.GetWelcomeMessageAsync(accountId.Value, sessionId, cancellationToken);
 
                 return Ok(new
                 {
@@ -188,6 +192,14 @@ namespace Imate.AI.Module.API.Controllers
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {

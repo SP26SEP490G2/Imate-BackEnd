@@ -543,6 +543,45 @@ namespace Imate.API.Business.Services.UserManagement
 
             return response;
         }
+
+        public async Task<AccountRecruiterResponse> GetAccountDetailRecruiter(int accountId)
+        {
+            var account = await _unitOfWork.Accounts.GetByIdAsync(accountId);
+            if (account == null)
+            {
+                throw new NotFoundException($"Không tìm thấy tài khoản nhà tuyển dụng với ID {accountId}");
+            }
+            if (!account.AccountRoles.Any(ar => ar.Role.Name == RoleName.Recruiter))
+            {
+                throw new BadRequestException($"Tài khoản với ID {accountId} không phải là nhà tuyển dụng");
+            }
+
+            var recruiter = await _unitOfWork.Recruiters.GetRecruiterByIdAsync(accountId);
+
+            // Count job posts by this recruiter
+            var jobPostCount = _unitOfWork.Recruiters.GetJobsByRecruiterId(accountId).Count();
+
+            var response = new AccountRecruiterResponse
+            {
+                Id = account.Id,
+                FullName = account.FullName,
+                Email = account.Email,
+                AvatarUrl = account.AvatarUrl,
+                Status = account.Status.ToString(),
+                RoleName = account.AccountRoles.FirstOrDefault()?.Role.Name.ToString(),
+                CompanyName = recruiter?.CompanyName ?? string.Empty,
+                CompanyLogo = recruiter?.CompanyLogo,
+                Website = recruiter?.Website,
+                Industry = recruiter?.Industry ?? string.Empty,
+                CompanySize = recruiter?.CompanySize,
+                Address = recruiter?.Address,
+                Phone = recruiter?.Phone,
+                VerificationStatus = recruiter?.VerificationStatus.ToString(),
+                JobPostCount = jobPostCount
+            };
+
+            return response;
+        }
         public async Task<AccountDashboardResponseModel> GetAccountOverview()
         {
             // ==================================================================

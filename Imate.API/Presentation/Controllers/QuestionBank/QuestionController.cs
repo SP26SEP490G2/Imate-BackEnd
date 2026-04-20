@@ -196,7 +196,6 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
                 QuestionId = updatedQuestion.Id
             });
         }
-        [Authorize(Roles = "Staff, Admin")]
         [HttpGet(APIConfig.Question.GetSystemQuestionById)]
         public async Task<IActionResult> GetSystemQuestionForStaffByIdAsync(int questionId)
         {

@@ -254,6 +254,12 @@ namespace Imate.API.Presentation.Controllers.UserManagement
             var accountDetail = await _accountService.GetAccountDetailCandidate(accountId);
             return Ok(accountDetail);
         }
+        [HttpGet("accounts/recruiter/{accountId}")]
+        public async Task<IActionResult> GetAccountDetailRecruiter(int accountId)
+        {
+            var accountDetail = await _accountService.GetAccountDetailRecruiter(accountId);
+            return Ok(accountDetail);
+        }
         [HttpGet("accounts/overview")]
         public async Task<IActionResult> GetAccountOverviewAsync()
         {
