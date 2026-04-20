@@ -230,7 +230,7 @@ namespace Imate.API.Business.Services.Recruiters
 		{
 			try
 			{
-				if (request == null || request.ApplicationDeadline < DateTime.UtcNow.Date || request.MinSalary > request.MinSalary)
+				if (request == null || request.ApplicationDeadline < DateTime.UtcNow.Date || request.MinSalary > request.MaxSalary)
 					throw new BadRequestException("Dữ liệu hồ sơ Đăng tuyển không hợp lệ.");
 
 				// Lấy account kèm theo navigation Recruiter
@@ -315,6 +315,10 @@ namespace Imate.API.Business.Services.Recruiters
 			try
 			{
 				var exsitingJob = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(request.Id);
+				if (exsitingJob == null)
+				{
+					throw new NotFoundException($"Job with Id {request.Id} not found");
+				}
 				var oldData = new
 				{
 					exsitingJob.Title,
@@ -337,10 +341,6 @@ namespace Imate.API.Business.Services.Recruiters
 
 					}).ToList(),
 				};
-				if (exsitingJob == null)
-				{
-					throw new NotFoundException($"Job with Id {request.Id} not found");
-				}
 
 
 				if (request == null || request.MinSalary > request.MaxSalary)
@@ -405,12 +405,12 @@ namespace Imate.API.Business.Services.Recruiters
 					JobSkills = jobUpdate.JobSkills.Select(id => new JobSkillResponse
 					{
 						Id = id.SkillId,
-						SkillName = id.Skill.Name,
+						SkillName = id.Skill?.Name,
 					}).ToList(),
 					JobPosition = jobUpdate.JobPositions.Select(id => new JobPositionResponse
 					{
 						Id = id.PositionId,
-						PositionName = id.Position.Name,
+						PositionName = id.Position?.Name,
 
 					}).ToList(),
 				};
@@ -430,18 +430,18 @@ namespace Imate.API.Business.Services.Recruiters
 			try
 			{
 				var exsitingJob = await _unitOfWork.Recruiters.GetPostedJobByIdAsync(jobId);
-				var oldData = new
-				{
-					exsitingJob.Status,
-				};
+				
 				if (exsitingJob == null)
 				{
 					throw new NotFoundException($"Job with Id {jobId} not found");
 				}
+                var oldData = new
+                {
+                    exsitingJob.Status,
+                };
 
-
-				// Lấy account kèm theo navigation Recruiter
-				var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
+                // Lấy account kèm theo navigation Recruiter
+                var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
 					?? throw new NotFoundException("Không tìm thấy tài khoản.");
 
 				var query = _unitOfWork.Recruiters.GetJobsByRecruiterId(accountId);
@@ -648,18 +648,18 @@ namespace Imate.API.Business.Services.Recruiters
 			try
 			{
 				var jobApplication = await _unitOfWork.Recruiters.GetJobApplicationByIdAsync(request.Id);
-				var oldData = new
-				{
-					jobApplication.Status,
-					jobApplication.RecruiterFeedback
-				};
+				
 				if (jobApplication == null)
 				{
 					throw new NotFoundException($"Job with Id {request.Id} not found");
 				}
-
-				// Lấy account kèm theo navigation Recruiter
-				var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
+                var oldData = new
+                {
+                    jobApplication.Status,
+                    jobApplication.RecruiterFeedback
+                };
+                // Lấy account kèm theo navigation Recruiter
+                var account = await _unitOfWork.Accounts.GetByIdRecruiter(accountId)
 					?? throw new NotFoundException("Không tìm thấy tài khoản.");
 
 				// Chỉ cho phép tài khoản role Recruiter
