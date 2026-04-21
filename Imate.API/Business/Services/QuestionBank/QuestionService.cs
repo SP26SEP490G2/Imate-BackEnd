@@ -959,6 +959,13 @@ namespace Imate.API.Business.Services.QuestionBank
                 CompanyId = request.CompanyId
             };
 
+            // Check trùng content
+            var existingContents = await _unitOfWork.Questions.FindExistingContentsAsync(new List<string> { request.Content });
+            if (existingContents.Any())
+            {
+                throw new BadRequestException("Nội dung câu hỏi đã tồn tại trong hệ thống.");
+            }
+
             var question = new Question
             {
                 Content = request.Content,
@@ -1041,6 +1048,13 @@ namespace Imate.API.Business.Services.QuestionBank
 
         public async Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request, int creatorId)
         {
+            // Check trùng content
+            var existingContents = await _unitOfWork.Questions.FindExistingContentsAsync(new List<string> { request.Content });
+            if (existingContents.Any())
+            {
+                throw new BadRequestException("Nội dung câu hỏi đã tồn tại trong hệ thống.");
+            }
+
             // 1. Ánh xạ thuộc tính cơ bản
             var question = new Question
             {
@@ -1052,7 +1066,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
-            var a = new List<int>();         
+            var a = new List<int>();
 
             // --- BẮT ĐẦU PHẦN ÁNH XẠ VÀ VALIDATION CHO CÁC MỐI QUAN HỆ ---
 
@@ -1163,6 +1177,14 @@ namespace Imate.API.Business.Services.QuestionBank
             if (questionToUpdate == null)
             {
                 throw new NotFoundException($"Không tìm thấy câu hỏi hệ thống với ID {questionId}.");
+            }
+
+            // Check trùng content, loại trừ ID hiện tại
+            var existingContents = await _unitOfWork.Questions.FindExistingContentsAsync(new List<string> { request.Content });
+            if (existingContents.Any(c => c.Equals(request.Content, StringComparison.OrdinalIgnoreCase)) && 
+                !questionToUpdate.Content.Equals(request.Content, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BadRequestException("Nội dung câu hỏi đã tồn tại trong hệ thống.");
             }
 
             // 2. KIỂM TRA SỰ TỒN TẠI CỦA ID (Phiên bản nâng cấp)
