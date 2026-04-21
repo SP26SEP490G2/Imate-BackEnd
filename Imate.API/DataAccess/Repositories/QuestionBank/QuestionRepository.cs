@@ -235,8 +235,9 @@ namespace Imate.API.DataAccess.Repositories.QuestionBank
             }
 
             // Lấy về tất cả các Content từ DB mà khớp với danh sách đầu vào
+            // Bỏ qua các câu hỏi đã bị Rejected, vì câu bị từ chối không nên cản trở việc tạo câu hỏi mới
             var existingContents = await _context.Questions
-                .Where(q => contents.Contains(q.Content))
+                .Where(q => contents.Contains(q.Content) && q.ApprovalStatus != QuestionApprovalStatus.Rejected)
                 .Select(q => q.Content)
                 .ToListAsync();
 
