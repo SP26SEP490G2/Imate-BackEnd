@@ -158,6 +158,11 @@ namespace Imate.API.Business.Services
         }
         public async Task<AuthResponse> VerifyFirebaseTokenAndLoginAsync(LoginRequest request)
         {
+            if (string.IsNullOrEmpty(request?.FirebaseIdToken))
+            {
+                throw new UnauthorizedException("Firebase token không hợp lệ.");
+            }
+
             FirebaseToken decodedToken;
             try
             {
