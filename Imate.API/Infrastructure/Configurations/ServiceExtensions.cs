@@ -116,7 +116,9 @@ namespace Imate.API.Infrastructure.Configurations
             services.AddScoped<ISystemNotificationService, SystemNotificationService>();
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
             services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
-
+        
+            services.AddSingleton(sp => FirebaseAdmin.Auth.FirebaseAuth.DefaultInstance);
+            services.AddScoped<IFirebaseAuthService, FirebaseAuthService>();
 
             // Classification Services & Repositories
             services.AddScoped<ICategoryService, CategoryService>();

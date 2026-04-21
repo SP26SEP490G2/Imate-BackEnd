@@ -158,11 +158,17 @@ namespace Imate.AI.Module.Core.Orchestrators
             return sessionId;
         }
 
-        public async Task<WelcomeMessageResult> GetWelcomeMessageAsync(int sessionId, CancellationToken cancellationToken)
+        public async Task<WelcomeMessageResult> GetWelcomeMessageAsync(int accountId, int sessionId, CancellationToken cancellationToken)
         {
             var session = await _dataProvider.GetSessionByIdAsync(sessionId);
             if (session == null)
                 throw new KeyNotFoundException($"Không tìm thấy phiên phỏng vấn {sessionId}");
+
+            if (session.AccountId != accountId)
+                throw new UnauthorizedAccessException("Bạn không có quyền truy cập phiên phỏng vấn này.");
+
+            if (session.Status != "InProgress")
+                throw new InvalidOperationException("Phiên phỏng vấn này đã kết thúc hoặc bị hủy.");
 
             var welcomeMessage = await _interviewAgent.GenerateWelcomeMessageAsync(
                 session.CvContent, session.PositionName, session.CompanyName);
@@ -198,6 +204,9 @@ namespace Imate.AI.Module.Core.Orchestrators
 
             if (session.AccountId != accountId)
                 throw new UnauthorizedAccessException("Bạn không có quyền truy cập phiên phỏng vấn này.");
+
+            if (session.Status != "InProgress")
+                throw new InvalidOperationException("Phiên phỏng vấn này đã kết thúc hoặc bị hủy.");
 
             // Kiểm tra giới hạn thời gian (30 phút)
             var elapsedTime = DateTimeOffset.UtcNow - session.StartTime;
@@ -292,6 +301,9 @@ namespace Imate.AI.Module.Core.Orchestrators
 
             if (session.AccountId != accountId)
                 throw new UnauthorizedAccessException("Bạn không có quyền truy cập phiên này.");
+
+            if (session.Status != "InProgress")
+                throw new InvalidOperationException("Phiên phỏng vấn này đã kết thúc hoặc bị hủy.");
 
             var response = await _dataProvider.GetResponseByIdAsync(request.InterviewResponseId);
             if (response == null)
