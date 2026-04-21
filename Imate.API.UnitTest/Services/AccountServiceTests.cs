@@ -1,19 +1,21 @@
-using Moq;
 using FluentAssertions;
-using Imate.API.Business.Services.UserManagement;
-using Imate.API.DataAccess.Interfaces;
+using Imate.API.Business.Exceptions;
+using Imate.API.Business.Helper;
+using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Business.Interfaces.UserManagement;
-using Imate.API.Models.Entities;
-using Imate.API.Models.Enums;
-using Imate.API.Business.Exceptions;
-using Imate.API.Presentation.RequestModels.UserManagement;
-using Imate.API.Presentation.ResponseModels.Mentors;
+using Imate.API.Business.Services.UserManagement;
+using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.UserManagement;
-using Xunit;
+using Imate.API.Models.Entities;
+using Imate.API.Models.Enums;
+using Imate.API.Presentation.RequestModels.UserManagement;
+using Imate.API.Presentation.ResponseModels.Mentors;
 using Imate.API.Presentation.ResponseModels.UserManagement;
-using Imate.API.Business.Interfaces;
+using MockQueryable;
+using Moq;
+using Xunit;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -770,6 +772,412 @@ namespace Imate.API.UnitTest.Services
             await act.Should().ThrowAsync<BadRequestException>().WithMessage("Dung lượng ảnh quá lớn. Vui lòng tải lên ảnh nhỏ hơn 5MB.");
         }
 
+        #endregion
+
+        #region View User Account
+        [Fact]
+        public async Task GetAllAccountAsync_ShouldReturnPagedList_WhenAccountsExist()
+        {
+            var accountParams = new AccountParams { PageNumber = 1, PageSize = 10 };
+            var accountsList = new List<Account>
+            {
+                new Account
+                {
+                    Id = 1,
+                    FullName = "User 1",
+                    Email = "user1@test.com",
+                    Status = AccountStatus.Active,
+                    CreatedAt = DateTime.UtcNow,
+                    AccountRoles = new List<AccountRole>
+                    {
+                        new() { Role = new Role { Name = RoleName.Candidate } }
+                    }
+                },
+                new Account
+                {
+                    Id = 2,
+                    FullName = "User 2",
+                    Email = "user2@test.com",
+                    Status = AccountStatus.Active,
+                    CreatedAt = DateTime.UtcNow,
+                    AccountRoles = new List<AccountRole>
+                    {
+                        new() { Role = new Role { Name = RoleName.Mentor } }
+                    }
+                }
+            };
+
+            var mockQueryable = accountsList.AsQueryable().BuildMock();
+            _mockAccountRepo.Setup(r => r.GetAllAccount()).Returns(mockQueryable);
+
+            var result = await _service.GetAllAccountAsync(accountParams);
+
+            result.Should().NotBeNull();
+            result.Items.Should().HaveCount(2);
+        }
+
+        [Fact]
+        public async Task GetAllAccountAsync_ShouldFilterBySearchTerm()
+        {
+            var accountParams = new AccountParams { SearchTerm = "Target", PageNumber = 1, PageSize = 10 };
+            var accountsList = new List<Account>
+            {
+                new Account { Id = 1, FullName = "Target User", AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                new Account { Id = 2, FullName = "Other User", AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } }
+            };
+
+            var mockQueryable = accountsList.BuildMock();
+            _mockAccountRepo.Setup(r => r.GetAllAccount()).Returns(mockQueryable);
+            var result = await _service.GetAllAccountAsync(accountParams);
+
+            result.Items.Should().HaveCount(1);
+            result.Items[0].FullName.Should().Be("Target User");
+        }
+
+        [Fact]
+        public async Task GetAllAccountAsync_ShouldFilterByStatus()
+        {
+            var accountParams = new AccountParams { AccountStatus = AccountStatus.Suspended, PageNumber = 1, PageSize = 10 };
+            var accountsList = new List<Account>
+            {
+                new Account { Id = 1, Status = AccountStatus.Active, AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                new Account { Id = 2, Status = AccountStatus.Suspended, AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } }
+            };
+
+            var mockQueryable = accountsList.BuildMock();
+            _mockAccountRepo.Setup(r => r.GetAllAccount()).Returns(mockQueryable);
+
+            var result = await _service.GetAllAccountAsync(accountParams);
+
+            result.Items.Should().HaveCount(1);
+            result.Items[0].Status.Should().Be(AccountStatus.Suspended);
+        }
+
+        [Fact]
+        public async Task GetAllAccountAsync_ShouldSortByFullNameDesc()
+        {
+            var accountParams = new AccountParams { SortBy = "fullname", SortOrder = "desc", PageNumber = 1, PageSize = 10 };
+            var accountsList = new List<Account>
+            {
+                new Account { Id = 1, FullName = "A User", AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                new Account { Id = 2, FullName = "Z User", AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } }
+            };
+
+            var mockQueryable = accountsList.BuildMock();
+            _mockAccountRepo.Setup(r => r.GetAllAccount()).Returns(mockQueryable);
+
+            var result = await _service.GetAllAccountAsync(accountParams);
+
+            result.Items[0].FullName.Should().Be("Z User");
+            result.Items[1].FullName.Should().Be("A User");
+        }
+
+        [Fact]
+        public async Task GetAllAccountAsync_ShouldThrowArgumentException_WhenSortOrderInvalid()
+        {
+            var accountParams = new AccountParams { SortBy = "fullname", SortOrder = "invalid", PageNumber = 1, PageSize = 10 };
+            var mockQueryable = new List<Account>().BuildMock();
+            _mockAccountRepo.Setup(r => r.GetAllAccount()).Returns(mockQueryable);
+
+            var act = () => _service.GetAllAccountAsync(accountParams);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public async Task GetAllAccountAsync_ShouldThrowNotFound_WhenSortByFieldInvalid()
+        {
+            var accountParams = new AccountParams { SortBy = "invalidfield", PageNumber = 1, PageSize = 10 };
+            var mockQueryable = new List<Account>().BuildMock();
+            _mockAccountRepo.Setup(r => r.GetAllAccount()).Returns(mockQueryable);
+
+            var act = () => _service.GetAllAccountAsync(accountParams);
+            await act.Should().ThrowAsync<NotFoundException>();
+        }
+
+        [Fact]
+        public async Task GetAllAccountAsync_ShouldTrimSearchTerm_WhenSearchTermHasWhitespace()
+        {
+            var accountParams = new AccountParams { SearchTerm = "  Target  ", PageNumber = 1, PageSize = 10 };
+            var accountsList = new List<Account>
+            {
+                new Account{ Id = 1, FullName = "Target User", AccountRoles = new List<AccountRole>{new() { Role = new Role { Name = RoleName.Candidate } } } },
+                new Account{ Id = 2, FullName = "Other User", AccountRoles = new List<AccountRole>{new() { Role = new Role { Name = RoleName.Candidate } } } }
+            };
+
+            var mockQueryable = accountsList.AsQueryable().BuildMock();
+            _mockAccountRepo.Setup(r => r.GetAllAccount()).Returns(mockQueryable);
+
+            var result = await _service.GetAllAccountAsync(accountParams);
+
+            result.Items.Should().HaveCount(1);
+            result.Items[0].FullName.Should().Be("Target User");
+        }
+
+        [Fact]
+        public async Task GetAccountOverview_ShouldReturnCorrectSummaryData()
+        {
+            var now = DateTime.UtcNow;
+            var accounts = new List<Account>
+                {
+                    new Account{ Id = 1, CreatedAt = now.AddDays(-2), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                    new Account{ Id = 2, CreatedAt = now.AddDays(-5), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                    new Account{ Id = 3, CreatedAt = now.AddDays(-10), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                    new Account{ Id = 4, CreatedAt = now.AddDays(-2), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Admin } } } }
+                };
+
+            var mockQueryable = accounts.AsQueryable().BuildMock();
+            _mockUnitOfWork.Setup(u => u.Accounts.GetAllAccount()).Returns(mockQueryable);
+
+            var result = await _service.GetAccountOverview();
+
+            result.Should().NotBeNull();
+            result.TotalUsers.Value.Should().Be(3);
+            result.NewUsers.Value.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task GetAccountOverview_ShouldReturnCorrectChartData()
+        {
+            var now = DateTime.UtcNow;
+            var accounts = new List<Account>
+                {
+                    new Account{ Id = 1, CreatedAt = now.AddDays(-3), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                    new Account{ Id = 2, CreatedAt = now.AddDays(-10), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                    new Account{ Id = 3, CreatedAt = now.AddDays(-17), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                    new Account{ Id = 4, CreatedAt = now.AddDays(-25), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } },
+                    new Account{ Id = 5, CreatedAt = now.AddMonths(-1), AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } }
+                };
+
+            var mockQueryable = accounts.AsQueryable().BuildMock();
+            _mockUnitOfWork.Setup(u => u.Accounts.GetAllAccount()).Returns(mockQueryable);
+
+            var result = await _service.GetAccountOverview();
+
+            result.TotalUsers.Data.Should().HaveCount(5);
+            result.NewUsers.Data.Should().HaveCount(4);
+        }
+        #endregion
+
+        #region View User Account Details
+        [Fact]
+        public async Task GetAccountByIdAsync_ShouldReturnAccount_WhenExists()
+        {
+            var accountId = 1;
+            var account = new Account
+            {
+                Id = accountId,
+                FullName = "User 1",
+                Email = "user1@test.com",
+                Status = AccountStatus.Active,
+                AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } }
+            };
+
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(accountId)).ReturnsAsync(account);
+
+            var result = await _service.GetAccountByIdAsync(accountId);
+
+            result.Should().NotBeNull();
+            result.Id.Should().Be(accountId);
+            result.FullName.Should().Be("User 1");
+        }
+
+        [Fact]
+        public async Task GetAccountByIdAsync_ShouldThrowNotFound_WhenDoesNotExist()
+        {
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Account?)null);
+            var act = () => _service.GetAccountByIdAsync(99);
+
+            await act.Should().ThrowAsync<NotFoundException>();
+        }
+
+        [Fact]
+        public async Task GetAccountDetailMentorForAdmin_ShouldReturnDetails_WhenValidMentor()
+        {
+            var accountId = 1;
+            var account = new Account
+            {
+                Id = accountId,
+                FullName = "Mentor Name",
+                Email = "mentor@test.com",
+                Status = AccountStatus.Active,
+                Mentor = new Mentor { Phone = "123", Bio = "Bio", PricePerSession = 500, AvgRatings = 4.5m },
+                AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Mentor } } }
+            };
+
+            var mockBookingRepo = new Mock<IBookingRepository>();
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdMentor(accountId)).ReturnsAsync(account);
+            _mockUnitOfWork.Setup(u => u.Bookings).Returns(mockBookingRepo.Object);
+            mockBookingRepo.Setup(r => r.GetMappedReviewsByMentorIdAsync(accountId)).ReturnsAsync(new List<ReviewResponseModel>());
+            mockBookingRepo.Setup(r => r.CountCompletedBookingsByMentorIdAsync(accountId)).ReturnsAsync(5);
+
+            var result = await _service.GetAccountDetailMentor(accountId);
+
+            result.Should().NotBeNull();
+            result.FullName.Should().Be("Mentor Name");
+            result.TotalCompletedSessions.Should().Be(5);
+            result.RoleName.Should().Be("Mentor");
+        }
+
+        [Fact]
+        public async Task GetAccountDetailMentorForAdmin_ShouldThrowBadRequest_WhenNotAMentor()
+        {
+            var accountId = 1;
+            var account = new Account
+            {
+                Id = accountId,
+                AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } }
+            };
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdMentor(accountId)).ReturnsAsync(account);
+
+            var act = () => _service.GetAccountDetailMentor(accountId);
+
+            await act.Should().ThrowAsync<BadRequestException>().WithMessage("*không phải là mentor*");
+        }
+
+        [Fact]
+        public async Task GetAccountDetailStaffForAdmin_ShouldReturnDetails_WhenValidStaff()
+        {
+            var accountId = 1;
+            var account = new Account
+            {
+                Id = accountId,
+                FullName = "Staff Name",
+                AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Staff } } }
+            };
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdMentor(accountId)).ReturnsAsync(account);
+            
+            var mockQuestions = new List<Question>().AsQueryable().BuildMock();
+            _mockUnitOfWork.Setup(u => u.Questions.GetAllSystemQuestionsForStaff()).Returns(mockQuestions);
+
+            var result = await _service.GetAccountDetailStaff(accountId);
+
+            result.Should().NotBeNull();
+            result.FullName.Should().Be("Staff Name");
+            result.RoleName.Should().Be("Staff");
+        }
+
+        [Fact]
+        public async Task GetAccountDetailCandidateForAdmin_ShouldReturnDetails_WithActivePackage_WhenValidCandidate()
+        {
+            var accountId = 1;
+            var account = new Account
+            {
+                Id = accountId,
+                FullName = "Candidate Name",
+                AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } }
+            };
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdAsync(accountId)).ReturnsAsync(account);
+
+            var subscriptions = new List<UserSubscription>
+            {
+                new UserSubscription 
+                { 
+                    Package = new SubscriptionPackage { Name = "Premium", DurationDays = 30 },
+                    StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-5))
+                }
+            };
+            _mockUnitOfWork.Setup(u => u.UserSubscriptions.GetSubscriptionsByCandidateIdAsync(accountId)).ReturnsAsync(subscriptions);
+            _mockUnitOfWork.Setup(u => u.Bookings.CountBookingsCompletedByCandidateIdAsync(accountId)).ReturnsAsync(3);
+
+            var result = await _service.GetAccountDetailCandidate(accountId);
+
+            result.Should().NotBeNull();
+            result.PresentPackage.Should().Be("Premium");
+            result.ExPackages.Should().Contain("Premium");
+            result.MentorSessionCount.Should().Be(3);
+        }
+
+        [Fact]
+        public async Task GetAccountDetailCandidateForAdmin_ShouldHandleEmptySubscriptions()
+        {
+            var accountId = 1;
+            var account = new Account { Id = accountId, AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Candidate } } } };
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdAsync(accountId)).ReturnsAsync(account);
+            _mockUnitOfWork.Setup(u => u.UserSubscriptions.GetSubscriptionsByCandidateIdAsync(accountId)).ReturnsAsync(new List<UserSubscription>());
+            _mockUnitOfWork.Setup(u => u.Bookings.CountBookingsCompletedByCandidateIdAsync(accountId)).ReturnsAsync(0);
+
+            var result = await _service.GetAccountDetailCandidate(accountId);
+
+            result.PresentPackage.Should().BeNull();
+            result.ExPackages.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task GetAccountDetailRecruiterForAdmin_ShouldReturnDetails_WhenValidRecruiter()
+        {
+            var accountId = 1;
+            var account = new Account { Id = accountId, FullName = "Recruiter Name", AccountRoles = new List<AccountRole> { new() { Role = new Role { Name = RoleName.Recruiter } } } };
+            var recruiter = new Recruiter { AccountId = accountId, CompanyName = "Imate Tech" };
+            
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdAsync(accountId)).ReturnsAsync(account);
+            _mockUnitOfWork.Setup(u => u.Recruiters.GetRecruiterByIdAsync(accountId)).ReturnsAsync(recruiter);
+            _mockUnitOfWork.Setup(u => u.Recruiters.GetJobsByRecruiterId(accountId)).Returns(new List<Job>().AsQueryable());
+            var result = await _service.GetAccountDetailRecruiter(accountId);
+
+            result.Should().NotBeNull();
+            result.CompanyName.Should().Be("Imate Tech");
+            result.JobPostCount.Should().Be(0);
+        }
+        #endregion
+
+        #region Update User Status
+        [Fact]
+        public async Task UpdateAccountStatusAsync_ShouldUpdateStatus_WhenValid()
+        {
+            var accountId = 1;
+            var account = new Account { Id = accountId, Status = AccountStatus.Active };
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(accountId)).ReturnsAsync(account);
+
+            var result = await _service.UpdateAccountStatusAsync(accountId, "Suspended");
+
+            result.Status.Should().Be(AccountStatus.Suspended);
+            _mockAccountRepo.Verify(r => r.UpdateAsync(account), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAccountStatusAsync_ShouldThrowBadRequest_WhenStatusInvalid()
+        {
+            var accountId = 1;
+            var account = new Account { Id = accountId, Status = AccountStatus.Active };
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(accountId)).ReturnsAsync(account);
+
+            var act = () => _service.UpdateAccountStatusAsync(accountId, "InvalidStatus");
+            await act.Should().ThrowAsync<BadRequestException>();
+        }
+
+        [Fact]
+        public async Task UpdateAccountStatusAsync_ShouldThrowNotFound_WhenAccountDoesNotExist()
+        {
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Account?)null);
+
+            var act = () => _service.UpdateAccountStatusAsync(99, "Active");
+            await act.Should().ThrowAsync<NotFoundException>();
+        }
+
+        [Fact]
+        public async Task UpdateAccountStatusAsync_ShouldBeCaseInsensitive()
+        {
+            var accountId = 1;
+            var account = new Account { Id = accountId, Status = AccountStatus.Active };
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(accountId)).ReturnsAsync(account);
+
+            var result = await _service.UpdateAccountStatusAsync(accountId, "suspended");
+            result.Status.Should().Be(AccountStatus.Suspended);
+        }
+
+        [Fact]
+        public async Task UpdateAccountStatusAsync_ShouldUpdateToSameStatus_AndStillCallRepository()
+        {
+            var accountId = 1;
+            var account = new Account { Id = accountId, Status = AccountStatus.Active };
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(accountId)).ReturnsAsync(account);
+
+            var result = await _service.UpdateAccountStatusAsync(accountId, "Active");
+
+            result.Status.Should().Be(AccountStatus.Active);
+            _mockAccountRepo.Verify(r => r.UpdateAsync(account), Times.Once);
+        }
         #endregion
     }
 }

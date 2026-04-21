@@ -21,6 +21,8 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -38,8 +40,8 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<IAuditLogService> _mockAuditLogService;
         private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
         private readonly Mock<IConfiguration> _mockConfiguration;
-        private readonly Mock<IOptions<JwtSettings>> _mockJwtOptions;
-        private readonly FirebaseAuth _mockFirebaseAuth;
+        private readonly IOptions<JwtSettings> _jwtOptions;
+        private readonly Mock<IFirebaseAuthService> _mockFirebaseAuthService;
 
         private readonly AuthService _authService;
         private const string ValidFireBaseId = "lGh6XnD16Ffpu89GXhaR7h1QEqo1";
@@ -57,37 +59,10 @@ namespace Imate.API.UnitTest.Services
             _mockRefreshTokenRepository = new Mock<IRefreshTokenRepository>();
             _mockAuditLogService = new Mock<IAuditLogService>();
             _mockSystemNotificationService = new Mock<ISystemNotificationService>();
-            _mockFirebaseAuth = FirebaseAuth.DefaultInstance;
+            _mockFirebaseAuthService = new Mock<IFirebaseAuthService>();
             _mockConfiguration = new Mock<IConfiguration>();
             _mockConfiguration.SetupGet(c => c["FrontendSettings:BaseUrl"]).Returns("http://imate.vn");
-
-            _mockJwtOptions = new Mock<IOptions<JwtSettings>>();
-            _mockJwtOptions.Setup(o => o.Value).Returns(new JwtSettings { RefreshTokenExpiryDays = 7 });
-
-            // Note: FirebaseAuth.DefaultInstance is normally initialized globally.
-            // If it throws during instantiation without credentials, AuthService might fail to construct.
-            // Assuming it passes or has been skipped in other tests via environment set up.
-            try 
-            {
-                _authService = new AuthService(
-                    _mockAccountRepository.Object,
-                    _mockMentorRepository.Object,
-                    _mockRecruiterRepository.Object,
-                    _mockRoleService.Object,
-                    _mockJwtTokenGenerator.Object,
-                    _mockEmailService.Object,
-                    _mockRefreshTokenRepository.Object,
-                    _mockJwtOptions.Object,
-                    _mockConfiguration.Object,
-                    _mockAuditLogService.Object,
-                    _mockSystemNotificationService.Object
-                );
-            }
-            catch(Exception)
-            {
-                // In a pure unit test without Firebase App initialization, AuthService constructor throws internally due to FirebaseAuth.DefaultInstance. 
-                // We'd have to decouple this via an IFirebaseAuthWrapper in production code.
-            }
+            _jwtOptions = Options.Create(new JwtSettings { RefreshTokenExpiryDays = 7 });
         }
 
         #region Register Account
@@ -184,6 +159,7 @@ namespace Imate.API.UnitTest.Services
             {
                 Email = "test@example.com",
                 Password = "Password123!",
+                ConfirmPassword = "Password123!",
                 FullName = "Test User",
                 Role = "Candidate"
             };
@@ -191,18 +167,17 @@ namespace Imate.API.UnitTest.Services
             _mockAccountRepository.Setup(r => r.ExistsByEmailAsync(request.Email))
                 .ReturnsAsync(false);
 
-            var account = new Account
-            {
-                Id = 1,
-                Email = request.Email,
-                FullName = request.FullName,
-                Provider = LoginProvider.EmailPassword,
-                ProviderId = "123123",
-                Status = AccountStatus.Active,
-                CreatedAt = DateTime.UtcNow
-            };
+            var firebaseUser = CreateUserRecord(ValidFireBaseId, request.Email, request.FullName);
+            _mockFirebaseAuthService.Setup(f => f.CreateUserAsync(It.IsAny<UserRecordArgs>())).ReturnsAsync(firebaseUser);
 
-            //Suppose register successfully because of firebase difficult to mock:(
+            var service = CreateServiceInstance();
+
+            // Act
+            await service!.RegisterWithEmailAsync(request);
+
+            // Assert
+            _mockFirebaseAuthService.Verify(f => f.CreateUserAsync(It.IsAny<UserRecordArgs>()), Times.Once);
+            _mockAccountRepository.Verify(x => x.AddAsync(It.IsAny<Account>()), Times.Once);
         }
         #endregion
 
@@ -212,7 +187,7 @@ namespace Imate.API.UnitTest.Services
         {
             var request = new LoginRequest
             {
-                FirebaseIdToken = "valid-firebase-token"
+                FirebaseIdToken = ValidFireBaseId
             };
             var account = new Account
             {
@@ -220,62 +195,114 @@ namespace Imate.API.UnitTest.Services
                 Email = "thuan@gmail.com",
                 FullName = "Thuan",
                 Provider = LoginProvider.EmailPassword,
-                ProviderId = "123123",
+                ProviderId = ValidFireBaseId,
                 Status = AccountStatus.Active,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                AccountRoles = new List<AccountRole>
+                {
+                    new AccountRole { Role = new Role { Name = RoleName.Candidate } }
+                }
             };
-            //Suppose Login successfully because of firebase difficult to mock:(
+
+            var firebaseToken = CreateFirebaseToken(ValidFireBaseId, account.Email, true);
+            _mockFirebaseAuthService.Setup(x => x.VerifyIdTokenAsync(request.FirebaseIdToken)).ReturnsAsync(firebaseToken);
+            _mockAccountRepository.Setup(x => x.GetByProviderIdAsync(ValidFireBaseId)).ReturnsAsync(account);
+            _mockJwtTokenGenerator.Setup(x => x.GenerateToken(account.Id, It.IsAny<IEnumerable<RoleName>>())).Returns("jwt-token");
+            var service = CreateServiceInstance();
+
+            // Act
+            var result = await service!.VerifyFirebaseTokenAndLoginAsync(request);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Token.Should().Be("jwt-token");
         }
  
         [Fact]
         public async Task VerifyFirebaseTokenAndLoginAsync_ShouldThrowUnauthorizedException_WhenTokenIsNull()
         {
-            //Suppose connect firebase successfully because of firebase difficult to mock:(
-
             // Arrange
             var request = new LoginRequest
             {
                 FirebaseIdToken = null
             };
+            var service = CreateServiceInstance();
 
+            // Act
+            var act = async () => await service!.VerifyFirebaseTokenAndLoginAsync(request);
+
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedException>();
         }
 
         [Fact]
         public async Task VerifyFirebaseTokenAndLoginAsync_ShouldThrowUnauthorizedException_WhenEmailNotVerified()
         {
-            //Suppose connect firebase successfully because of firebase difficult to mock:(
-
             // Arrange
             var request = new LoginRequest
             {
                 FirebaseIdToken = "invalid-token"
             };
 
+            var firebaseToken = CreateFirebaseToken("uid", "test@gmail.com", false);
+            _mockFirebaseAuthService.Setup(x => x.VerifyIdTokenAsync(request.FirebaseIdToken)).ReturnsAsync(firebaseToken);
+
+            var service = CreateServiceInstance();
+
+            // Act
+            var act = async () => await service!.VerifyFirebaseTokenAndLoginAsync(request);
+
+            // Assert
+            await act.Should().ThrowAsync<UnauthorizedException>().WithMessage("Vui lòng xác minh tài khoản email trước khi đăng nhập.");
         }
 
         [Fact]
         public async Task VerifyFirebaseTokenAndLoginAsync_ShouldThrowNotFoundException_WhenAccountDoesNotExist()
         {
-            //Suppose connect firebase successfully because of firebase difficult to mock:(
-
             // Arrange
             var request = new LoginRequest
             {
                 FirebaseIdToken = "valid-token"
             };
 
+            var firebaseToken = CreateFirebaseToken("invalid-uid", "test@gmail.com", true);
+            _mockFirebaseAuthService.Setup(x => x.VerifyIdTokenAsync(request.FirebaseIdToken)).ReturnsAsync(firebaseToken);
+            _mockAccountRepository.Setup(x => x.GetByProviderIdAsync("invalid-uid")).ReturnsAsync((Account)null!);
+
+            var service = CreateServiceInstance();
+
+            // Act
+            var act = async () => await service!.VerifyFirebaseTokenAndLoginAsync(request);
+
+            // Assert
+            await act.Should().ThrowAsync<NotFoundException>();
         }
 
         [Fact]
         public async Task VerifyFirebaseTokenAndLoginAsync_ShouldThrowException_WhenAccountIsSuspended()
         {
-            //Suppose connect firebase successfully because of firebase difficult to mock:(
-
             // Arrange
             var request = new LoginRequest
             {
                 FirebaseIdToken = "valid-token"
             };
+
+            var account = new Account
+            {
+                Status = AccountStatus.Suspended
+            };
+
+            var firebaseToken = CreateFirebaseToken("suspended-uid", "test@gmail.com", true);
+            _mockFirebaseAuthService.Setup(x => x.VerifyIdTokenAsync(request.FirebaseIdToken)).ReturnsAsync(firebaseToken);
+            _mockAccountRepository.Setup(x => x.GetByProviderIdAsync("suspended-uid")).ReturnsAsync(account);
+
+            var service = CreateServiceInstance();
+
+            // Act
+            var act = async () => await service!.VerifyFirebaseTokenAndLoginAsync(request);
+
+            // Assert
+            await act.Should().ThrowAsync<Exception>();
         }
         #endregion
 
@@ -296,8 +323,10 @@ namespace Imate.API.UnitTest.Services
 
             _mockAccountRepository.Setup(r => r.GetByEmailAsync(email)).ReturnsAsync(account);
 
+            var service = CreateServiceInstance();
+
             // Act
-            var act = () => _authService.GenerateActionCodeAsync(email, actionType);
+            var act = async () => await service!.GenerateActionCodeAsync(email, actionType);
 
             // Assert
             var exception = await act.Should().ThrowAsync<BadRequestException>();
@@ -319,8 +348,15 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepository.Setup(r => r.GetByEmailAsync(email)).ReturnsAsync(account);
+            _mockFirebaseAuthService.Setup(f => f.GeneratePasswordResetLinkAsync(email)).ReturnsAsync("http://reset-link?oobCode=my-code");
 
-            // Suppose generate action code successfully because of firebase difficult to mock:(
+            var service = CreateServiceInstance();
+
+            // Act
+            var result = await service!.GenerateActionCodeAsync(email, actionType);
+
+            // Assert
+            result.Should().Be("my-code");
         }
 
         [Fact]
@@ -331,7 +367,26 @@ namespace Imate.API.UnitTest.Services
             var oobCode = "valid-oob-code";
             var actionType = "PASSWORD_RESET";
 
-            // Suppose send email successfully because of firebase difficult to mock:(
+            var request = new GenerateActionCodeRequest { Email = email, ActionType = actionType };
+
+            var account = new Account
+            {
+                Id = 1,
+                Email = email,
+                Provider = LoginProvider.EmailPassword
+            };
+
+            _mockAccountRepository.Setup(r => r.GetByEmailAsync(email)).ReturnsAsync(account);
+            _mockFirebaseAuthService.Setup(f => f.GeneratePasswordResetLinkAsync(email)).ReturnsAsync("http://reset-link?oobCode=valid-oob-code");
+            _mockEmailService.Setup(x => x.SendEmailAsync(email, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+
+            var service = CreateServiceInstance();
+
+            // Act
+            await service!.SendActionEmailAsync(oobCode, request.Email, request.ActionType);
+
+            // Assert
+            _mockEmailService.Verify(x => x.SendEmailAsync(email, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
         #endregion
 
@@ -346,7 +401,7 @@ namespace Imate.API.UnitTest.Services
                 Email = "thuan@gmail.com",
                 FullName = "Thuan",
                 Provider = LoginProvider.EmailPassword,
-                ProviderId = "123123",
+                ProviderId = ValidFireBaseId,
                 Status = AccountStatus.Active,
                 CreatedAt = DateTime.UtcNow
             };
@@ -357,7 +412,18 @@ namespace Imate.API.UnitTest.Services
                 NewPassword = "Password@123!"
             };
 
-            //Suppose connect firebase and change password successfully because of firebase difficult to mock:(
+            var firebaseToken = CreateFirebaseToken(ValidFireBaseId, account.Email, true);
+            _mockFirebaseAuthService.Setup(x => x.VerifyIdTokenAsync(request.FirebaseIdToken)).ReturnsAsync(firebaseToken);
+            _mockAccountRepository.Setup(x => x.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(account);
+            _mockFirebaseAuthService.Setup(x => x.UpdateUserAsync(It.IsAny<UserRecordArgs>())).ReturnsAsync(CreateUserRecord("valid-firebase-uid", account.Email, account.FullName));
+
+            var service = CreateServiceInstance();
+
+            // Act
+            await service!.ChangePasswordAsync(1, request);
+
+            // Assert
+            _mockFirebaseAuthService.Verify(x => x.UpdateUserAsync(It.IsAny<UserRecordArgs>()), Times.Once);
         }
 
         [Fact]
@@ -370,7 +436,7 @@ namespace Imate.API.UnitTest.Services
                 Email = "notfound@gmail.com",
                 FullName = "Not Found",
                 Provider = LoginProvider.Google,
-                ProviderId = "123123",
+                ProviderId = "different-uid",
                 Status = AccountStatus.Active,
                 CreatedAt = DateTime.UtcNow
             };
@@ -381,8 +447,17 @@ namespace Imate.API.UnitTest.Services
                 NewPassword = "NewPassword123!"
             };
 
-            //Đối chiếu xem tài khoản local có khớp với token Firebase không
-            //Suppose connect firebase successfully because of firebase difficult to mock:(
+            var firebaseToken = CreateFirebaseToken(ValidFireBaseId, "other@gmail.com", true);
+            _mockFirebaseAuthService.Setup(x => x.VerifyIdTokenAsync(request.FirebaseIdToken)).ReturnsAsync(firebaseToken);
+            _mockAccountRepository.Setup(x => x.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(account);
+
+            var service = CreateServiceInstance();
+
+            // Act
+            var act = async () => await service!.ChangePasswordAsync(1000, request);
+
+            // Assert
+            await act.Should().ThrowAsync<ForbiddenException>();
         }
 
 
@@ -396,7 +471,7 @@ namespace Imate.API.UnitTest.Services
                 Email = "thuan@gmail.com",
                 FullName = "Thuan",
                 Provider = LoginProvider.Google,
-                ProviderId = "123123",
+                ProviderId = ValidFireBaseId,
                 Status = AccountStatus.Active,
                 CreatedAt = DateTime.UtcNow
             };
@@ -407,8 +482,181 @@ namespace Imate.API.UnitTest.Services
                 NewPassword = "NewPassword123!"
             };
 
-            //Suppose connect firebase successfully because of firebase difficult to mock:(
+            var firebaseToken = CreateFirebaseToken(ValidFireBaseId, account.Email, true);
+            _mockFirebaseAuthService.Setup(x => x.VerifyIdTokenAsync(request.FirebaseIdToken)).ReturnsAsync(firebaseToken);
+            _mockAccountRepository.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(account);
+
+            var service = CreateServiceInstance();
+
+            // Act
+            var act = async () => await service!.ChangePasswordAsync(1, request);
+
+            // Assert
+            await act.Should().ThrowAsync<BadRequestException>();
         }
         #endregion
+
+        #region Create Staff Account (CreateEmployeeAccountAsync)
+        [Fact]
+        public async Task CreateEmployeeAccountAsync_ShouldCreateSuccessfully()
+        {
+            var creatorId = 1;
+            var request = new CreateEmployeeRequest { Email = "staff@test.com", FullName = "Staff Member" };
+            var firebaseUser = CreateUserRecord("fb-uid", request.Email, request.FullName);
+
+            _mockAccountRepository.Setup(r => r.ExistsByEmailAsync(request.Email)).ReturnsAsync(false);
+            _mockFirebaseAuthService.Setup(f => f.CreateUserAsync(It.IsAny<UserRecordArgs>())).ReturnsAsync(firebaseUser);
+            _mockFirebaseAuthService.Setup(f => f.GeneratePasswordResetLinkAsync(request.Email)).ReturnsAsync("reset-link");
+            _mockRoleService.Setup(s => s.AssignDefaultRoleAsync(It.IsAny<int>(), RoleName.Staff)).Returns(Task.CompletedTask);
+
+            var service = CreateServiceInstance();
+
+            await service!.CreateEmployeeAccountAsync(creatorId, request);
+            _mockAccountRepository.Verify(r => r.AddAsync(It.Is<Account>(a =>
+                a.Email == request.Email &&
+                a.FullName == request.FullName &&
+                a.ProviderId == "fb-uid")), Times.Once);
+            _mockEmailService.Verify(s => s.SendEmailAsync(request.Email, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            _mockAuditLogService.Verify(s => s.CreateAuditLogAsync(creatorId, AuditAction.Create, "Account", It.IsAny<int>(), It.IsAny<object>(), It.IsAny<object>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateEmployeeAccountAsync_ShouldThrowConflict_WhenEmailExists()
+        {
+            var request = new CreateEmployeeRequest { Email = "existing@test.com", FullName = "Staff 1" };
+            _mockAccountRepository.Setup(r => r.ExistsByEmailAsync(request.Email)).ReturnsAsync(true);
+            
+            var service = CreateServiceInstance();
+            var act = async () => await service!.CreateEmployeeAccountAsync(1, request);
+
+            await act.Should().ThrowAsync<ConflictException>();
+            _mockAccountRepository.Verify(r => r.AddAsync(It.IsAny<Account>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateEmployeeAccountAsync_ShouldThrowException_WhenFirebaseUserCreationFails()
+        {
+            var request = new CreateEmployeeRequest { Email = "fail@test.com", FullName = "Staff Fail" };
+            _mockAccountRepository.Setup(r => r.ExistsByEmailAsync(request.Email)).ReturnsAsync(false);
+            _mockFirebaseAuthService.Setup(f => f.CreateUserAsync(It.IsAny<UserRecordArgs>())).ThrowsAsync(new System.Exception("Firebase Error"));
+
+            var service = CreateServiceInstance();
+            var act = async () => await service!.CreateEmployeeAccountAsync(1, request);
+            await act.Should().ThrowAsync<System.Exception>();
+        }
+
+        [Fact]
+        public async Task CreateEmployeeAccountAsync_ShouldCleanup_WhenFirebaseLinkGenerationFails()
+        {
+            var request = new CreateEmployeeRequest { Email = "fail@test.com", FullName = "Failure Test" };
+            var firebaseUser = CreateUserRecord("fb-uid", request.Email, request.FullName);
+
+            _mockAccountRepository.Setup(r => r.ExistsByEmailAsync(request.Email)).ReturnsAsync(false);
+            _mockFirebaseAuthService.Setup(f => f.CreateUserAsync(It.IsAny<UserRecordArgs>())).ReturnsAsync(firebaseUser);
+            _mockFirebaseAuthService.Setup(f => f.GeneratePasswordResetLinkAsync(request.Email)).ThrowsAsync(new System.Exception("Link Generation Error"));
+
+            var service = CreateServiceInstance();
+            var act = async () => await service!.CreateEmployeeAccountAsync(1, request);
+
+            await act.Should().ThrowAsync<System.Exception>();
+            _mockFirebaseAuthService.Verify(f => f.DeleteUserAsync("fb-uid"), Times.Once);
+            _mockAccountRepository.Verify(r => r.DeleteAsync(It.IsAny<Account>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateEmployeeAccountAsync_ShouldNotSendEmail_WhenInternalErrorOccurs()
+        {
+            var request = new CreateEmployeeRequest { Email = "error@test.com", FullName = "Error Case" };
+            var firebaseUser = CreateUserRecord("fb-uid", request.Email, request.FullName);
+
+            _mockAccountRepository.Setup(r => r.ExistsByEmailAsync(request.Email)).ReturnsAsync(false);
+            _mockFirebaseAuthService.Setup(f => f.CreateUserAsync(It.IsAny<UserRecordArgs>())).ReturnsAsync(firebaseUser);
+            _mockRoleService.Setup(s => s.AssignDefaultRoleAsync(It.IsAny<int>(), RoleName.Staff)).ThrowsAsync(new System.Exception("DB Exception"));
+
+            var service = CreateServiceInstance();
+
+            var act = async () => await service!.CreateEmployeeAccountAsync(1, request);
+
+            try { await act(); } catch { }
+
+            _mockEmailService.Verify(s => s.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+        #endregion
+
+        #region Reflection Helpers for Firebase Classes
+        private FirebaseToken CreateFirebaseToken(string uid, string email, bool emailVerified)
+        {
+            var token = (FirebaseToken)FormatterServices.GetUninitializedObject(typeof(FirebaseToken));
+            SetPrivateField(token, "Uid", uid);
+            
+            var claims = new Dictionary<string, object>
+            {
+                { "email", email },
+                { "email_verified", emailVerified }
+            };
+            SetPrivateField(token, "Claims", claims);
+            return token;
+        }
+
+        private UserRecord CreateUserRecord(string uid, string email, string displayName)
+        {
+            var userRecord = (UserRecord)FormatterServices.GetUninitializedObject(typeof(UserRecord));
+
+            SetPrivateField(userRecord, "Uid", uid);
+            SetPrivateField(userRecord, "Email", email);
+            SetPrivateField(userRecord, "DisplayName", displayName);
+
+            return userRecord;
+        }
+
+        private void SetPrivateField(object obj, string fieldName, object value)
+        {
+            var type = obj.GetType();
+            var field = type.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+            if (field == null)
+            {
+                string backingFieldName = $"<{fieldName}>k__BackingField";
+                field = type.GetField(backingFieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+
+            if (field != null)
+            {
+                field.SetValue(obj, value);
+            }
+            else
+            {
+                var property = type.GetProperty(fieldName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+                if (property != null && property.CanWrite)
+                {
+                    property.SetValue(obj, value);
+                }
+            }
+        }
+        #endregion
+
+        private AuthService? CreateServiceInstance()
+        {
+            try
+            {
+                return new AuthService(
+                    _mockAccountRepository.Object,
+                    _mockMentorRepository.Object,
+                    _mockRecruiterRepository.Object,
+                    _mockRoleService.Object,
+                    _mockJwtTokenGenerator.Object,
+                    _mockEmailService.Object,
+                    _mockRefreshTokenRepository.Object,
+                    _jwtOptions,
+                    _mockConfiguration.Object,
+                    _mockAuditLogService.Object,
+                    _mockSystemNotificationService.Object,
+                    _mockFirebaseAuthService.Object
+                );
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
     }
 }

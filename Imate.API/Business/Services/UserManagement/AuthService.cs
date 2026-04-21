@@ -27,7 +27,7 @@ namespace Imate.API.Business.Services
         private readonly IRecruiterRepository _recruiterRepository;
         private readonly IRoleService _roleService;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
-        private readonly FirebaseAuth _firebaseAuth;
+        private readonly IFirebaseAuthService _firebaseAuth;
         private readonly IEmailService _emailService;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly JwtSettings _jwtSettings;
@@ -47,14 +47,15 @@ namespace Imate.API.Business.Services
             IOptions<JwtSettings> jwtOptions,
             IConfiguration configuration,
             IAuditLogService auditLogService,
-            ISystemNotificationService systemNotificationService)
+            ISystemNotificationService systemNotificationService,
+            IFirebaseAuthService firebaseAuth)
         {
             _accountRepository = accountRepository;
             _mentorRepository = mentorRepository;
             _recruiterRepository = recruiterRepository;
             _roleService = roleService;
             _jwtTokenGenerator = jwtTokenGenerator;
-            _firebaseAuth = FirebaseAuth.DefaultInstance;
+            _firebaseAuth = firebaseAuth;
             _emailService = emailService;
             _refreshTokenRepository = refreshTokenRepository;
             _jwtSettings = jwtOptions.Value;
@@ -157,6 +158,11 @@ namespace Imate.API.Business.Services
         }
         public async Task<AuthResponse> VerifyFirebaseTokenAndLoginAsync(LoginRequest request)
         {
+            if (string.IsNullOrEmpty(request?.FirebaseIdToken))
+            {
+                throw new UnauthorizedException("Firebase token không hợp lệ.");
+            }
+
             FirebaseToken decodedToken;
             try
             {
