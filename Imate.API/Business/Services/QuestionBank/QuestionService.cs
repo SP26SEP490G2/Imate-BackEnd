@@ -2,6 +2,7 @@
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.Business.Interfaces.QuestionBank;
 using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces;
@@ -22,7 +23,7 @@ namespace Imate.API.Business.Services.QuestionBank
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAuditLogService _auditLogService;
         private readonly ISystemConfigService _systemConfigService;
-        //private readonly ISystemConfigService _systemConfigService;
+        private readonly ISystemNotificationService _systemNotificationService;
         private readonly IMediator _mediator;
         private readonly ImateDbContext _context;
         private static readonly List<string> ExpectedHeaders = new List<string>
@@ -34,13 +35,14 @@ namespace Imate.API.Business.Services.QuestionBank
         "SkillNames",
         "PositionNames"
     };
-        public QuestionService(IUnitOfWork unitOfWork, ImateDbContext context, IAuditLogService auditLogService, IMediator mediator, ISystemConfigService systemConfigService)
+        public QuestionService(IUnitOfWork unitOfWork, ImateDbContext context, IAuditLogService auditLogService, IMediator mediator, ISystemConfigService systemConfigService, ISystemNotificationService systemNotificationService)
         {
             _unitOfWork = unitOfWork;
             _context = context;
             _auditLogService = auditLogService;
             _mediator = mediator;
             _systemConfigService = systemConfigService;
+            _systemNotificationService = systemNotificationService;
         }
 
         public async Task<IEnumerable<QuestionResponse.ListHotQuestion>> GetListHotQuestionsAsync()
@@ -1319,49 +1321,15 @@ namespace Imate.API.Business.Services.QuestionBank
             var action = status ? AuditAction.ApproveQuestion : AuditAction.RejectQuestion;
             await _auditLogService.CreateAuditLogAsync(staffId, action, "Question", questionId, oldValue, newValue);
 
-            // Nếu approve (status = true) và trước đó chưa được approve, tặng imPoints
-            if (status && !wasActive && questionToUpdate.CreatorId > 0)
-            {
-                var rewardPoints = await _systemConfigService.GetContributionRewardPointsAsync();
-                if (rewardPoints > 0)
-                {
-                    var creatorAccount = await _unitOfWork.Accounts.GetByIdAsync(questionToUpdate.CreatorId);
-                    if (creatorAccount != null)
-                    {
-                        // Tăng balance
-                        creatorAccount.Balance += rewardPoints;
-                        await _unitOfWork.Accounts.UpdateAsync(creatorAccount);
-
-                        // Tạo transaction
-                        var transaction = new Transaction
-                        {
-                            TargetAccountId = questionToUpdate.CreatorId,
-                            TransactionType = TransactionType.Deposit,
-                            Amount = rewardPoints,
-                            Status = TransactionStatus.Completed,
-                            Reason = $"Phần thưởng đóng góp câu hỏi (Question #{questionId})",
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        await _unitOfWork.Transactions.AddAsync(transaction);
-                        await _unitOfWork.SaveChangesAsync(); // Lưu để lấy ID
-
-                        // Set ExternalTransactionCode nếu chưa có (entity đã được track, không cần UpdateAsync)
-                        transaction.EnsureExternalTransactionCode();
-                        if (transaction.ExternalTransactionCode != null)
-                        {
-                            await _unitOfWork.SaveChangesAsync(); // Lưu ExternalTransactionCode
-                        }
-                    }
-                }
-            }
-
             // Publish events để gửi notification cho người đóng góp
             if (status)
             {
+                await _systemNotificationService.CreateAndSendNotificationAsync(questionToUpdate.CreatorId, "Câu hỏi đóng góp của bạn đã được chấp nhận", null);
                 await _mediator.Publish(new QuestionApprovedEvent(questionToUpdate, staffId));
             }
             else
             {
+                await _systemNotificationService.CreateAndSendNotificationAsync(questionToUpdate.CreatorId, "Câu hỏi đóng góp của bạn đã bị từ chối", null);
                 await _mediator.Publish(new QuestionRejectedEvent(questionToUpdate, staffId));
             }
 

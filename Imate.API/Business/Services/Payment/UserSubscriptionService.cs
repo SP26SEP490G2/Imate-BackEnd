@@ -1,13 +1,14 @@
-﻿using Microsoft.EntityFrameworkCore;
-
+﻿using Imate.API.Business.Exceptions;
+using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.Business.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces;
-using Imate.API.Business.Exceptions;
-using Imate.API.Business.Helper;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.ResponseModels.Payment;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Principal;
 
 namespace Imate.API.Business.Services.Payment
 {
@@ -15,11 +16,14 @@ namespace Imate.API.Business.Services.Payment
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISystemConfigService _systemConfigService;
-        
-        public UserSubscriptionService(IUnitOfWork unitOfWork, ISystemConfigService systemConfigService)
+        private readonly ISystemNotificationService _systemNotificationService;
+
+
+        public UserSubscriptionService(IUnitOfWork unitOfWork, ISystemConfigService systemConfigService, ISystemNotificationService systemNotificationService)
         {
             _unitOfWork = unitOfWork;
             _systemConfigService = systemConfigService;
+            _systemNotificationService = systemNotificationService;
         }
 
         public async Task ActivateNewSubscriptionAsync(int accountId, int newPackageId)
@@ -170,6 +174,7 @@ namespace Imate.API.Business.Services.Payment
                 {
                     await _unitOfWork.SaveChangesAsync(); // Lưu ExternalTransactionCode
                 }
+                await _systemNotificationService.CreateAndSendNotificationAsync(accountId, "Chúc mừng bạn đã mua gói thành công", null);
 
                 // === 7. LƯU TẤT CẢ VÀ COMMIT ===
                 await _unitOfWork.CommitTransactionAsync();
@@ -318,6 +323,7 @@ namespace Imate.API.Business.Services.Payment
                 // 7. KÍCH HOẠT GÓI THƯỜNG (Rất quan trọng)
                 // (Nếu không làm bước này, user sẽ không có gói active nào
                 // và không thể dùng 3 lượt free)               
+                await _systemNotificationService.CreateAndSendNotificationAsync(accountId, "Bạn vừa hủy gói đăng ký", null);
 
                 // 8. Lưu tất cả thay đổi
                 await _unitOfWork.SaveChangesAsync();
