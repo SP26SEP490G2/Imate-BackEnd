@@ -56,9 +56,9 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
-app.MapHub<SystemNotificationHub>("/api/systemNotificationHub");
 
 app.UseCors("CorsPolicy");
+app.MapHub<SystemNotificationHub>("/api/systemNotificationHub");
 
 app.UseAuthentication();
 app.UseAuthorization();
