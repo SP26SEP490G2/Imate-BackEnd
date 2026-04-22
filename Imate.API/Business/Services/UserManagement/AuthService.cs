@@ -272,6 +272,8 @@ namespace Imate.API.Business.Services
                 };
                 await _accountRepository.AddAsync(accountToUse);
                 await _roleService.AssignDefaultRoleAsync(accountToUse.Id, requestedRole);
+                await _systemNotificationService.CreateAndSendNotificationAsync(accountToUse.Id, "Đổi mật khẩu thành công", null);
+
             }
             else
             {

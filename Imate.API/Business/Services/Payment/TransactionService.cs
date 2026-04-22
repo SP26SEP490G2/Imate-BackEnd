@@ -1,19 +1,20 @@
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.Business.Interfaces.Payment;
 using Imate.API.DataAccess.Interfaces;
+using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Payment;
 using Imate.API.Presentation.ResponseModels.Payment;
-using PayOS.Models;
-using PayOS;
-using PayOS.Models.V2.PaymentRequests;
-using PayOS.Exceptions;
-using PayOS.Models.Webhooks;
-using Microsoft.EntityFrameworkCore;
-using MediatR;
-using Imate.API.Models.Entities;
 using Imate.API.Presentation.SignalR.Events.Transactions;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using PayOS;
+using PayOS.Exceptions;
+using PayOS.Models;
+using PayOS.Models.V2.PaymentRequests;
+using PayOS.Models.Webhooks;
 namespace Imate.API.Business.Services.Payment
 {
     public class TransactionService : ITransactionService
@@ -26,6 +27,7 @@ namespace Imate.API.Business.Services.Payment
         private readonly ISystemConfigService _systemConfigService;
         private readonly IMediator _mediator;
         private readonly IAuditLogService _auditLogService;
+        private readonly ISystemNotificationService _systemNotificationService;
 
         public TransactionService(
             IUnitOfWork unitOfWork,
@@ -34,13 +36,16 @@ namespace Imate.API.Business.Services.Payment
             ILogger<TransactionService> logger,
             ISystemConfigService systemConfigService,
             IMediator mediator,
-            IAuditLogService auditLogService
+            IAuditLogService auditLogService,
+            ISystemNotificationService systemNotificationService
             )
         {
             _unitOfWork = unitOfWork;
             _payosClient = payosClient;
             _configuration = configuration;
             _mediator = mediator;
+            _auditLogService = auditLogService;
+            _systemNotificationService = systemNotificationService;
 
             // 3. Đọc URL từ appsettings và lưu lại
             _frontendBaseUrl = _configuration["FrontendSettings:BaseUrl"] ??
@@ -403,6 +408,8 @@ namespace Imate.API.Business.Services.Payment
                         account.Balance += transaction.Amount;
                         await _unitOfWork.Accounts.UpdateAsync(account);
                         _logger.LogInformation("Webhook: Đã cộng {Amount} vào balance của account {AccountId}", transaction.Amount, account.Id);
+                        await _systemNotificationService.CreateAndSendNotificationAsync(account .Id, $"Đã cộng {transaction.Amount} vào số ví Imate của bạn", null);
+
                     }
                 }
                 else
