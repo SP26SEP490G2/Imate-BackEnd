@@ -476,6 +476,11 @@ namespace Imate.API.Business.Services
                 throw new BadRequestException("Không thể đổi mật khẩu cho tài khoản đăng nhập bằng Google.");
             }
 
+            if (!string.IsNullOrEmpty(request.CurrentPassword) && request.NewPassword == request.CurrentPassword)
+            {
+                throw new BadRequestException("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
+            }
+
             // 6. Cập nhật mật khẩu trên Firebase (Admin SDK)
             try
             {
