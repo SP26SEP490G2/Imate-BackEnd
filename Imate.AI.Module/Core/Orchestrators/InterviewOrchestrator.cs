@@ -495,7 +495,9 @@ namespace Imate.AI.Module.Core.Orchestrators
                     startTime = session.StartTime, endTime = session.EndTime,
                     status = session.Status, totalQuestions = answered.Count,
                     totalQuestionsAnswered = withFeedback.Count,
-                    overallFeedback = session.OverallFeedback, estimatedAbility = session.EstimatedAbility
+                    overallFeedback = session.OverallFeedback, estimatedAbility = session.EstimatedAbility,
+                    userCvId = session.UserCvId,
+                    jobDescriptionText = session.JobDescriptionText
                 },
                 Responses = withFeedback
             };
