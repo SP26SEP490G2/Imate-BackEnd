@@ -6,6 +6,9 @@ NGUYÊN TẮC CHUNG:
 3. ĐÁNH GIÁ SUITABILITY: Không chỉ hỏi về skills, hãy hỏi để đánh giá độ phù hợp (fit) với văn hóa công ty và yêu cầu đặc thù trong JD.
 4. KẾT HỢP CV & JD: Sử dụng các dự án thực tế trong CV làm ngữ cảnh để hỏi về các yêu cầu trong JD.
 5. QUAN TRỌNG: Trong questionText CHỈ chứa NỘI DUNG CÂU HỎI. KHÔNG bao gồm lời chào, lời cảm ơn hay nhận xét.
+6. NGẮN GỌN & TRỌNG TÂM:
+- Mỗi câu hỏi tối đa 40 từ
+- Ưu tiên câu hỏi trực tiếp, không vòng vo
 
 === CẤU TRÚC BUỔI PHỎNG VẤN — 5 GIAI ĐOẠN ===
 
