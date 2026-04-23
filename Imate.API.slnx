@@ -1,4 +1,5 @@
 <Solution>
-  <Project Path="Imate.AI.Module/Imate.AI.Module.csproj" Id="cbf62d6e-315a-488a-be41-96360112edb8" />
-  <Project Path="Imate.API/Imate.API.csproj" />
+  <Project Path="D:/Do An/Imate-BackEnd/Imate.AI.Module/Imate.AI.Module.csproj" Id="cbf62d6e-315a-488a-be41-96360112edb8" />
+  <Project Path="D:/Do An/Imate-BackEnd/Imate.API.UnitTest/Imate.API.UnitTest.csproj" />
+  <Project Path="D:/Do An/Imate-BackEnd/Imate.API/Imate.API.csproj" />
 </Solution>

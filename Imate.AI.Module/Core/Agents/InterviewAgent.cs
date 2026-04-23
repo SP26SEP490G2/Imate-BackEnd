@@ -121,7 +121,7 @@ Trả về JSON với format chính xác sau (KHÔNG markdown, KHÔNG giải th�
   ""position"": ""Tên vị trí công việc"",
   ""skill"": ""Kỹ năng chính"",
   ""skills"": [""skill1"", ""skill2"", ""skill3""],
-  ""level"": ""Junior/Middle/Senior/Lead/Manager"",
+  ""level"": ""Intern/Fresher/Junior/Middle/Senior/Lead/Manager"",
   ""company"": ""Tên công ty (null nếu không có)"",
   ""requirements"": [""Yêu cầu 1"", ""Yêu cầu 2""],
   ""levelMismatchWarning"": null,
@@ -132,7 +132,14 @@ Trả về JSON với format chính xác sau (KHÔNG markdown, KHÔNG giải th�
 Lưu ý:
 - position: Xác định vị trí chính xác nhất, ví dụ: Backend Developer, Frontend Engineer, DevOps Engineer
 - skills: Liệt kê 3-7 kỹ năng kỹ thuật chính
-- level: Phán đoán từ yêu cầu kinh nghiệm trong JD (0-1 năm: Junior, 2-4: Middle, 5+: Senior)
+- level: Phán đoán cấp bậc yêu cầu trong JD:
+  + Thực tập sinh / Intern / Trainee / Sinh viên: ""Intern""
+  + Fresher / Dưới 1 năm kinh nghiệm: ""Fresher""
+  + 1-2 năm kinh nghiệm: ""Junior""
+  + 2-4 năm kinh nghiệm: ""Middle""
+  + 5+ năm kinh nghiệm: ""Senior""
+  + 8+ năm có kinh nghiệm quản lý nhóm: ""Lead""
+  + Quản lý cấp cao / Director: ""Manager""
 - requirements: Tóm tắt 3-5 yêu cầu chính
 - isItRelatedJd: JD có thuộc ngành CNTT/Công nghệ thông tin/IT/Phần mềm không?
   + Nếu JD tuyển lập trình viên, kỹ sư phần mềm, DevOps, QA, BA, Data, AI/ML, Designer UI/UX → true
