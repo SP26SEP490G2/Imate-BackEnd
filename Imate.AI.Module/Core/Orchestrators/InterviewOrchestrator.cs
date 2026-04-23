@@ -97,7 +97,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                     "Vui lòng tải lên CV phù hợp với ngành IT.");
             }
 
-            // 5. Validate: Chênh lệch level giữa CV và JD >= 2
+            // 5. Cảnh báo nếu chênh lệch level giữa CV và JD >= 2 (không chặn, chỉ warning)
             if (!string.IsNullOrEmpty(cvText) && !string.IsNullOrEmpty(result.CvEstimatedLevel))
             {
                 var jdLevel = result.Level ?? "Junior";
@@ -112,10 +112,9 @@ namespace Imate.AI.Module.Core.Orchestrators
 
                     if (gap >= 2)
                     {
-                        throw new InvalidOperationException(
-                            $"CV của bạn ở mức {cvLevel} nhưng JD yêu cầu cấp bậc {jdLevel} — " +
-                            $"chênh lệch {gap} bậc. Vui lòng chọn JD phù hợp hơn với kinh nghiệm hiện tại của bạn, " +
-                            $"hoặc cập nhật CV để phản ánh đúng năng lực.");
+                        result.LevelMismatchWarning =
+                            $"Ứng viên có level {cvLevel} (từ CV) nhưng JD yêu cầu cấp bậc {jdLevel} — " +
+                            $"chênh lệch {gap} bậc. Kết quả phỏng vấn có thể không phản ánh chính xác năng lực thực tế của bạn.";
                     }
                 }
             }
