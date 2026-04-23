@@ -1,5 +1,6 @@
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.Business.Services.Mentors
 {
@@ -20,10 +21,9 @@ namespace Imate.API.Business.Services.Mentors
         private static readonly TimeSpan ScanInterval = TimeSpan.FromMinutes(30);
 
         /// <summary>
-        /// How long after the booking start time before we consider it "expired".
-        /// Default: 2 hours. This gives a generous buffer for long sessions.
+        /// Buffers time to wait after session end before auto-completing.
         /// </summary>
-        private static readonly TimeSpan ExpirationBuffer = TimeSpan.FromHours(2);
+        private static readonly TimeSpan ExpirationBuffer = TimeSpan.FromHours(1);
 
         public AutoCompleteBookingService(
             IServiceScopeFactory scopeFactory,
@@ -61,66 +61,72 @@ namespace Imate.API.Business.Services.Mentors
         {
             using var scope = _scopeFactory.CreateScope();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var now = DateTime.UtcNow;
 
-            // Cutoff: any Confirmed booking whose StartTime is older than now - buffer
-            var cutoffTime = DateTime.UtcNow.Subtract(ExpirationBuffer);
-
-            var expiredBookings = await unitOfWork.Bookings
-                .GetExpiredConfirmedBookingsAsync(cutoffTime);
-
-            if (!expiredBookings.Any())
+            // --- Phase 1: Auto-complete Confirmed bookings that have passed their 1h mark ---
+            // (Using 1 hour as standard duration + buffer)
+            var autocompleteCutoff = now.AddHours(-1);
+            var confirmedBookings = await unitOfWork.Bookings.GetExpiredConfirmedBookingsAsync(autocompleteCutoff);
+            
+            foreach (var booking in confirmedBookings)
             {
-                return;
-            }
-
-            _logger.LogInformation(
-                "AutoCompleteBooking: Found {Count} expired Confirmed booking(s). Processing...",
-                expiredBookings.Count());
-
-            foreach (var booking in expiredBookings)
-            {
-                try
-                {
-                    // Mark booking as Completed
+                try {
                     booking.Status = BookingStatus.Completed;
-                    booking.UpdatedAt = DateTime.UtcNow;
+                    booking.UpdatedAt = now;
+                    _logger.LogInformation("AutoCompleteBooking: Marked Booking #{BookingId} as Completed.", booking.Id);
+                } catch (Exception ex) {
+                    _logger.LogError(ex, "AutoCompleteBooking: Failed to complete Booking #{BookingId}", booking.Id);
+                }
+            }
+            await unitOfWork.SaveChangesAsync();
 
-                    // Release Escrow → pay the Mentor
-                    var escrowTransaction = await unitOfWork.Transactions
-                        .GetBookingTransactionAsync(booking.Id);
+            // --- Phase 2: Release Escrow for Completed bookings whose report window (24h) has expired ---
+            var releaseableBookings = await unitOfWork.Bookings.GetBookingsPendingEscrowReleaseAsync(now);
 
-                    if (escrowTransaction != null && escrowTransaction.Status == TransactionStatus.Escrow)
+            foreach (var booking in releaseableBookings)
+            {
+                try 
+                {
+                    var escrowTransaction = await unitOfWork.Transactions.GetBookingTransactionAsync(booking.Id);
+                    if (escrowTransaction == null || escrowTransaction.Status != TransactionStatus.Escrow) continue;
+
+                    // Check for pending/in-review reports
+                    var hasPendingReport = await unitOfWork.Applications.GetAllApplications()
+                        .AnyAsync(a => a.BookingId == booking.Id 
+                            && (a.ApplicationType == ApplicationType.ReportMentor || a.ApplicationType == ApplicationType.ReportRating)
+                            && (a.Status == ApplicationStatus.Pending || a.Status == ApplicationStatus.InReview));
+
+                    if (hasPendingReport)
                     {
-                        escrowTransaction.Status = TransactionStatus.Released;
-                        escrowTransaction.UpdatedAt = DateTime.UtcNow;
-
-                        // Credit Mentor's balance
-                        var mentorAccount = await unitOfWork.Accounts
-                            .GetByIdAsync(booking.MentorId);
-
-                        if (mentorAccount != null)
-                        {
-                            mentorAccount.Balance += escrowTransaction.Amount;
-                        }
+                        _logger.LogInformation("AutoCompleteBooking: Booking #{BookingId} has a pending report. Skipping escrow release.", booking.Id);
+                        continue;
                     }
 
-                    _logger.LogInformation(
-                        "AutoCompleteBooking: Booking #{BookingId} (StartTime: {StartTime}) -> Completed. Escrow released: {HasEscrow}",
-                        booking.Id, booking.StartTime, escrowTransaction != null);
+                    // Release funds to mentor
+                    escrowTransaction.Status = TransactionStatus.Released;
+                    escrowTransaction.UpdatedAt = now;
+
+                    var mentorAccount = await unitOfWork.Accounts.GetByIdAsync(booking.MentorId);
+                    if (mentorAccount != null)
+                    {
+                        mentorAccount.Balance += escrowTransaction.Amount;
+                        _logger.LogInformation("AutoCompleteBooking: Released {Amount} to Mentor #{MentorId} for Booking #{BookingId}.", 
+                            escrowTransaction.Amount, booking.MentorId, booking.Id);
+                    }
+                    
+                    // Also ensure booking status is Completed if it was still Confirmed
+                    if (booking.Status == BookingStatus.Confirmed) {
+                        booking.Status = BookingStatus.Completed;
+                        booking.UpdatedAt = now;
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex,
-                        "AutoCompleteBooking: Failed to process Booking #{BookingId}",
-                        booking.Id);
+                    _logger.LogError(ex, "AutoCompleteBooking: Failed to release escrow for Booking #{BookingId}", booking.Id);
                 }
             }
 
             await unitOfWork.SaveChangesAsync();
-
-            _logger.LogInformation(
-                "AutoCompleteBooking: Successfully processed {Count} booking(s).",
-                expiredBookings.Count());
         }
     }
 }

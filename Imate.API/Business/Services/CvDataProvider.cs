@@ -61,7 +61,7 @@ namespace Imate.API.Business.Services
                 throw new InvalidOperationException("Không thể trích xuất nội dung từ file CV. File có thể trống hoặc bị hỏng.");
             }
 
-            _logger.LogInformation("[CvDataProvider] ✅ Extracted {Length} chars from file", extractedText.Length);
+            _logger.LogInformation("[CvDataProvider] Extracted {Length} chars from file", extractedText.Length);
             _logger.LogInformation("[CvDataProvider] Extracted text preview:\n{Preview}", extractedText.Substring(0, Math.Min(500, extractedText.Length)));
 
             // DEBUG: Ghi text ra file để verify Vietnamese encoding

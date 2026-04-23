@@ -28,5 +28,10 @@ namespace Imate.API.DataAccess.Interfaces.Mentors
         /// Used by AutoCompleteBookingService to auto-complete stuck bookings.
         /// </summary>
         Task<IEnumerable<Booking>> GetExpiredConfirmedBookingsAsync(DateTime cutoffTimeUtc);
+
+        /// <summary>
+        /// Gets all bookings (Confirmed or Completed) that have Escrow transactions past their deadline.
+        /// </summary>
+        Task<IEnumerable<Booking>> GetBookingsPendingEscrowReleaseAsync(DateTime nowUtc);
     }
 }

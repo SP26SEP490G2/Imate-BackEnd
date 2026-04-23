@@ -177,7 +177,7 @@ namespace Imate.API.Presentation.Controllers.UserManagement
 
         [HttpPost("profile/mentor")]
         [Authorize]
-        public async Task<IActionResult> SubmitMentorProfile([FromBody] UpdateMentorProfileRequest request)
+        public async Task<IActionResult> SubmitMentorProfile([FromForm] UpdateMentorProfileRequest request)
         {
             try
             {

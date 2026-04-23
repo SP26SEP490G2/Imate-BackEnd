@@ -19,6 +19,8 @@ namespace Imate.API.Business.Services.Mentors
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
+        private const int MIN_BOOKING_ADVANCE_HOURS = 6;
+        private const int MIN_CANCEL_ADVANCE_HOURS = 6;
         private const string LocalTimeZoneId = "SE Asia Standard Time";
 
         public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration)
@@ -64,8 +66,7 @@ namespace Imate.API.Business.Services.Mentors
             var localDateTimeStart = request.BookDate.ToDateTime(slot.StartTime);
             var startUtc = TimeZoneInfo.ConvertTimeToUtc(localDateTimeStart, localTimeZone);
 
-            // Advance hours (min 6 hours)
-            if (startUtc < DateTime.UtcNow.AddHours(6))
+            if (startUtc < DateTime.UtcNow.AddHours(MIN_BOOKING_ADVANCE_HOURS))
             {
                 throw new BadRequestException("Booking must be made at least 6 hours in advance.");
             }
@@ -97,28 +98,29 @@ namespace Imate.API.Business.Services.Mentors
             // Deduct balance (tracked by EF, will save with SaveChangesAsync below)
             candidateAccount.Balance -= price;
 
-            // Create Escrow Transaction
-            var transaction = new Transaction
-            {
-                SourceAccountId = candidateId,
-                TargetAccountId = request.MentorId,
-                TransactionType = TransactionType.BookingFee,
-                Amount = price,
-                Status = TransactionStatus.Escrow,
-                EscrowDeadline = startUtc.AddHours(24), // Auto-release 24h after start if no complaints (example logic)
-                CreatedAt = DateTime.UtcNow
-            };
-
             // 3. Persistence
             var booking = new Booking
             {
                 CandidateId = candidateId,
                 MentorId = request.MentorId,
-                StartTime = startUtc,
+                StartTime = startUtc, 
                 BookDate = request.BookDate,
                 PriceAtBooking = price,
                 Status = BookingStatus.Confirmed,
                 AgoraChannelName = "temp", // Temporary value, will be updated to booking.Id
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Create Escrow Transaction
+            var transaction = new Transaction
+            {
+                SourceAccountId = candidateId,
+                TargetAccountId = request.MentorId,
+                BookingId = 0, // Placeholder
+                TransactionType = TransactionType.BookingFee,
+                Amount = price,
+                Status = TransactionStatus.Escrow,
+                EscrowDeadline = startUtc.AddHours(24),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -161,6 +163,7 @@ namespace Imate.API.Business.Services.Mentors
 
         public async Task<List<BookingDetailResponse>> GetCandidateBookingsAsync(int candidateId)
         {
+            await AutoCompleteExpiredBookingsAsync();
             var bookings = await _unitOfWork.Bookings.GetAllBookings()
                 .Where(b => b.CandidateId == candidateId)
                 .Select(b => new
@@ -336,6 +339,7 @@ namespace Imate.API.Business.Services.Mentors
             try
             {
                 var now = DateTime.UtcNow;
+                // Using 1 hour buffer for production auto-completion via manual trigger
                 var expiredBookings = await _unitOfWork.Bookings.GetAllBookings()
                     .Where(b => b.Status == BookingStatus.Confirmed && b.StartTime.AddHours(1) < now)
                     .ToListAsync();
@@ -382,6 +386,7 @@ namespace Imate.API.Business.Services.Mentors
 
         public async Task<BookingDetailResponse> GetCandidateSessionDetailAsync(int candidateId, int sessionId)
         {
+            await AutoCompleteExpiredBookingsAsync();
             var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(sessionId)
                 ?? throw new NotFoundException("Session not found.");
 

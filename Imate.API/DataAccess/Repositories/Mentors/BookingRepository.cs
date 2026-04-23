@@ -38,7 +38,7 @@ namespace Imate.API.DataAccess.Repositories.Mentors
                 return false;
             }
 
-            // ✅ Sửa: Tính StartTime giống như BookingService
+            // Fix: Tính StartTime giống như BookingService
             TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
             var localDateTimeStart = bookDate.ToDateTime(slot.StartTime);
             var slotStartDateTime = TimeZoneInfo.ConvertTimeToUtc(localDateTimeStart, localTimeZone);
@@ -299,7 +299,7 @@ namespace Imate.API.DataAccess.Repositories.Mentors
                     && (int)b.BookDate.DayOfWeek == slotDayOfWeek)
                 .ToListAsync();
 
-            // ✅ Sửa: Filter by converting UTC StartTime to local time for comparison
+            // Fix: Filter by converting UTC StartTime to local time for comparison
             return bookings.Where(b =>
             {
                 var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(b.StartTime.DateTime, localTimeZone);
@@ -312,6 +312,15 @@ namespace Imate.API.DataAccess.Repositories.Mentors
             return await _context.Bookings
                 .Where(b => b.Status == BookingStatus.Confirmed
                     && b.StartTime < cutoffTimeUtc)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Booking>> GetBookingsPendingEscrowReleaseAsync(DateTime nowUtc)
+        {
+            return await _context.Bookings
+                .Include(b => b.Transactions)
+                .Where(b => (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Completed)
+                    && b.Transactions.Any(t => t.Status == TransactionStatus.Escrow && t.EscrowDeadline < nowUtc))
                 .ToListAsync();
         }
     }

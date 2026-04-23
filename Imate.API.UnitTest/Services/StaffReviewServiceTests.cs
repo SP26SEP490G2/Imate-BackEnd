@@ -13,6 +13,7 @@ using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces.Classification;
 using Xunit;
+using MediatR;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -20,6 +21,7 @@ namespace Imate.API.UnitTest.Services
     {
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IAuditLogService> _mockAuditLogService;
+        private readonly Mock<IMediator> _mockMediator;
         private readonly StaffReviewService _service;
         private readonly Mock<IAccountRepository> _mockAccountRepo;
         private readonly Mock<IMentorRepository> _mockMentorRepo;
@@ -31,6 +33,8 @@ namespace Imate.API.UnitTest.Services
             _mockUnitOfWork = new Mock<IUnitOfWork>();
             _mockAuditLogService = new Mock<IAuditLogService>();
             
+            _mockMediator = new Mock<IMediator>();
+
             _mockAccountRepo = new Mock<IAccountRepository>();
             _mockMentorRepo = new Mock<IMentorRepository>();
             _mockRecruiterRepo = new Mock<IRecruiterRepository>();
@@ -41,7 +45,7 @@ namespace Imate.API.UnitTest.Services
             _mockUnitOfWork.Setup(u => u.Recruiters).Returns(_mockRecruiterRepo.Object);
             _mockUnitOfWork.Setup(u => u.Companies).Returns(_mockCompanyRepo.Object);
 
-            _service = new StaffReviewService(_mockUnitOfWork.Object, _mockAuditLogService.Object);
+            _service = new StaffReviewService(_mockUnitOfWork.Object, _mockAuditLogService.Object, _mockMediator.Object);
         }
 
         #region Review Mentor Application

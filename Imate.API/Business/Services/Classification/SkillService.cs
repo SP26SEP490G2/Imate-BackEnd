@@ -1,4 +1,4 @@
-﻿using Google;
+using Google;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces.Classification;
@@ -86,19 +86,19 @@ namespace Imate.API.Business.Services.Classification
         }
         public async Task<Skill> UpdateSkillsAsync(int id, SkillUpdateRequest skill)
         {
-            // 1️⃣ Tải (Load): Lấy Skill từ database. DbContext sẽ bắt đầu theo dõi nó.
+            // 1. Tải (Load): Lấy Skill từ database. DbContext sẽ bắt đầu theo dõi nó.
             var existingSkill = await _skillRepository.GetSkillByIdAsync(id);
             if (existingSkill == null)
             {
                 throw new NotFoundException($"Skill with Id {id} not found");
             }
 
-            // 2️⃣ Sửa (Modify): Cập nhật các thuộc tính của Skill trong bộ nhớ.
+            // 2. Sửa (Modify): Cập nhật các thuộc tính của Skill trong bộ nhớ.
             existingSkill.Name = skill.Name;
             existingSkill.IsActive = skill.IsActive;
             existingSkill.UpdatedAt = DateTime.UtcNow;
 
-            // 3️⃣ LOGIC MỚI: Nếu Skill bị vô hiệu hóa, ẩn các Question liên quan.
+            // 3. LOGIC MỚI: Nếu Skill bị vô hiệu hóa, ẩn các Question liên quan.
             if (skill.IsActive == false)
             {
                 // Tải tất cả các Question đang active có liên quan đến Skill này.
@@ -132,7 +132,7 @@ namespace Imate.API.Business.Services.Classification
                 }
             }
 
-            // 4️⃣ Lưu một lần (Save Once): Gọi SaveChangesAsync từ Unit of Work.
+            // 4. Lưu một lần (Save Once): Gọi SaveChangesAsync từ Unit of Work.
             // Lệnh này sẽ lưu tất cả các thay đổi:
             // - Cập nhật `Skill`
             // - Cập nhật các `Question` liên quan

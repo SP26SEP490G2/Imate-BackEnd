@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
@@ -865,7 +865,7 @@ namespace Imate.API.Business.Services.Applications
                         }
 
                         // 2. Lấy escrow transaction của booking
-                        var escrowTransaction = await _unitOfWork.Transactions.GetTransactionByBookingIdAsync(bookingId);
+                        var escrowTransaction = await _unitOfWork.Transactions.GetBookingTransactionAsync(bookingId);
                         if (escrowTransaction == null)
                         {
                             throw new NotFoundException($"Không tìm thấy giao dịch escrow cho booking {bookingId}.");
@@ -999,7 +999,7 @@ namespace Imate.API.Business.Services.Applications
                         if (booking.RatingScore == null && string.IsNullOrEmpty(booking.ReviewText))
                             throw new BadRequestException("Booking này không có rating hoặc rating đã bị xóa.");
 
-                        // ✅ Xóa rating
+                        // Xóa rating
                         booking.RatingScore = null;
                         booking.ReviewText = null;
 

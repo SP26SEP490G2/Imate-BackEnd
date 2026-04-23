@@ -341,8 +341,8 @@ namespace Imate.API.Business.Services.UserManagement
                     Phone = request.Phone,
                     BirthDate = birthDate,
                     Yoe = request.Yoe ?? 0,
-                    CvUrl = null,
-                    CertificateUrl = null,
+                    CvUrl = request.CvFile != null ? await _awsS3Service.UploadFileAsync(request.CvFile, "mentors/cvs") : null,
+                    CertificateUrl = request.CertificateFile != null ? await _awsS3Service.UploadFileAsync(request.CertificateFile, "mentors/certificates") : null,
                     PricePerSession = request.PricePerSession ?? 0,
                     BankAccountHolderName = request.BankAccountHolderName,
                     BankAccountNumber = request.BankAccountNumber,
@@ -373,6 +373,19 @@ namespace Imate.API.Business.Services.UserManagement
                 account.Mentor.BankCode = request.BankCode;
                 account.Mentor.VerificationStatus = VerificationStatus.Pending;
                 account.Mentor.Yoe = request.Yoe ?? account.Mentor.Yoe;
+
+                if (request.CvFile != null)
+                {
+                    if (!string.IsNullOrEmpty(account.Mentor.CvUrl))
+                        await _awsS3Service.DeleteFileAsync(account.Mentor.CvUrl);
+                    account.Mentor.CvUrl = await _awsS3Service.UploadFileAsync(request.CvFile, "mentors/cvs");
+                }
+                if (request.CertificateFile != null)
+                {
+                    if (!string.IsNullOrEmpty(account.Mentor.CertificateUrl))
+                        await _awsS3Service.DeleteFileAsync(account.Mentor.CertificateUrl);
+                    account.Mentor.CertificateUrl = await _awsS3Service.UploadFileAsync(request.CertificateFile, "mentors/certificates");
+                }
 
                 // Update many-to-many: Clear and re-add
                 account.Mentor.MentorPositions?.Clear();

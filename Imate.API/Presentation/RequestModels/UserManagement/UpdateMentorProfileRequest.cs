@@ -40,5 +40,8 @@ namespace Imate.API.Presentation.RequestModels.UserManagement
 
         [Range(0, 50)]
         public int? Yoe { get; set; }
+
+        public IFormFile? CvFile { get; set; }
+        public IFormFile? CertificateFile { get; set; }
     }
 }

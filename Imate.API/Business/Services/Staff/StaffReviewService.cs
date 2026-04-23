@@ -6,6 +6,8 @@ using Imate.API.Models.Enums;
 using Imate.API.Presentation.ResponseModels.Staff;
 using Imate.API.Business.Interfaces;
 using Imate.API.Models.Entities;
+using MediatR;
+using Imate.API.Presentation.SignalR.Events.Staff;
 
 namespace Imate.API.Business.Services.Staff
 {
@@ -13,11 +15,13 @@ namespace Imate.API.Business.Services.Staff
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAuditLogService _auditLogService;
+        private readonly IMediator _mediator;
 
-        public StaffReviewService(IUnitOfWork unitOfWork, IAuditLogService auditLogService)
+        public StaffReviewService(IUnitOfWork unitOfWork, IAuditLogService auditLogService, IMediator mediator)
         {
             _unitOfWork = unitOfWork;
             _auditLogService = auditLogService;
+            _mediator = mediator;
         }
 
         public async Task<IEnumerable<StaffMentorApplicationResponse>> GetPendingMentorApplicationsAsync()
@@ -155,6 +159,9 @@ namespace Imate.API.Business.Services.Staff
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Publish event for notification
+            await _mediator.Publish(new MentorReviewCompletedEvent(account, isApproved, note));
         }
 
         public async Task ReviewRecruiterApplicationAsync(int accountId, bool isApproved, string? note, int staffId, bool createCompany)
@@ -199,6 +206,9 @@ namespace Imate.API.Business.Services.Staff
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Publish event for notification
+            await _mediator.Publish(new RecruiterReviewCompletedEvent(account, isApproved, note));
         }
     }
 }

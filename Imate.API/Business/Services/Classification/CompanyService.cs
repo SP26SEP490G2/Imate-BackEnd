@@ -1,4 +1,4 @@
-﻿using Imate.API.Business.Interfaces.Classification;
+using Imate.API.Business.Interfaces.Classification;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.DataAccess.Interfaces.Classification;
 using Imate.API.Models.Entities;
@@ -69,7 +69,7 @@ namespace Imate.API.Business.Services.Classification
             var companyToUpdate = await _companyRepository.GetByIdAsync(id);
             if (companyToUpdate == null) return null;
 
-            // ✅ DEBUG: Log để kiểm tra
+            // DEBUG: Log để kiểm tra
             Console.WriteLine($"[DEBUG] NewImageFile is null: {model.NewImageFile == null}");
             if (model.NewImageFile != null)
             {
@@ -104,7 +104,7 @@ namespace Imate.API.Business.Services.Classification
                 }
 
                 
-                Console.WriteLine($"[DEBUG] Uploading new image...");
+                    Console.WriteLine($"[DEBUG] Uploading new image...");
                 string newImageUrl = await _awsS3Service.UploadFileAsync(model.NewImageFile, "companies");
                 Console.WriteLine($"[DEBUG] New image URL: {newImageUrl}");
 

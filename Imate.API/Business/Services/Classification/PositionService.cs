@@ -1,4 +1,4 @@
-﻿using Imate.API.Business.Exceptions;
+using Imate.API.Business.Exceptions;
 using Imate.API.Business.Helper;
 using Imate.API.Business.Interfaces.Classification;
 using Imate.API.DataAccess.Interfaces;
@@ -96,7 +96,7 @@ namespace Imate.API.Business.Services.Classification
         }
         public async Task<Position> UpdatePositionAsync(int id, PositionUpdateRequest positionUpdate)
         {
-            // 1️⃣ Tải Position và các Skill liên quan qua Repository.
+            // 1. Tải Position và các Skill liên quan qua Repository.
             // PHẢI ĐẢM BẢO `GetPositionByIdAsync` có khả năng .Include() hoặc đã tải sẵn PositionSkills.
             var existingPosition = await _positionRepository.GetPositionByIdAsync(id);
             if (existingPosition == null)
