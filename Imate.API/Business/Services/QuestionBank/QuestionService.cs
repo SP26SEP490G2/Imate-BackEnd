@@ -24,7 +24,6 @@ namespace Imate.API.Business.Services.QuestionBank
         private readonly IAuditLogService _auditLogService;
         private readonly ISystemConfigService _systemConfigService;
         private readonly ISystemNotificationService _systemNotificationService;
-        private readonly IMediator _mediator;
         private readonly ImateDbContext _context;
         private static readonly List<string> ExpectedHeaders = new List<string>
     {
@@ -35,12 +34,11 @@ namespace Imate.API.Business.Services.QuestionBank
         "SkillNames",
         "PositionNames"
     };
-        public QuestionService(IUnitOfWork unitOfWork, ImateDbContext context, IAuditLogService auditLogService, IMediator mediator, ISystemConfigService systemConfigService, ISystemNotificationService systemNotificationService)
+        public QuestionService(IUnitOfWork unitOfWork, ImateDbContext context, IAuditLogService auditLogService, ISystemConfigService systemConfigService, ISystemNotificationService systemNotificationService)
         {
             _unitOfWork = unitOfWork;
             _context = context;
             _auditLogService = auditLogService;
-            _mediator = mediator;
             _systemConfigService = systemConfigService;
             _systemNotificationService = systemNotificationService;
         }
@@ -1055,7 +1053,6 @@ namespace Imate.API.Business.Services.QuestionBank
 
             // --- KẾT THÚC ÁNH XẠ ---
             await _unitOfWork.Questions.CreateContributedQuestionAsync(question);
-            await _mediator.Publish(new NewContributedQuestionEvent(question));
         }
 
         public async Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request, int creatorId)
@@ -1335,12 +1332,10 @@ namespace Imate.API.Business.Services.QuestionBank
             if (status)
             {
                 await _systemNotificationService.CreateAndSendNotificationAsync(questionToUpdate.CreatorId, "Câu hỏi đóng góp của bạn đã được chấp nhận", null);
-                await _mediator.Publish(new QuestionApprovedEvent(questionToUpdate, staffId));
             }
             else
             {
                 await _systemNotificationService.CreateAndSendNotificationAsync(questionToUpdate.CreatorId, "Câu hỏi đóng góp của bạn đã bị từ chối", null);
-                await _mediator.Publish(new QuestionRejectedEvent(questionToUpdate, staffId));
             }
 
             return questionToUpdate;

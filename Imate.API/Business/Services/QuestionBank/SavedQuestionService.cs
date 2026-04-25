@@ -103,6 +103,7 @@ namespace Imate.API.Business.Services.QuestionBank
                     Id = qp.PositionId,
                     Name = qp.Position.Name
                 }).ToList(),
+                CommentCount = q.Comments.Count,
                 IsSaved = true
             }).ToList();
         }
@@ -145,6 +146,7 @@ namespace Imate.API.Business.Services.QuestionBank
                     Company = question.ContributedDetail.Company.Name,
                     CompanyURL = question.ContributedDetail.Company.ImageUrl,
                 } : null,
+                CommentCount = question.Comments.Count,
                 IsSaved = true
                 //Comments = question.Comments?
                 //    .Select(c => new CommentDto
