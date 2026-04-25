@@ -12,6 +12,7 @@
         public List<SkillDto> Skills { get; set; }
         public List<PositionDto> Positions { get; set; }
         public bool IsSaved { get; set; }
+        public int CommentCount { get; set; }
     }
     public class CategoryDto
     {

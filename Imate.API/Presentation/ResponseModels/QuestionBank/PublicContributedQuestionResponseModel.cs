@@ -24,8 +24,9 @@ namespace Imate.API.Presentation.ResponseModels.QuestionBank
         public List<CategoryDto> Categories { get; set; }
         public List<SkillDto> Skills { get; set; }
         public List<PositionDto> Positions { get; set; }
-            
+
         public bool IsSaved { get; set; }
+        public int CommentCount { get; set; }
 
 
     }
