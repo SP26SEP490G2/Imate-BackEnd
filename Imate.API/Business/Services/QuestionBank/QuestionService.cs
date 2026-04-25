@@ -550,7 +550,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     Id = qp.PositionId,
                     Name = qp.Position.Name
                 }).ToList(),
-                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id)
+                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id),
+                CommentCount = q.Comments != null ? q.Comments.Count : 0
             }).ToList();
         }
 
@@ -612,12 +613,15 @@ namespace Imate.API.Business.Services.QuestionBank
                     "createdat" => isDescending
                         ? query.OrderByDescending(q => q.CreatedAt)
                         : query.OrderBy(q => q.CreatedAt),
-                    _ => query.OrderByDescending(q => q.CreatedAt)
+                    "popular" => isDescending
+                        ? query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt)
+                        : query.OrderBy(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt),
+                    _ => query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt)
                 };
             }
             else
             {
-                query = query.OrderByDescending(q => q.CreatedAt);
+                query = query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt);
             }
 
             // Get saved question IDs
@@ -652,7 +656,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     Id = qp.PositionId,
                     Name = qp.Position.Name
                 }).ToList(),
-                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id)
+                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id),
+                CommentCount = q.Comments.Count
             });
 
             return await PagedList<PublicSystemQuestionResponseModel>.CreateAsync(response, questionParams.PageNumber, questionParams.PageSize);
@@ -740,12 +745,15 @@ namespace Imate.API.Business.Services.QuestionBank
                     "createdat" => isDescending
                         ? query.OrderByDescending(q => q.CreatedAt)
                         : query.OrderBy(q => q.CreatedAt),
-                    _ => query.OrderByDescending(q => q.CreatedAt)
+                    "popular" => isDescending
+                        ? query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt)
+                        : query.OrderBy(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt),
+                    _ => query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt)
                 };
             }
             else
             {
-                query = query.OrderByDescending(q => q.CreatedAt);
+                query = query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt);
             }
 
             // Get saved question IDs
@@ -794,7 +802,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     CompanyURL = q.ContributedDetail.Company != null ? q.ContributedDetail.Company.ImageUrl : string.Empty,
                 } : null,
                 Difficulty = q.Difficulty.ToString(),
-                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id)
+                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id),
+                CommentCount = q.Comments.Count
             });
 
             return await PagedList<PublicContributedQuestionResponseModel>.CreateAsync(response, questionParams.PageNumber, questionParams.PageSize);
@@ -839,7 +848,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     Company = question.ContributedDetail.Company.Name,
                     CompanyURL = question.ContributedDetail.Company.ImageUrl,
                 } : null,
-                IsSaved = savedQuestionIds.Count > 0 && savedQuestionIds.Contains(question.Id)
+                IsSaved = savedQuestionIds.Count > 0 && savedQuestionIds.Contains(question.Id),
+                CommentCount = question.Comments != null ? question.Comments.Count : 0
             };
 
             return response;
