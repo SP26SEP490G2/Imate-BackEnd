@@ -1,3 +1,4 @@
+using Imate.API.Entities;
 using Imate.API.Models.Enums;
 
 namespace Imate.API.Models.Entities
@@ -24,11 +25,14 @@ namespace Imate.API.Models.Entities
         public string? ExtractedSkillsJson { get; set; } // JSON stored as nvarchar(max)
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset? UpdatedAt { get; set; }
+        public int? TrainingJourneyId { get; set; }
+        public string? SessionGapJson { get; set; }  // Các gap được chọn cho session này
 
         // Navigation properties
         public Account Account { get; set; } = null!;
         public UserCv? UserCv { get; set; }
         public Question? Question { get; set; }
         public ICollection<InterviewResponse> InterviewResponses { get; set; } = new List<InterviewResponse>();
+        public virtual TrainingJourney? TrainingJourney { get; set; }
     }
 }

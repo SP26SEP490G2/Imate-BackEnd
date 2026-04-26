@@ -41,6 +41,7 @@ namespace Imate.API.UnitTest.Services
                 _mockDataProvider.Object,
                 _mockCvDataProvider.Object,
                 _mockSpeechService.Object,
+                new Mock<ITrainingJourneyOrchestrator>().Object,
                 _mockScopeFactory.Object,
                 _mockLogger.Object
             );
@@ -203,19 +204,17 @@ namespace Imate.API.UnitTest.Services
         }
 
         [Fact]
-        public async Task GenerateQuestionAsync_ShouldOnlyAnalyzeGapOnce_WhenMissingOnFirstTurn()
+        public async Task GenerateQuestionAsync_ShouldNotAnalyzeGap_LegacyRemoved()
         {
-            var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = DateTimeOffset.UtcNow, CvContent = "CV", JobDescriptionText = "JD", GapAnalysisJson = null };
+            var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = DateTimeOffset.UtcNow, CvContent = "CV", JobDescriptionText = "JD" };
             _mockDataProvider.Setup(p => p.GetSessionByIdAsync(100)).ReturnsAsync(session);
             _mockDataProvider.Setup(p => p.GetResponsesBySessionIdAsync(100)).ReturnsAsync(new List<InterviewResponseData>());
-            _mockInterviewAgent.Setup(a => a.AnalyzeGapsAsync("CV", "JD")).ReturnsAsync("{\"gaps\": []}");
             _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(It.IsAny<InterviewSessionData>(), It.IsAny<List<InterviewResponseData>>(), null))
                 .ReturnsAsync(new GenerateQuestionResult());
 
             await _orchestrator.GenerateQuestionAsync(1, 100, null, CancellationToken.None);
 
-            _mockInterviewAgent.Verify(a => a.AnalyzeGapsAsync("CV", "JD"), Times.Once);
-            session.GapAnalysisJson.Should().Be("{\"gaps\": []}");
+            _mockInterviewAgent.Verify(a => a.AnalyzeGapsAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]

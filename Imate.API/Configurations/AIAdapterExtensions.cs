@@ -21,6 +21,7 @@ namespace Imate.API.Configurations
 
             // Đăng ký InterviewSessionDataProvider (bridge cho UC-35 Mock Interview)
             services.AddScoped<IInterviewSessionDataProvider, InterviewSessionDataProvider>();
+            services.AddScoped<ITrainingJourneyDataProvider, TrainingJourneyDataProvider>();
 
             // Đăng ký Gemini Speech TTS (thay thế Azure)
             services.AddScoped<ISpeechSynthesisService, GeminiSpeechSynthesisService>();

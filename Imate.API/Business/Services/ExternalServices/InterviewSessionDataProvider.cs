@@ -38,6 +38,8 @@ namespace Imate.API.Business.Services.ExternalServices
                 EstimatedAbility = data.EstimatedAbility,
                 CvContent = data.CvContent,
                 ExtractedSkillsJson = data.ExtractedSkillsJson,
+                TrainingJourneyId = data.TrainingJourneyId,
+                SessionGapJson = data.SessionGapJson,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -90,6 +92,7 @@ namespace Imate.API.Business.Services.ExternalServices
                 ExpectedBloomLevel = data.ExpectedBloomLevel,
                 DifficultyScore = data.DifficultyScore,
                 CognitiveLoadScore = data.CognitiveLoadScore,
+                Topic = data.Topic,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -289,7 +292,9 @@ namespace Imate.API.Business.Services.ExternalServices
             EstimatedAbility = entity.EstimatedAbility,
             TotalQuestionsAnswered = entity.TotalQuestionsAnswered,
             CvContent = entity.CvContent,
-            ExtractedSkillsJson = entity.ExtractedSkillsJson
+            ExtractedSkillsJson = entity.ExtractedSkillsJson,
+            TrainingJourneyId = entity.TrainingJourneyId,
+            SessionGapJson = entity.SessionGapJson
         };
 
         private static InterviewResponseData MapResponseToDto(InterviewResponse entity) => new()
@@ -318,7 +323,8 @@ namespace Imate.API.Business.Services.ExternalServices
             StarActionScore = entity.StarActionScore,
             StarResultScore = entity.StarResultScore,
             StructuredFeedbackJson = entity.StructuredFeedbackJson,
-            ExpectedAnswerOutline = entity.ExpectedAnswerOutline
+            ExpectedAnswerOutline = entity.ExpectedAnswerOutline,
+            Topic = entity.Topic
         };
     }
 }

@@ -25,6 +25,7 @@ namespace Imate.AI.Module.Configuration
             // Tầng 4: AI Services (External API calls)
             // ═══════════════════════════════════════════
             services.AddHttpClient<IGeminiService, GeminiService>();
+            services.AddScoped<GapSelectionService>();
 
             // ═══════════════════════════════════════════
             // Tầng 3: Agents (Domain logic, prompt engineering)
@@ -40,6 +41,7 @@ namespace Imate.AI.Module.Configuration
             services.AddScoped<IInterviewOrchestrator, InterviewOrchestrator>();
             services.AddScoped<ICvAnalysisOrchestrator, CvAnalysisOrchestrator>();
             services.AddScoped<IPracticeTestOrchestrator, PracticeTestOrchestrator>();
+            services.AddScoped<ITrainingJourneyOrchestrator, TrainingJourneyOrchestrator>();
 
             return services;
         }
