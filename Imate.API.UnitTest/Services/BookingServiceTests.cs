@@ -56,7 +56,7 @@ namespace Imate.API.UnitTest.Services
         public async Task CreateBookingAsync_ShouldSuccess()
         {
             var candidateId = 1;
-            var request = new BookingCreateRequest { MentorId = 2, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) };
+            var request = new BookingCreateRequest { MentorId = 2, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)) };
             var mentor = new Mentor { AccountId = 2, PricePerSession = 100 };
             var mentorAccount = new Account { Id = 2, FullName = "Mentor Name" };
             var candidateAccount = new Account { Id = 1, Balance = 500 };
@@ -145,7 +145,7 @@ namespace Imate.API.UnitTest.Services
             _mockSlotRepo.Setup(r => r.GetByIdAsync(10)).ReturnsAsync(new Slot { StartTime = new TimeOnly(23, 0) });
             _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(false);
 
-            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) };
+            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)) };
 
             await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2));
 
@@ -161,7 +161,7 @@ namespace Imate.API.UnitTest.Services
             _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(true);
             _mockBookingRepo.Setup(r => r.HasCandidateBookingAtTimeAsync(2, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(true);
 
-            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) };
+            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)) };
 
             await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2));
         }
@@ -176,7 +176,7 @@ namespace Imate.API.UnitTest.Services
             _mockBookingRepo.Setup(r => r.IsSlotAvailableAsync(1, 10, It.IsAny<DateOnly>())).ReturnsAsync(true);
             _mockBookingRepo.Setup(r => r.HasCandidateBookingAtTimeAsync(2, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(false);
 
-            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) };
+            var req = new BookingCreateRequest { MentorId = 1, SlotId = 10, BookDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)) };
 
             await Assert.ThrowsAsync<BadRequestException>(() => _service.CreateBookingAsync(req, 2));
         }

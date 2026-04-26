@@ -178,7 +178,7 @@ namespace Imate.API.UnitTest.Controllers.QuestionBank
                 .ReturnsAsync(new GetAllSystemQuestionsForStaffAsyncResponse { Id = questionId });
 
             // Act
-            var result = await _controller.GetSystemQuestionForStaffByIdAsync(questionId);
+            var result = await _controller.GetSystemQuestionByIdAsync(questionId);
 
             // Assert
             var okResult = result.Should().BeOfType<OkObjectResult>().Subject;

@@ -20,6 +20,7 @@ using Xunit;
 using MockQueryable;
 using MockQueryable.Moq;
 using Imate.API.Business.Helper;
+using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -36,6 +37,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<IAuditLogService> _mockAuditLogService;
         private readonly Mock<IMentorRepository> _mockMentorRepo;
         private readonly Mock<IBookingRepository> _mockBookingRepo;
+        private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
 
         public TransactionServiceTests()
         {
@@ -55,6 +57,7 @@ namespace Imate.API.UnitTest.Services
             _mockAuditLogService = new Mock<IAuditLogService>();
             _mockMentorRepo = new Mock<IMentorRepository>();
             _mockBookingRepo = new Mock<IBookingRepository>();
+            _mockSystemNotificationService = new Mock<ISystemNotificationService>();
 
             _mockUnitOfWork.Setup(u => u.Transactions).Returns(_mockTransactionRepo.Object);
             _mockUnitOfWork.Setup(u => u.Accounts).Returns(_mockAccountRepo.Object);
@@ -80,7 +83,8 @@ namespace Imate.API.UnitTest.Services
                 _mockLogger.Object,
                 _mockSystemConfigService.Object,
                 _mockMediator.Object,
-                _mockAuditLogService.Object
+                _mockAuditLogService.Object,
+                _mockSystemNotificationService.Object
             );
         }
 
@@ -138,7 +142,8 @@ namespace Imate.API.UnitTest.Services
                 _mockLogger.Object,
                 _mockSystemConfigService.Object,
                 _mockMediator.Object,
-                _mockAuditLogService.Object
+                _mockAuditLogService.Object,
+                _mockSystemNotificationService.Object
             );
 
             act.Should().Throw<ArgumentNullException>()
