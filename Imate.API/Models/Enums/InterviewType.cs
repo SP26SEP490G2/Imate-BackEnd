@@ -5,6 +5,7 @@ namespace Imate.API.Models.Enums
         SingleQuestion,
         FullSession,
         CvBased,
-        JobDescriptionBased
+        JobDescriptionBased,
+        JourneySession
     }
 }

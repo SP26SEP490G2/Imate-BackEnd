@@ -27,6 +27,7 @@ namespace Imate.API.Models.Entities
         public double? StarResultScore { get; set; }
         public string? StructuredFeedbackJson { get; set; } // JSON stored as nvarchar(max)
         public string? ExpectedAnswerOutline { get; set; }
+        public string? Topic { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset? UpdatedAt { get; set; }
 

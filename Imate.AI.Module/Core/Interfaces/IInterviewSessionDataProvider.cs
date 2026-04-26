@@ -48,6 +48,8 @@ namespace Imate.AI.Module.Core.Interfaces
         public int TotalQuestionsAnswered { get; set; }
         public string? CvContent { get; set; }
         public string? ExtractedSkillsJson { get; set; }
+        public int? TrainingJourneyId { get; set; }
+        public string? SessionGapJson { get; set; }
         public string? GapAnalysisJson { get; set; }
     }
 
@@ -81,6 +83,7 @@ namespace Imate.AI.Module.Core.Interfaces
         public double? StarResultScore { get; set; }
         public string? StructuredFeedbackJson { get; set; }
         public string? ExpectedAnswerOutline { get; set; }
+        public string? Topic { get; set; }
     }
 
     /// <summary>

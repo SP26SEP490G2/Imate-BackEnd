@@ -20,6 +20,7 @@ namespace Imate.AI.Module.Models.Responses
         public int ChunkIndex { get; set; }
         /// <summary>Tên giai đoạn hiển thị cho ứng viên</summary>
         public string ChunkLabel { get; set; } = string.Empty;
+        public bool IsValid { get; set; } = true;
     }
 
     /// <summary>
