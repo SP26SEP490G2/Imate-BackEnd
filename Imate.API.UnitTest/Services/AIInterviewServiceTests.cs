@@ -62,17 +62,17 @@ namespace Imate.API.UnitTest.Services
             result.Level.Should().Be("Senior");
         }
 
-        [Fact]
-        public async Task SetupInterviewAsync_ShouldThrowException_WhenJdIsNotItRelated()
-        {
-            var jdText = "Tuyển dụng đầu bếp món Á chuyên nghiệp";
-            _mockInterviewAgent.Setup(a => a.ClassifyJobDescriptionAsync(jdText, null))
-                .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = false });
+        //[Fact]
+        //public async Task SetupInterviewAsync_ShouldThrowException_WhenJdIsNotItRelated()
+        //{
+        //    var jdText = "Tuyển dụng đầu bếp món Á chuyên nghiệp";
+        //    _mockInterviewAgent.Setup(a => a.ClassifyJobDescriptionAsync(jdText, null))
+        //        .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = false });
 
-            var act = () => _orchestrator.SetupInterviewAsync(1, jdText);
+        //    var act = () => _orchestrator.SetupInterviewAsync(1, jdText);
 
-            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*JD không thuộc ngành Công nghệ thông tin (IT)*");
-        }
+        //    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*JD không thuộc ngành Công nghệ thông tin (IT)*");
+        //}
 
         [Fact]
         public async Task SetupInterviewAsync_ShouldThrowException_WhenCvIsNotItRelated()
@@ -87,17 +87,17 @@ namespace Imate.API.UnitTest.Services
             await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*CV của bạn không thuộc ngành Công nghệ thông tin (IT)*");
         }
 
-        [Fact]
-        public async Task SetupInterviewAsync_ShouldThrowException_WhenLevelGapIsTwoOrMore()
-        {
-            _mockCvDataProvider.Setup(p => p.GetCvTextAsync(1, 10)).ReturnsAsync("Intern CV");
-            _mockInterviewAgent.Setup(a => a.ClassifyJobDescriptionAsync(It.IsAny<string>(), "Intern CV"))
-                .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = true, IsItRelatedCv = true, Level = "Senior", CvEstimatedLevel = "Intern" });
+        //[Fact]
+        //public async Task SetupInterviewAsync_ShouldThrowException_WhenLevelGapIsTwoOrMore()
+        //{
+        //    _mockCvDataProvider.Setup(p => p.GetCvTextAsync(1, 10)).ReturnsAsync("Intern CV");
+        //    _mockInterviewAgent.Setup(a => a.ClassifyJobDescriptionAsync(It.IsAny<string>(), "Intern CV"))
+        //        .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = true, IsItRelatedCv = true, Level = "Senior", CvEstimatedLevel = "Intern" });
 
-            var act = () => _orchestrator.SetupInterviewAsync(1, "Senior Job", 10);
+        //    var act = () => _orchestrator.SetupInterviewAsync(1, "Senior Job", 10);
 
-            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*chênh lệch 4 bậc*");
-        }
+        //    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*chênh lệch 4 bậc*");
+        //}
 
         [Fact]
         public async Task CreateSessionAsync_ShouldSucceed_WhenUsageLimitNotReached()

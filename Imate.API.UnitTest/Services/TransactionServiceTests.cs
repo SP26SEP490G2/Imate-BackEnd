@@ -1,6 +1,7 @@
 using Moq;
 using FluentAssertions;
 using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.Business.Services.Payment;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.DataAccess.Interfaces.Payment;
@@ -34,6 +35,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<ISystemConfigService> _mockSystemConfigService;
         private readonly Mock<IMediator> _mockMediator;
         private readonly Mock<IAuditLogService> _mockAuditLogService;
+        private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
         private readonly Mock<IMentorRepository> _mockMentorRepo;
         private readonly Mock<IBookingRepository> _mockBookingRepo;
 
@@ -53,6 +55,7 @@ namespace Imate.API.UnitTest.Services
             _mockSystemConfigService = new Mock<ISystemConfigService>();
             _mockMediator = new Mock<IMediator>();
             _mockAuditLogService = new Mock<IAuditLogService>();
+            _mockSystemNotificationService = new Mock<ISystemNotificationService>();
             _mockMentorRepo = new Mock<IMentorRepository>();
             _mockBookingRepo = new Mock<IBookingRepository>();
 
@@ -80,7 +83,8 @@ namespace Imate.API.UnitTest.Services
                 _mockLogger.Object,
                 _mockSystemConfigService.Object,
                 _mockMediator.Object,
-                _mockAuditLogService.Object
+                _mockAuditLogService.Object,
+                _mockSystemNotificationService.Object
             );
         }
 
@@ -138,7 +142,8 @@ namespace Imate.API.UnitTest.Services
                 _mockLogger.Object,
                 _mockSystemConfigService.Object,
                 _mockMediator.Object,
-                _mockAuditLogService.Object
+                _mockAuditLogService.Object,
+                _mockSystemNotificationService.Object
             );
 
             act.Should().Throw<ArgumentNullException>()
