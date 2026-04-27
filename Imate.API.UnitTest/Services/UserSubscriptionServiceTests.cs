@@ -12,6 +12,7 @@ using Imate.API.Models.Enums;
 using MockQueryable;
 using MockQueryable.Moq;
 using Xunit;
+using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -23,6 +24,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<ISubscriptionPackageRepository> _mockPackageRepo;
         private readonly Mock<ITransactionRepository> _mockTransactionRepo;
         private readonly Mock<ISystemConfigService> _mockSystemConfigService;
+        private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
         private readonly UserSubscriptionService _service;
 
         public UserSubscriptionServiceTests()
@@ -33,6 +35,7 @@ namespace Imate.API.UnitTest.Services
             _mockPackageRepo = new Mock<ISubscriptionPackageRepository>();
             _mockTransactionRepo = new Mock<ITransactionRepository>();
             _mockSystemConfigService = new Mock<ISystemConfigService>();
+            _mockSystemNotificationService = new Mock<ISystemNotificationService>();
 
             _mockUnitOfWork.Setup(u => u.Accounts).Returns(_mockAccountRepo.Object);
             _mockUnitOfWork.Setup(u => u.UserSubscriptions).Returns(_mockUserSubRepo.Object);
@@ -41,7 +44,8 @@ namespace Imate.API.UnitTest.Services
 
             _service = new UserSubscriptionService(
                 _mockUnitOfWork.Object,
-                _mockSystemConfigService.Object
+                _mockSystemConfigService.Object,
+                _mockSystemNotificationService.Object
             );
         }
 
