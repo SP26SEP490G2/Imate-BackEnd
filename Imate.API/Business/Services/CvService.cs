@@ -11,10 +11,12 @@ namespace Imate.API.Business.Services
         private readonly IUserCvRepository _cvRepository;
         private readonly IAwsS3StorageService _s3Storage;
         private readonly ICvAnalysisOrchestrator _cvAnalysisOrchestrator;
+        private readonly ISystemConfigService _systemConfigService;
 
         // File validation constants
-        private const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5MB
-        private static readonly string[] AllowedExtensions = { ".pdf", ".doc", ".docx" };
+        private const long MaxFileSizeBytes = 5 * 1024 * 1024;
+        private static readonly string[] AllowedExtensions = { ".pdf", ".docx" };
+        private const int MaxCvPerUser = 10;
         private static readonly string[] AllowedContentTypes =
         {
             "application/pdf",
@@ -25,11 +27,13 @@ namespace Imate.API.Business.Services
         public CvService(
             IUserCvRepository cvRepository,
             IAwsS3StorageService s3Storage,
-            ICvAnalysisOrchestrator cvAnalysisOrchestrator)
+            ICvAnalysisOrchestrator cvAnalysisOrchestrator,
+            ISystemConfigService systemConfigService)
         {
             _cvRepository = cvRepository;
             _s3Storage = s3Storage;
             _cvAnalysisOrchestrator = cvAnalysisOrchestrator;
+            _systemConfigService = systemConfigService;
         }
 
         /// <summary>
@@ -40,6 +44,11 @@ namespace Imate.API.Business.Services
             // 1. Validate file type và size
             ValidateFile(file);
             await _cvAnalysisOrchestrator.ValidateCvIsItAsync(file);
+            var existingCvs = await _cvRepository.GetByAccountIdAsync(accountId);
+            if (existingCvs.Count() >= MaxCvPerUser)
+            {
+                throw new ArgumentException($"Bạn chỉ có thể tải lên tối đa {MaxCvPerUser} CV.");
+            }
 
             // 3. Upload lên S3
             var fileUrl = await _s3Storage.UploadFileAsync(file, "cv");
@@ -109,6 +118,11 @@ namespace Imate.API.Business.Services
 
             if (!AllowedContentTypes.Contains(file.ContentType))
                 throw new ArgumentException("Tệp phải là PDF hoặc DOCX và dưới 5MB.");
+        }
+
+        public async Task<int> GetAnalyseCvCostAsync()
+        {
+            return await _systemConfigService.GetAnalyseCvCostPointAsync();
         }
     }
 }

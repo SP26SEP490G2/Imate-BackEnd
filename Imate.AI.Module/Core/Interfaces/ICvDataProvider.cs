@@ -27,5 +27,16 @@ namespace Imate.AI.Module.Core.Interfaces
         /// Xóa ScannedData đã cache để buộc re-extract từ file gốc
         /// </summary>
         Task ClearScannedDataAsync(int accountId, int cvId);
+        Task<CvAnalysisEligibility> CheckCvAnalysisEligibilityAsync(int accountId);
+        Task ConsumeCvAnalysisCostAsync(int accountId);
+    }
+
+    public class CvAnalysisEligibility
+    {
+        /// <summary>Có được phép phân tích không.</summary>
+        public bool IsEligible { get; set; }
+
+        /// <summary>Thông báo lý do từ chối (khi IsEligible = false).</summary>
+        public string Message { get; set; } = string.Empty;
     }
 }

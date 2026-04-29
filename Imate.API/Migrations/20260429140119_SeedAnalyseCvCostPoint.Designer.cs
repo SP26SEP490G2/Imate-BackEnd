@@ -4,6 +4,7 @@ using Imate.API.DataAccess.ApplicationDbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Imate.API.Migrations
 {
     [DbContext(typeof(ImateDbContext))]
-    partial class ImateDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260429140119_SeedAnalyseCvCostPoint")]
+    partial class SeedAnalyseCvCostPoint
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2358,7 +2361,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Tỷ lệ hoa hồng (%)",
                             Key = "COMMISSION_RATE",
                             Value = "20.0"
@@ -2366,7 +2369,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Số lượt phỏng vấn miễn phí mặc định",
                             Key = "FREE_INTERVIEW_LIMIT",
                             Value = "3"
@@ -2374,7 +2377,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Điểm thưởng khi đóng góp câu hỏi",
                             Key = "CONTRIBUTION_REWARD_POINTS",
                             Value = "1000"
@@ -2382,7 +2385,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Thời gian khóa tiền sau khi hoàn thành (giờ)",
                             Key = "ESCROW_HOURS",
                             Value = "24"
@@ -2390,7 +2393,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Thời gian đặt lịch trước tối thiểu (giờ)",
                             Key = "MIN_BOOKING_ADVANCE_HOURS",
                             Value = "6"
@@ -2398,7 +2401,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 6,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Thời hạn hủy phạt (giờ trước khi bắt đầu)",
                             Key = "CANCELLATION_DEADLINE_HOURS",
                             Value = "24"
@@ -2406,7 +2409,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 7,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Thời hạn khiếu nại sau khi hoàn thành (giờ)",
                             Key = "REPORT_DEADLINE_HOURS",
                             Value = "24"
@@ -2414,7 +2417,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 8,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Tỷ lệ hoàn tiền khi hủy chậm (%)",
                             Key = "CANCELLATION_REFUND_RATE",
                             Value = "80"
@@ -2422,7 +2425,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 9,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Số tiền nạp tối thiểu (VNĐ)",
                             Key = "MIN_DEPOSIT_AMOUNT",
                             Value = "1000"
@@ -2430,7 +2433,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 10,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Khoảng cách giữa các lần cập nhật giá (ngày)",
                             Key = "PRICE_UPDATE_COOLDOWN_DAYS",
                             Value = "7"
@@ -2438,7 +2441,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 11,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Thời gian hết hạn token Agora (giờ)",
                             Key = "AGORA_TOKEN_EXPIRATION_HOURS",
                             Value = "1"
@@ -2446,7 +2449,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 12,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Kích thước trang thông báo",
                             Key = "NOTIFICATION_PAGE_SIZE",
                             Value = "20"
@@ -2454,7 +2457,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 13,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Giới hạn tối đa gói Pro",
                             Key = "SUBSCRIPTION_PRO_MAX_LIMIT",
                             Value = "7300"
@@ -2462,7 +2465,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 14,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Hệ số giới hạn gói Pro / ngày",
                             Key = "SUBSCRIPTION_PRO_LIMIT_MULTIPLIER",
                             Value = "20"
@@ -2470,7 +2473,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 15,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Giới hạn gói Basic",
                             Key = "SUBSCRIPTION_BASIC_LIMIT",
                             Value = "3"
@@ -2478,7 +2481,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 16,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Giới hạn gói Rush",
                             Key = "SUBSCRIPTION_RUSH_LIMIT",
                             Value = "20"
@@ -2486,7 +2489,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 17,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Chi phí điểm phỏng vấn",
                             Key = "INTERVIEW_COST_POINTS",
                             Value = "2000"
@@ -2494,7 +2497,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 18,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Chi phí điểm câu hỏi luyện tập",
                             Key = "PRACTICE_QUESTION_COST_POINTS",
                             Value = "1000"
@@ -2502,7 +2505,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 19,
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Tỉ lệ tiền đảm bảo (%)",
                             Key = "GUARANTEE_DEPOSIT_RATE",
                             Value = "20.0"

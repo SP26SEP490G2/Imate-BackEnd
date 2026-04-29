@@ -17,6 +17,11 @@ namespace Imate.AI.Module.Models.Requests
         public string Field { get; set; } = string.Empty;
 
         /// <summary>
+        /// Kỹ năng cụ thể: "C#", "React", "Java", "Python", etc.
+        /// </summary>
+        public string Skill { get; set; } = string.Empty;
+
+        /// <summary>
         /// Cấp bậc ứng tuyển: "Intern", "Fresher", "Junior", "Middle", "Senior"
         /// </summary>
         public string Level { get; set; } = "Junior";

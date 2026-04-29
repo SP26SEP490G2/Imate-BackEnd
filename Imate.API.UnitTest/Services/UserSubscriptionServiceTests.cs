@@ -1,6 +1,7 @@
 using Moq;
 using FluentAssertions;
 using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Services.Payment;
 using Imate.API.DataAccess.Interfaces;

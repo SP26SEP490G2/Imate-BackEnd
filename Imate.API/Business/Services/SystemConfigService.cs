@@ -27,6 +27,7 @@ namespace Imate.API.Business.Services
         private const string INTERVIEW_COST_POINTS_KEY = "INTERVIEW_COST_POINTS";
         private const string PRACTICE_QUESTION_COST_POINTS_KEY = "PRACTICE_QUESTION_COST_POINTS";
         private const string GUARANTEE_DEPOSIT_RATE_KEY = "GUARANTEE_DEPOSIT_RATE";
+        private const string ANALYSE_CV_COST_POINT_KEY = "ANALYSE_CV_COST_POINT";
 
         public SystemConfigService(IUnitOfWork unitOfWork)
         {
@@ -101,7 +102,7 @@ namespace Imate.API.Business.Services
                      key == NOTIFICATION_PAGE_SIZE_KEY ||                      key == SUBSCRIPTION_PRO_MAX_LIMIT_KEY ||
                      key == SUBSCRIPTION_PRO_LIMIT_MULTIPLIER_KEY || key == SUBSCRIPTION_BASIC_LIMIT_KEY ||
                      key == SUBSCRIPTION_RUSH_LIMIT_KEY || key == MIN_DEPOSIT_AMOUNT_KEY ||
-                     key == INTERVIEW_COST_POINTS_KEY || key == PRACTICE_QUESTION_COST_POINTS_KEY)
+                     key == INTERVIEW_COST_POINTS_KEY || key == PRACTICE_QUESTION_COST_POINTS_KEY || key == ANALYSE_CV_COST_POINT_KEY)
             {
                 if (!int.TryParse(value, out int intValue) || intValue < 0)
                 {
@@ -356,6 +357,15 @@ namespace Imate.API.Business.Services
             }
             // Default to commission rate if not configured (backward compatibility)
             return await GetCommissionRateAsync();
+        }
+        public async Task<int> GetAnalyseCvCostPointAsync()
+        {
+            var config = await _unitOfWork.SystemConfigs.GetByKeyAsync(ANALYSE_CV_COST_POINT_KEY);
+            if (config != null && int.TryParse(config.Value, out int cost))
+            {
+                return cost;
+            }
+            return 1;
         }
     }
 }

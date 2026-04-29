@@ -9,6 +9,7 @@ namespace Imate.API.Presentation.ResponseModels.PracticeTest
         public string TestTitle { get; init; } = string.Empty;
         public string TestType { get; init; } = string.Empty;
         public string Field { get; init; } = string.Empty;
+        public string Skill { get; init; } = string.Empty;
         public string Level { get; init; } = string.Empty;
         public int Score { get; init; }
         public int TotalQuestions { get; init; }
@@ -25,6 +26,7 @@ namespace Imate.API.Presentation.ResponseModels.PracticeTest
         public string TestTitle { get; init; } = string.Empty;
         public string TestType { get; init; } = string.Empty;
         public string Field { get; init; } = string.Empty;
+        public string Skill { get; init; } = string.Empty;
         public string Level { get; init; } = string.Empty;
         public int TotalQuestions { get; init; }
         public int CorrectAnswers { get; init; }
