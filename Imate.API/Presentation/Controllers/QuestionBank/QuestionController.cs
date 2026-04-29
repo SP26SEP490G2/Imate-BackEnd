@@ -197,7 +197,7 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
             });
         }
         [HttpGet(APIConfig.Question.GetSystemQuestionById)]
-        public async Task<IActionResult> GetSystemQuestionForStaffByIdAsync(int questionId)
+        public async Task<IActionResult> GetSystemQuestionByIdAsync(int questionId)
         {
             var accountId = GetCurrentAccountId();
             var question = await _questionService.GetSystemQuestionByIdAsync(questionId, accountId);
@@ -206,7 +206,7 @@ namespace Imate.API.Presentation.Controllers.QuestionBank
         }
 
         [HttpGet(APIConfig.Question.GetContributedQuestionById)]
-        public async Task<IActionResult> GetContributedQuestionForStaffByIdAsync(int questionId)
+        public async Task<IActionResult> GetContributedQuestionByIdAsync(int questionId)
         {
             var accountId = GetCurrentAccountId();
             var question = await _questionService.GetContributedQuestionByIdAsync(questionId, accountId);

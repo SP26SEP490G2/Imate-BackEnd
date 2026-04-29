@@ -35,6 +35,7 @@ namespace Imate.API.DataAccess.Configurations
             builder.Property(e => e.StarResultScore).IsRequired(false);
             builder.Property(e => e.StructuredFeedbackJson).HasColumnType("nvarchar(max)").IsRequired(false);
             builder.Property(e => e.ExpectedAnswerOutline).HasColumnType("nvarchar(max)").IsRequired(false);
+            builder.Property(e => e.Topic).HasColumnType("nvarchar(255)").IsRequired(false);
             builder.Property(e => e.CreatedAt).IsRequired().HasColumnType("datetimeoffset");
             builder.Property(e => e.UpdatedAt).IsRequired(false).HasColumnType("datetimeoffset");
 

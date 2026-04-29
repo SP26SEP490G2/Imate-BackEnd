@@ -62,7 +62,8 @@ namespace Imate.AI.Module.Core.Agents
         public async Task<GenerateQuestionResult> GenerateQuestionAsync(
             InterviewSessionData session,
             List<InterviewResponseData> existingResponses,
-            double? estimatedAbility = null)
+            double? estimatedAbility = null,
+            List<string>? selectedGaps = null)
         {
             var turnNumber = existingResponses.Count + 1;
             var answeredCount = existingResponses.Count(r => !string.IsNullOrEmpty(r.UserAnswer));
@@ -79,8 +80,10 @@ namespace Imate.AI.Module.Core.Agents
             }
 
             // Lấy câu hỏi tham khảo từ DB theo chunk hiện tại
+            // Ưu tiên dùng selectedGaps nếu có (từ Training Journey), nếu không dùng SkillName
             var ragQuestions = await GetRagQuestionsForChunkAsync(
                 turnNumber,
+                selectedGaps,
                 session.SkillName ?? "General",
                 session.LevelName ?? "Junior");
 
@@ -93,7 +96,7 @@ namespace Imate.AI.Module.Core.Agents
                 <= 4 => "CHUNK 2 - Technical",
                 <= 7 => "CHUNK 3 - Situational",
                 <= 9 => "CHUNK 4 - Deep-dive",
-                _    => "CHUNK 5 - Culture"
+                _ => "CHUNK 5 - Culture"
             };
 
             _logger.LogInformation(
@@ -112,6 +115,7 @@ namespace Imate.AI.Module.Core.Agents
 
             return questionData;
         }
+
 
         public async Task<SetupInterviewResult> ClassifyJobDescriptionAsync(string jobDescriptionText, string? cvText = null)
         {
@@ -209,17 +213,51 @@ QUY TẮC PHẢN HỒI:
         {
             var systemPrompt = @"Bạn là chuyên gia phân tích nhân sự và đào tạo IT. 
 Nhiệm vụ: So sánh CV ứng viên với JD (Mô tả công việc) để tìm ra các khoảng trống năng lực (Gaps).
-Trả về JSON với format (KHÔNG giải thích):
+
+PHÂN LOẠI GAPS - QUY TẮC RÕNG:
+
+1. 'hardSkillsGaps': KỸ NĂNG CÓ THỂ LUYỆN TẬP qua phỏng vấn/training ngắn
+   VD: Java, Spring, REST APIs, Docker, Kubernetes, AWS/Azure, databases, design patterns
+   
+2. 'softSkillsGaps': KỸ NĂNG MỀM CÓ THỂ LUYỆN TẬP qua phỏng vấn/training ngắn
+   VD: giao tiếp kỹ thuật, code review skills, thiết kế hệ thống, phân tích vấn đề, mentoring skills
+   QUAN TRỌNG: ""Mentoring skills"" là kỹ năng → softSkillsGap (có thể luyện qua phỏng vấn)
+   
+3. 'profileGaps': KINH NGHIỆM/BACKGROUND/BẰNG CẤP KHÔNG THỂ LUYỆN TẬP TRONG NGẮN HẠN:
+   - Kinh nghiệm chuyên nghiệp: JD yêu cầu 5 năm, CV chỉ 1 năm → profileGap
+   - Kinh nghiệm lĩnh vực: JD cần Banking/Payment, CV chưa từng làm → profileGap
+   - Kinh nghiệm quản lý: JD yêu cầu ""quản lý team dev chuyên nghiệp"", CV chỉ quản lý CLB/sự kiện → profileGap (experience-based, need real practice)
+   - Bằng cấp: JD yêu cầu đại học, CV chỉ có cao đẳng → profileGap
+   - Background thực tế: cần đã từng làm dự án thực tế → profileGap
+
+PHÂN BIỆT QUAN TRỌNG:
+- ""Kỹ năng quản lý"" (Management Skills) → softSkillsGap (luyện tập được)
+- ""Kinh nghiệm quản lý team development"" (Management Experience) → profileGap (cần hành động thực tế)
+
+QUYẾT ĐỊNH:
+1. Gap có từ ""kinh nghiệm"", ""chưa từng"", ""không có kinh nghiệm"", ""background"", ""thực tế"" + cần hành động thực tế → profileGap
+2. Gap về KỸ NĂNG (Java, Spring, design, communication, leadership, mentoring) → hardSkill/softSkill
+3. Nếu không chắc: Có thể luyện tập/cải thiện trong 1-2 buổi phỏng vấn? → hardSkill/softSkill; Không → profileGap
+
+Trả về JSON (LUÔN có cả 5 fields):
 {
-  ""hardSkillsGaps"": [""Kỹ năng thiếu 1"", ""Kỹ năng thiếu 2""],
-  ""experienceGaps"": [""Kinh nghiệm thiếu 1""],
-  ""suitabilityStrengths"": [""Điểm phù hợp 1""],
-  ""trainingFocus"": ""Trọng tâm cần huấn luyện để ứng viên đạt yêu cầu của JD""
+  ""hardSkillsGaps"": [""Java EE"", ""REST API design""],
+  ""softSkillsGaps"": [""Code review skills"", ""Mentoring skills""],
+  ""profileGaps"": [
+    ""Kinh nghiệm thực tế: JD yêu cầu 5 năm, CV hiện có 1 năm"",
+    ""Kinh nghiệm quản lý team development: CV chỉ quản lý CLB/sự kiện, chưa quản lý team dev chuyên nghiệp""
+  ],
+  ""suitabilityStrengths"": [""Hiểu rõ OOP"", ""Database design""],
+  ""trainingFocus"": ""Tập trung huấn luyện Java EE, REST APIs, code review skills, mentoring skills...""
 }";
-            var userPrompt = $"=== CV CHI TIẾT ===\n{cvContent}\n\n=== JD YÊU CẦU ===\n{jobDescriptionText}\n\nPhân tích Gaps:";
-            
+            var userPrompt = $"=== CV CHI TIẾT ===\n{cvContent}\n\n=== JD YÊU CẦU ===\n{jobDescriptionText}\n\nPhân tích Gaps (PHẢI trả về profileGaps dù có thể rỗng):";
+
             _logger.LogInformation("[GAP-ANALYSIS] Bắt đầu phân tích Gap CV vs JD...");
             var result = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
+
+            // Debug: log response
+            _logger.LogInformation("[GAP-ANALYSIS] Response từ Gemini: {Response}", result);
+
             return CleanJsonResponse(result);
         }
 
@@ -269,33 +307,24 @@ Trả về JSON với format (KHÔNG giải thích):
                 sb.AppendLine("\n(Không có câu hỏi tham khảo từ DB — hãy TỰ sáng tạo câu hỏi dựa trên CV, JD và giai đoạn hiện tại.)");
             }
 
-            // Inject Gap Analysis (nếu có) để AI tập trung huấn luyện phần thiếu
-            if (!string.IsNullOrEmpty(session.GapAnalysisJson))
-            {
-                sb.AppendLine("\n=== KẾT QUẢ PHÂN TÍCH GAP (CV vs JD) ===");
-                sb.AppendLine("Dưới đây là các điểm thiếu hụt năng lực của ứng viên so với JD.");
-                sb.AppendLine("HÃY SỬ DỤNG THÔNG TIN NÀY ĐỂ ĐẶT CÂU HỎI TRỌNG TÂM VÀO VIỆC HUẤN LUYỆN/KIỂM TRA CÁC GAP NÀY.");
-                sb.AppendLine(session.GapAnalysisJson);
-                sb.AppendLine("=== HẾT PHÂN TÍCH GAP ===");
-            }
-
-            // Thêm nội dung CV ứng viên để cá nhân hóa câu hỏi
             if (!string.IsNullOrEmpty(session.CvContent))
             {
                 sb.AppendLine("\n=== THÔNG TIN CV ỨNG VIÊN ===");
-                sb.AppendLine(session.CvContent.Length > 2000
+                var cvContent = session.CvContent.Length > 2000
                     ? session.CvContent.Substring(0, 2000) + "..."
-                    : session.CvContent);
+                    : session.CvContent;
+                sb.AppendLine(SanitizeForPrompt(cvContent));
                 sb.AppendLine("=== HẾT CV ===");
             }
 
-            // Thêm JD gốc để câu hỏi sát yêu cầu công việc
+            // Thêm JD gốc để câu hỏi sát yêu cầu công việc (sanitized để tránh prompt injection)
             if (!string.IsNullOrEmpty(session.JobDescriptionText))
             {
                 sb.AppendLine("\n=== MÔ TẢ CÔNG VIỆC (JD) ===");
-                sb.AppendLine(session.JobDescriptionText.Length > 1500
+                var jdContent = session.JobDescriptionText.Length > 1500
                     ? session.JobDescriptionText.Substring(0, 1500) + "..."
-                    : session.JobDescriptionText);
+                    : session.JobDescriptionText;
+                sb.AppendLine(SanitizeForPrompt(jdContent));
                 sb.AppendLine("=== HẾT JD ===");
             }
 
@@ -324,16 +353,58 @@ Trả về JSON với format (KHÔNG giải thích):
         private GenerateQuestionResult ParseQuestionResponse(string rawResponse)
         {
             var cleaned = CleanJsonResponse(rawResponse);
+
+            // Validate: Response không được phải plain text (phải là JSON)
+            if (!cleaned.StartsWith("{") || !cleaned.EndsWith("}"))
+            {
+                _logger.LogError(
+                    "[QUESTION-PARSE] Response không phải JSON object. Response bắt đầu với: {Start}",
+                    cleaned.Substring(0, Math.Min(100, cleaned.Length)));
+                return new GenerateQuestionResult
+                {
+                    QuestionText = "Lỗi: Hệ thống không thể generate câu hỏi. Vui lòng thử lại.",
+                    Topic = "general",
+                    IsValid = false
+                };
+            }
+
             try
             {
                 using var doc = JsonDocument.Parse(cleaned);
                 var root = doc.RootElement;
+
+                // Validate: phải có questionText
+                if (!root.TryGetProperty("questionText", out var questionProp))
+                {
+                    _logger.LogError("[QUESTION-PARSE] JSON không có field 'questionText'. JSON: {Json}",
+                        cleaned.Substring(0, Math.Min(200, cleaned.Length)));
+                    return new GenerateQuestionResult
+                    {
+                        QuestionText = "Lỗi: Câu hỏi không hợp lệ (thiếu questionText field).",
+                        Topic = "general",
+                        IsValid = false
+                    };
+                }
+
+                var questionText = questionProp.GetString()?.Trim();
+                if (string.IsNullOrEmpty(questionText))
+                {
+                    _logger.LogError("[QUESTION-PARSE] questionText field rỗng");
+                    return new GenerateQuestionResult
+                    {
+                        QuestionText = "Lỗi: Câu hỏi rỗng.",
+                        Topic = "general",
+                        IsValid = false
+                    };
+                }
+
                 var result = new GenerateQuestionResult
                 {
-                    QuestionText = root.GetProperty("questionText").GetString() ?? "",
+                    QuestionText = questionText,
                     ExpectedAnswerOutline = root.TryGetProperty("expectedAnswerOutline", out var outline) ? outline.GetString() : null,
                     Topic = root.TryGetProperty("topic", out var topic) ? topic.GetString() : null,
-                    Metrics = new QuestionMetrics()
+                    Metrics = new QuestionMetrics(),
+                    IsValid = true
                 };
 
                 if (root.TryGetProperty("bloomLevel", out var bloom))
@@ -349,12 +420,30 @@ Trả về JSON với format (KHÔNG giải thích):
                 if (root.TryGetProperty("questionType", out var qType))
                     result.Metrics.QuestionType = qType.GetString();
 
+                _logger.LogInformation("[QUESTION-PARSE] ✅ Parsed successfully: {Question:M100}", questionText);
                 return result;
+            }
+            catch (JsonException jex)
+            {
+                _logger.LogError(jex,
+                    "[QUESTION-PARSE] JSON parse error. Response: {Response}",
+                    cleaned.Substring(0, Math.Min(300, cleaned.Length)));
+                return new GenerateQuestionResult
+                {
+                    QuestionText = "Lỗi: Dữ liệu câu hỏi không hợp lệ.",
+                    Topic = "general",
+                    IsValid = false
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse question response");
-                return new GenerateQuestionResult { QuestionText = cleaned, Topic = "general" };
+                _logger.LogError(ex, "[QUESTION-PARSE] Unexpected error parsing question response");
+                return new GenerateQuestionResult
+                {
+                    QuestionText = "Lỗi: Không thể xử lý câu hỏi.",
+                    Topic = "general",
+                    IsValid = false
+                };
             }
         }
 
@@ -409,17 +498,48 @@ Trả về JSON với format (KHÔNG giải thích):
         }
 
         /// <summary>
+        /// Sanitize user input (CV, JD, etc) để tránh prompt injection từ content chứa JSON/markdown/code blocks.
+        /// </summary>
+        private static string SanitizeForPrompt(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input;
+
+            var sanitized = input
+                // Remove code blocks markers (tránh confuse AI về structure)
+                .Replace("```json", "[CODE_BLOCK]")
+                .Replace("```", "[CODE_BLOCK]")
+                // Escape curly braces (JSON-like structures)
+                .Replace("{", "(")
+                .Replace("}", ")")
+                // Remove excessive newlines
+                .Replace("\r\n\r\n\r\n", "\r\n\r\n");
+
+            return sanitized;
+        }
+
+        /// <summary>
         /// Lấy câu hỏi tham khảo từ DB theo chunk hiện tại.
         /// 60% xác suất dùng DB, 40% để AI tự gen → giảm trùng lặp giữa các phiên.
         /// </summary>
-        private async Task<List<QuestionBankItem>> GetRagQuestionsForChunkAsync(int turnNumber, string field, string level)
+        private async Task<List<QuestionBankItem>> GetRagQuestionsForChunkAsync(int turnNumber, List<string>? selectedGaps, string field, string level)
         {
+            // Nếu có selectedGaps (Training Journey): ưu tiên AI tự gen theo gaps
+            // Không dùng DB vì DB chưa có structure để filter theo gaps
+            if (selectedGaps?.Count > 0)
+            {
+                _logger.LogInformation(
+                    "[RAG] Câu {Turn}: Training Journey mode - AI tự gen theo gaps ({Gaps}), skip DB",
+                    turnNumber, string.Join(",", selectedGaps));
+                return new List<QuestionBankItem>();
+            }
+
             // 40% xác suất AI tự gen (không query DB) → đa dạng câu hỏi
             if (Random.Shared.NextDouble() < 0.4)
             {
                 _logger.LogInformation("[RAG] Câu {Turn}: Chọn chế độ AI tự gen (40% random) để tránh trùng lặp", turnNumber);
                 return new List<QuestionBankItem>();
             }
+
 
             try
             {

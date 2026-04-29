@@ -21,6 +21,7 @@ using Xunit;
 using MockQueryable;
 using MockQueryable.Moq;
 using Imate.API.Business.Helper;
+using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -38,6 +39,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
         private readonly Mock<IMentorRepository> _mockMentorRepo;
         private readonly Mock<IBookingRepository> _mockBookingRepo;
+        private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
 
         public TransactionServiceTests()
         {
@@ -58,6 +60,7 @@ namespace Imate.API.UnitTest.Services
             _mockSystemNotificationService = new Mock<ISystemNotificationService>();
             _mockMentorRepo = new Mock<IMentorRepository>();
             _mockBookingRepo = new Mock<IBookingRepository>();
+            _mockSystemNotificationService = new Mock<ISystemNotificationService>();
 
             _mockUnitOfWork.Setup(u => u.Transactions).Returns(_mockTransactionRepo.Object);
             _mockUnitOfWork.Setup(u => u.Accounts).Returns(_mockAccountRepo.Object);

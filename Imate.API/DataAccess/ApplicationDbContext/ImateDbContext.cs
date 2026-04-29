@@ -1,3 +1,4 @@
+using Imate.API.Entities;
 using Imate.API.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -73,6 +74,8 @@ namespace Imate.API.DataAccess.ApplicationDbContext
         // ─── Notifications & Config ───────────────────────────────────────────────
         public DbSet<SystemNotification> SystemNotifications { get; set; }
         public DbSet<SystemConfig> SystemConfigs { get; set; }
+
+        public DbSet<TrainingJourney> TrainingJourneys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

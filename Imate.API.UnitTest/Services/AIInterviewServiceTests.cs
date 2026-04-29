@@ -20,6 +20,8 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<IInterviewSessionDataProvider> _mockDataProvider;
         private readonly Mock<ICvDataProvider> _mockCvDataProvider;
         private readonly Mock<IAzureSpeechSynthesisService> _mockSpeechService;
+        private readonly Mock<ITrainingJourneyDataProvider> _mockTrainingJourneyDataProvider;
+        private readonly Mock<ITrainingJourneyOrchestrator> _mockTrainingJourneyOrchestrator;
         private readonly Mock<IServiceScopeFactory> _mockScopeFactory;
         private readonly Mock<ILogger<InterviewOrchestrator>> _mockLogger;
 
@@ -32,6 +34,8 @@ namespace Imate.API.UnitTest.Services
             _mockDataProvider = new Mock<IInterviewSessionDataProvider>();
             _mockCvDataProvider = new Mock<ICvDataProvider>();
             _mockSpeechService = new Mock<IAzureSpeechSynthesisService>();
+            _mockTrainingJourneyDataProvider = new Mock<ITrainingJourneyDataProvider>();
+            _mockTrainingJourneyOrchestrator = new Mock<ITrainingJourneyOrchestrator>();
             _mockScopeFactory = new Mock<IServiceScopeFactory>();
             _mockLogger = new Mock<ILogger<InterviewOrchestrator>>();
 
@@ -41,7 +45,9 @@ namespace Imate.API.UnitTest.Services
                 _mockDataProvider.Object,
                 _mockCvDataProvider.Object,
                 _mockSpeechService.Object,
+                _mockTrainingJourneyDataProvider.Object,
                 _mockScopeFactory.Object,
+                _mockTrainingJourneyOrchestrator.Object,
                 _mockLogger.Object
             );
         }
@@ -87,17 +93,17 @@ namespace Imate.API.UnitTest.Services
             await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*CV của bạn không thuộc ngành Công nghệ thông tin (IT)*");
         }
 
-        //[Fact]
-        //public async Task SetupInterviewAsync_ShouldThrowException_WhenLevelGapIsTwoOrMore()
-        //{
-        //    _mockCvDataProvider.Setup(p => p.GetCvTextAsync(1, 10)).ReturnsAsync("Intern CV");
-        //    _mockInterviewAgent.Setup(a => a.ClassifyJobDescriptionAsync(It.IsAny<string>(), "Intern CV"))
-        //        .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = true, IsItRelatedCv = true, Level = "Senior", CvEstimatedLevel = "Intern" });
+        [Fact]
+        public async Task SetupInterviewAsync_ShouldNotThrowException_WhenLevelGapIsTwoOrMore()
+        {
+            _mockCvDataProvider.Setup(p => p.GetCvTextAsync(1, 10)).ReturnsAsync("Intern CV");
+            _mockInterviewAgent.Setup(a => a.ClassifyJobDescriptionAsync(It.IsAny<string>(), "Intern CV"))
+                .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = true, IsItRelatedCv = true, Level = "Senior", CvEstimatedLevel = "Intern" });
 
-        //    var act = () => _orchestrator.SetupInterviewAsync(1, "Senior Job", 10);
+            var result = await _orchestrator.SetupInterviewAsync(1, "Senior Job", 10);
 
-        //    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*chênh lệch 4 bậc*");
-        //}
+            result.Level.Should().Be("Senior");
+        }
 
         [Fact]
         public async Task CreateSessionAsync_ShouldSucceed_WhenUsageLimitNotReached()
@@ -136,7 +142,7 @@ namespace Imate.API.UnitTest.Services
             var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = DateTimeOffset.UtcNow };
             _mockDataProvider.Setup(p => p.GetSessionByIdAsync(100)).ReturnsAsync(session);
             _mockDataProvider.Setup(p => p.GetResponsesBySessionIdAsync(100)).ReturnsAsync(new List<InterviewResponseData>());
-            _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(session, It.IsAny<List<InterviewResponseData>>(), null))
+            _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(session, It.IsAny<List<InterviewResponseData>>(), null, null))
                 .ReturnsAsync(new GenerateQuestionResult { QuestionText = "Câu hỏi 1?" });
             _mockSpeechService.Setup(s => s.SynthesizeToBase64Async(It.IsAny<string>(), It.IsAny<string>(), null, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new AzureSynthesizedSpeechResult { Text = "", Voice = "", Language = "", AudioUrl = "" });
@@ -152,7 +158,7 @@ namespace Imate.API.UnitTest.Services
         {
             var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = DateTimeOffset.UtcNow };
             _mockDataProvider.Setup(p => p.GetSessionByIdAsync(100)).ReturnsAsync(session);
-            _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(session, It.IsAny<List<InterviewResponseData>>(), null))
+            _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(session, It.IsAny<List<InterviewResponseData>>(), null, null))
                 .ReturnsAsync(new GenerateQuestionResult { IsTerminated = true, TerminationReason = "MaxQuestionsReached" });
 
             var result = await _orchestrator.GenerateQuestionAsync(1, 100, null, CancellationToken.None);
@@ -203,19 +209,17 @@ namespace Imate.API.UnitTest.Services
         }
 
         [Fact]
-        public async Task GenerateQuestionAsync_ShouldOnlyAnalyzeGapOnce_WhenMissingOnFirstTurn()
+        public async Task GenerateQuestionAsync_ShouldNotAnalyzeGap_LegacyRemoved()
         {
-            var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = DateTimeOffset.UtcNow, CvContent = "CV", JobDescriptionText = "JD", GapAnalysisJson = null };
+            var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = DateTimeOffset.UtcNow, CvContent = "CV", JobDescriptionText = "JD" };
             _mockDataProvider.Setup(p => p.GetSessionByIdAsync(100)).ReturnsAsync(session);
             _mockDataProvider.Setup(p => p.GetResponsesBySessionIdAsync(100)).ReturnsAsync(new List<InterviewResponseData>());
-            _mockInterviewAgent.Setup(a => a.AnalyzeGapsAsync("CV", "JD")).ReturnsAsync("{\"gaps\": []}");
-            _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(It.IsAny<InterviewSessionData>(), It.IsAny<List<InterviewResponseData>>(), null))
+            _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(It.IsAny<InterviewSessionData>(), It.IsAny<List<InterviewResponseData>>(), null, null))
                 .ReturnsAsync(new GenerateQuestionResult());
 
             await _orchestrator.GenerateQuestionAsync(1, 100, null, CancellationToken.None);
 
-            _mockInterviewAgent.Verify(a => a.AnalyzeGapsAsync("CV", "JD"), Times.Once);
-            session.GapAnalysisJson.Should().Be("{\"gaps\": []}");
+            _mockInterviewAgent.Verify(a => a.AnalyzeGapsAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -237,7 +241,7 @@ namespace Imate.API.UnitTest.Services
             var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = DateTimeOffset.UtcNow };
             _mockDataProvider.Setup(p => p.GetSessionByIdAsync(100)).ReturnsAsync(session);
             _mockDataProvider.Setup(p => p.GetResponsesBySessionIdAsync(100)).ReturnsAsync(new List<InterviewResponseData>());
-            _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(session, It.IsAny<List<InterviewResponseData>>(), null))
+            _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(session, It.IsAny<List<InterviewResponseData>>(), null, null))
                 .ReturnsAsync(new GenerateQuestionResult { QuestionText = "Câu hỏi 1?" });
             _mockSpeechService.Setup(s => s.SynthesizeToBase64Async(It.IsAny<string>(), It.IsAny<string>(), null, null, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Azure Failure"));

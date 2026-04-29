@@ -18,7 +18,9 @@ namespace Imate.AI.Module.Core.Orchestrators
         private readonly IInterviewSessionDataProvider _dataProvider;
         private readonly ICvDataProvider _cvDataProvider;
         private readonly IAzureSpeechSynthesisService _speechSynthesisService;
+        private readonly ITrainingJourneyDataProvider _journeyDataProvider;
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly ITrainingJourneyOrchestrator _trainingJourneyOrchestrator;
         private readonly ILogger<InterviewOrchestrator> _logger;
 
         private const int MaxSessionDurationMinutes = 30;
@@ -41,7 +43,9 @@ namespace Imate.AI.Module.Core.Orchestrators
             IInterviewSessionDataProvider dataProvider,
             ICvDataProvider cvDataProvider,
             IAzureSpeechSynthesisService speechSynthesisService,
+            ITrainingJourneyDataProvider journeyDataProvider,
             IServiceScopeFactory serviceScopeFactory,
+            ITrainingJourneyOrchestrator trainingJourneyOrchestrator,
             ILogger<InterviewOrchestrator> logger)
         {
             _interviewAgent = interviewAgent;
@@ -49,7 +53,9 @@ namespace Imate.AI.Module.Core.Orchestrators
             _dataProvider = dataProvider;
             _cvDataProvider = cvDataProvider;
             _speechSynthesisService = speechSynthesisService;
+            _journeyDataProvider = journeyDataProvider;
             _serviceScopeFactory = serviceScopeFactory;
+            _trainingJourneyOrchestrator = trainingJourneyOrchestrator;
             _logger = logger;
         }
 
@@ -143,8 +149,100 @@ namespace Imate.AI.Module.Core.Orchestrators
                 CompanyName = request.CompanyName,
                 JobDescriptionText = request.JobDescriptionText,
                 UserCvId = request.CvId,
-                CvContent = request.CvContent
+                CvContent = request.CvContent,
+                SessionGapJson = "[]"  // Will be populated if JD + CV are available
             };
+
+            // Tự động tạo hoặc tìm Journey nếu có đủ CV và JD
+            if (request.CvId.HasValue && !string.IsNullOrEmpty(request.JobDescriptionText))
+            {
+                try
+                {
+                    string cvContent = request.CvContent;
+                    if (string.IsNullOrEmpty(cvContent))
+                    {
+                        cvContent = await _cvDataProvider.GetCvTextAsync(accountId, request.CvId.Value) ?? "";
+                    }
+
+                    // Tìm journey đã có hoặc tạo mới trực tiếp qua DataProvider
+                    var existing = await _journeyDataProvider.FindJourneyAsync(
+                        accountId, request.CvId.Value, request.JobDescriptionText);
+
+                    int journeyId;
+                    if (existing != null)
+                    {
+                        journeyId = existing.Id;
+                        // Update existing journey with latest metadata if missing
+                        if (string.IsNullOrEmpty(existing.SkillName))
+                        {
+                            existing.SkillName = request.SkillName ?? (request.SkillNames != null ? string.Join(", ", request.SkillNames) : null);
+                            existing.LevelName = request.LevelName;
+                            existing.CompanyName = request.CompanyName;
+                            existing.UpdatedAt = DateTimeOffset.UtcNow;
+                            await _journeyDataProvider.UpdateJourneyAsync(existing);
+                        }
+                    }
+                    else
+                    {
+                        // Phân tích gap CV vs JD
+                        var gapJson = await _interviewAgent.AnalyzeGapsAsync(cvContent, request.JobDescriptionText);
+                        var gaps = ParseGapsFromAnalysis(gapJson);
+                        var profileGaps = ParseProfileGaps(gapJson);
+
+                        var newJourney = new Interfaces.TrainingJourneyData
+                        {
+                            AccountId = accountId,
+                            UserCvId = request.CvId.Value,
+                            JobDescriptionText = request.JobDescriptionText,
+                            Name = request.PositionName ?? "Lộ trình không tên",
+                            PositionName = request.PositionName,
+                            SkillName = request.SkillName ?? (request.SkillNames != null ? string.Join(", ", request.SkillNames) : null),
+                            LevelName = request.LevelName,
+                            CompanyName = request.CompanyName,
+                            GapsJson = System.Text.Json.JsonSerializer.Serialize(gaps),
+                            ProfileGapsJson = System.Text.Json.JsonSerializer.Serialize(profileGaps),
+                            Status = "Pending",
+                            CreatedAt = DateTimeOffset.UtcNow,
+                            UpdatedAt = DateTimeOffset.UtcNow
+                        };
+                        journeyId = await _journeyDataProvider.CreateJourneyAsync(newJourney);
+                        _logger.LogInformation("[JOURNEY] Auto-created journey {Id} with {Count} gaps", journeyId, gaps.Count);
+                    }
+                    session.TrainingJourneyId = journeyId;
+
+                    // Populate SessionGapJson for gap-focused questions
+                    if (existing != null)
+                    {
+                        session.SessionGapJson = existing.GapsJson;
+                    }
+                    else
+                    {
+                        // Use the gaps from the newly created journey
+                        var gapJson = await _interviewAgent.AnalyzeGapsAsync(cvContent, request.JobDescriptionText);
+                        var gaps = ParseGapsFromAnalysis(gapJson);
+                        session.SessionGapJson = System.Text.Json.JsonSerializer.Serialize(gaps);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[JOURNEY] Lỗi khi tự động tạo Journey cho session mới");
+                }
+            }
+            else if (!string.IsNullOrEmpty(request.CvContent) && !string.IsNullOrEmpty(request.JobDescriptionText))
+            {
+                // For standalone sessions with CV+JD (but no CV ID), still analyze gaps
+                try
+                {
+                    var gapJson = await _interviewAgent.AnalyzeGapsAsync(request.CvContent, request.JobDescriptionText);
+                    var gaps = ParseGapsFromAnalysis(gapJson);
+                    session.SessionGapJson = System.Text.Json.JsonSerializer.Serialize(gaps);
+                    _logger.LogInformation("[INTERVIEW] Analyzed gaps for standalone session");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[INTERVIEW] Lỗi phân tích gaps cho session standalone");
+                }
+            }
 
             var sessionId = await _dataProvider.CreateSessionAsync(session);
 
@@ -219,25 +317,30 @@ namespace Imate.AI.Module.Core.Orchestrators
                 };
             }
 
-            // Tự động phân tích Gap nếu chưa có
-            if (string.IsNullOrEmpty(session.GapAnalysisJson) && !string.IsNullOrEmpty(session.CvContent) && !string.IsNullOrEmpty(session.JobDescriptionText))
-            {
-                try 
-                {
-                    session.GapAnalysisJson = await _interviewAgent.AnalyzeGapsAsync(session.CvContent, session.JobDescriptionText);
-                    await _dataProvider.UpdateSessionAsync(session);
-                    _logger.LogInformation("[GAP-ANALYSIS] Đã cập nhật kết quả phân tích Gap cho Session {SessionId}", sessionId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "[GAP-ANALYSIS] Lỗi khi phân tích Gap cho Session {SessionId}", sessionId);
-                }
-            }
 
             var existingResponses = await _dataProvider.GetResponsesBySessionIdAsync(sessionId);
 
-            // Gọi Agent tạo câu hỏi
-            var result = await _interviewAgent.GenerateQuestionAsync(session, existingResponses, estimatedAbility);
+            // Trích xuất danh sách gap từ SessionGapJson (nếu là Training Journey session)
+            List<string>? selectedGaps = null;
+            if (!string.IsNullOrEmpty(session.SessionGapJson) && session.SessionGapJson != "[]")
+            {
+                try
+                {
+                    selectedGaps = ExtractGapNamesFromPromptSection(session.SessionGapJson);
+                    if (selectedGaps?.Count > 0)
+                    {
+                        _logger.LogInformation("[INTERVIEW] Extracted gaps from session {SessionId}: {Gaps}",
+                            sessionId, string.Join(", ", selectedGaps));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[INTERVIEW] Lỗi trích xuất gap từ SessionGapJson, fallback không dùng gaps");
+                }
+            }
+
+            // Gọi Agent tạo câu hỏi, truyền selectedGaps để filter RAG questions
+            var result = await _interviewAgent.GenerateQuestionAsync(session, existingResponses, estimatedAbility, selectedGaps);
 
             if (result.IsTerminated)
             {
@@ -264,6 +367,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                 TurnNumber = existingResponses.Count + 1,
                 QuestionContent = result.QuestionText,
                 ExpectedAnswerOutline = result.ExpectedAnswerOutline,
+                Topic = result.Topic,
                 ExpectedBloomLevel = result.Metrics?.BloomTaxonomy?.Level,
                 DifficultyScore = result.Metrics?.Irt?.DifficultyScore,
                 CognitiveLoadScore = result.Metrics?.Clt?.TotalCognitiveLoad
@@ -324,7 +428,7 @@ namespace Imate.AI.Module.Core.Orchestrators
             try
             {
                 aiReaction = await _interviewAgent.GenerateReactionAsync(
-                    session.GapAnalysisJson, response.QuestionContent, request.UserAnswer);
+                    null, response.QuestionContent, request.UserAnswer);
 
                 if (!string.IsNullOrEmpty(aiReaction))
                 {
@@ -381,7 +485,6 @@ namespace Imate.AI.Module.Core.Orchestrators
                         .ToList();
 
                     var s = await dp.GetSessionByIdAsync(sessionId);
-                    var gapAnalysis = s?.GapAnalysisJson;
 
                     log.LogInformation("[FEEDBACK] Bắt đầu tạo feedback song song cho {Count} câu hỏi...", answeredResponses.Count);
 
@@ -395,7 +498,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                         {
                             try
                             {
-                                var feedback = await feedbackAgent.GeneratePerQuestionFeedbackAsync(response, gapAnalysis);
+                                var feedback = await feedbackAgent.GeneratePerQuestionFeedbackAsync(response, null);
 
                                 response.AIFeedback = feedback.OverallComment;
                                 response.SuggestedAnswer = feedback.SuggestedAnswer;
@@ -449,6 +552,36 @@ namespace Imate.AI.Module.Core.Orchestrators
                         await dp.UpdateSessionAsync(sessionToUpdate);
                     }
 
+                    // Cập nhật Gap statuses nếu session thuộc training journey
+                    if (sessionToUpdate?.TrainingJourneyId.HasValue == true)
+                    {
+                        try
+                        {
+                            log.LogInformation("[JOURNEY] Chờ 1s để BloomScores được persist vào DB...");
+                            await Task.Delay(1000);
+
+                            // Re-fetch responses để lấy BloomScores mới được update
+                            var refreshedResponses = await dp.GetResponsesBySessionIdAsync(sessionId);
+                            log.LogInformation("[JOURNEY] Refreshed {Count} responses, BloomScores: [{BloomScores}]",
+                                refreshedResponses.Count,
+                                string.Join(", ", refreshedResponses
+                                    .Where(r => r.BloomScore.HasValue)
+                                    .Select(r => $"{r.BloomScore:F1}")));
+                            var trainingJourneyOrch = scope.ServiceProvider.GetRequiredService<ITrainingJourneyOrchestrator>();
+                            var gapResult = await trainingJourneyOrch.EndSessionAsync(sessionToUpdate.AccountId, sessionId);
+                            log.LogInformation("[JOURNEY] Cập nhật gap sau phiên luyện: {Message}", gapResult.Message);
+                            foreach (var update in gapResult.GapUpdates)
+                            {
+                                log.LogInformation("[JOURNEY] Gap {Name}: {Score:F2} → {Status}",
+                                    update.GapName, update.Score, update.NewStatus);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            log.LogError(ex, "[JOURNEY] Lỗi cập nhật gap sau phiên luyện");
+                        }
+                    }
+
                     log.LogInformation("Background feedback completed for session {SessionId}", sessionId);
                 }
                 catch (Exception ex)
@@ -471,17 +604,27 @@ namespace Imate.AI.Module.Core.Orchestrators
             var answered = allResponses.Where(r => !string.IsNullOrEmpty(r.UserAnswer)).OrderBy(r => r.TurnNumber).ToList();
             var withFeedback = answered.Select((r, i) => new
             {
-                id = r.Id, questionNumber = i + 1, turnNumber = r.TurnNumber,
-                questionContent = r.QuestionContent, userAnswer = r.UserAnswer,
+                id = r.Id,
+                questionNumber = i + 1,
+                turnNumber = r.TurnNumber,
+                questionContent = r.QuestionContent,
+                userAnswer = r.UserAnswer,
                 answerTimestamp = r.AnswerTimestamp,
-                expectedBloomLevel = r.ExpectedBloomLevel, demonstratedBloomLevel = r.DemonstratedBloomLevel,
-                bloomScore = r.BloomScore, difficultyScore = r.DifficultyScore,
+                expectedBloomLevel = r.ExpectedBloomLevel,
+                demonstratedBloomLevel = r.DemonstratedBloomLevel,
+                bloomScore = r.BloomScore,
+                difficultyScore = r.DifficultyScore,
                 cognitiveLoadScore = r.CognitiveLoadScore,
-                technicalDepthScore = r.TechnicalDepthScore, problemSolvingScore = r.ProblemSolvingScore,
-                communicationScore = r.CommunicationScore, practicalExperienceScore = r.PracticalExperienceScore,
-                starSituationScore = r.StarSituationScore, starTaskScore = r.StarTaskScore,
-                starActionScore = r.StarActionScore, starResultScore = r.StarResultScore,
-                structuredFeedbackJson = r.StructuredFeedbackJson, aiFeedback = r.AIFeedback,
+                technicalDepthScore = r.TechnicalDepthScore,
+                problemSolvingScore = r.ProblemSolvingScore,
+                communicationScore = r.CommunicationScore,
+                practicalExperienceScore = r.PracticalExperienceScore,
+                starSituationScore = r.StarSituationScore,
+                starTaskScore = r.StarTaskScore,
+                starActionScore = r.StarActionScore,
+                starResultScore = r.StarResultScore,
+                structuredFeedbackJson = r.StructuredFeedbackJson,
+                aiFeedback = r.AIFeedback,
                 expectedAnswerOutline = r.ExpectedAnswerOutline
             }).ToList();
 
@@ -489,12 +632,20 @@ namespace Imate.AI.Module.Core.Orchestrators
             {
                 Session = new
                 {
-                    id = session.Id, positionName = session.PositionName, skillName = session.SkillName,
-                    levelName = session.LevelName, companyName = session.CompanyName,
-                    startTime = session.StartTime, endTime = session.EndTime,
-                    status = session.Status, totalQuestions = answered.Count,
+                    id = session.Id,
+                    positionName = session.PositionName,
+                    skillName = session.SkillName,
+                    levelName = session.LevelName,
+                    companyName = session.CompanyName,
+                    startTime = session.StartTime,
+                    endTime = session.EndTime,
+                    status = session.Status,
+                    totalQuestions = answered.Count,
                     totalQuestionsAnswered = withFeedback.Count,
-                    overallFeedback = session.OverallFeedback, estimatedAbility = session.EstimatedAbility
+                    overallFeedback = session.OverallFeedback,
+                    estimatedAbility = session.EstimatedAbility,
+                    userCvId = session.UserCvId,
+                    jobDescriptionText = session.JobDescriptionText
                 },
                 Responses = withFeedback
             };
@@ -544,6 +695,52 @@ namespace Imate.AI.Module.Core.Orchestrators
             };
         }
 
+        private static List<Interfaces.JourneyGapItem> ParseGapsFromAnalysis(string gapAnalysisJson)
+        {
+            var result = new List<Interfaces.JourneyGapItem>();
+            try
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(gapAnalysisJson);
+                var root = doc.RootElement;
+                Console.WriteLine($"[v0] ParseGapsFromAnalysis - Response keys: {string.Join(", ", root.EnumerateObject().Select(p => p.Name))}");
+
+                // Chỉ lấy TRAINABLE gaps (hardSkills, softSkills) — không lấy profileGaps
+                // profileGaps sẽ được xử lý riêng bởi ParseProfileGaps()
+
+                if (root.TryGetProperty("hardSkillsGaps", out var hard))
+                {
+                    var hardCount = hard.GetArrayLength();
+                    Console.WriteLine($"[v0] Found {hardCount} hardSkillsGaps");
+                    foreach (var item in hard.EnumerateArray())
+                    {
+                        var gapName = item.GetString();
+                        if (!string.IsNullOrEmpty(gapName))
+                            result.Add(new Interfaces.JourneyGapItem
+                            {
+                                GapName = gapName,
+                                GapType = "hardSkill",
+                                Source = "jdMissing"
+                            });
+                    }
+                }
+
+                if (root.TryGetProperty("softSkillsGaps", out var soft))
+                    foreach (var item in soft.EnumerateArray())
+                    {
+                        var gapName = item.GetString();
+                        if (!string.IsNullOrEmpty(gapName))
+                            result.Add(new Interfaces.JourneyGapItem
+                            {
+                                GapName = gapName,
+                                GapType = "softSkill",
+                                Source = "jdMissing"
+                            });
+                    }
+            }
+            catch { }
+            return result;
+        }
+
         public async Task<List<InterviewHistoryItem>> GetInterviewHistoryAsync(int accountId)
         {
             var sessions = await _dataProvider.GetSessionsByAccountIdAsync(accountId);
@@ -562,5 +759,96 @@ namespace Imate.AI.Module.Core.Orchestrators
                 InterviewType = s.QuestionId != null ? "Single_Question" : (s.UserCvId != null ? "CV_JD" : "Text"),
             }).ToList();
         }
+
+        List<string> ParseProfileGaps(string gapAnalysisJson)
+        {
+            var result = new List<string>();
+            try
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(gapAnalysisJson);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("profileGaps", out var arr))
+                {
+                    foreach (var item in arr.EnumerateArray())
+                    {
+                        var s = item.GetString();
+                        if (!string.IsNullOrEmpty(s))
+                        {
+                            result.Add(s);
+                            Console.WriteLine($"[v0] ParseProfileGaps found: {s}");
+                        }
+                    }
+                    Console.WriteLine($"[v0] ParseProfileGaps total: {result.Count} gaps");
+                }
+                else
+                {
+                    Console.WriteLine($"[v0] ParseProfileGaps: 'profileGaps' field not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[v0] ParseProfileGaps error: {ex.Message}");
+            }
+            return result;
+        }
+
+        private List<string> ExtractGapNamesFromPromptSection(string sessionGapJson)
+        {
+            var gaps = new List<string>();
+
+            if (string.IsNullOrEmpty(sessionGapJson) || sessionGapJson == "[]")
+                return gaps;
+
+            try
+            {
+                // Thử parse JSON format nếu có
+                if (sessionGapJson.StartsWith("[") || sessionGapJson.StartsWith("{"))
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(sessionGapJson);
+                    var root = doc.RootElement;
+
+                    if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var item in root.EnumerateArray())
+                        {
+                            var name = item.TryGetProperty("gapName", out var gn) ? gn.GetString() : item.GetString();
+                            if (!string.IsNullOrEmpty(name))
+                                gaps.Add(name.Trim());
+                        }
+                    }
+                    else if (root.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                             root.TryGetProperty("selectedGaps", out var selectedGapsArr))
+                    {
+                        foreach (var item in selectedGapsArr.EnumerateArray())
+                        {
+                            var name = item.TryGetProperty("gapName", out var gn) ? gn.GetString() : item.GetString();
+                            if (!string.IsNullOrEmpty(name))
+                                gaps.Add(name.Trim());
+                        }
+                    }
+
+                    return gaps;
+                }
+
+                // Parse plain text format (- Gap1\n- Gap2...)
+                var lines = sessionGapJson.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var line in lines)
+                {
+                    var trimmed = line.Trim().TrimStart('-').Trim();
+                    if (!string.IsNullOrEmpty(trimmed) && !trimmed.StartsWith("=="))
+                    {
+                        gaps.Add(trimmed);
+                    }
+                }
+
+                return gaps;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[INTERVIEW] Lỗi trích xuất gap names từ SessionGapJson");
+                return gaps;
+            }
+        }
+
     }
 }

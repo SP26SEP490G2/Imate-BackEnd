@@ -24,7 +24,6 @@ namespace Imate.API.Business.Services.QuestionBank
         private readonly IAuditLogService _auditLogService;
         private readonly ISystemConfigService _systemConfigService;
         private readonly ISystemNotificationService _systemNotificationService;
-        private readonly IMediator _mediator;
         private readonly ImateDbContext _context;
         private static readonly List<string> ExpectedHeaders = new List<string>
     {
@@ -35,12 +34,11 @@ namespace Imate.API.Business.Services.QuestionBank
         "SkillNames",
         "PositionNames"
     };
-        public QuestionService(IUnitOfWork unitOfWork, ImateDbContext context, IAuditLogService auditLogService, IMediator mediator, ISystemConfigService systemConfigService, ISystemNotificationService systemNotificationService)
+        public QuestionService(IUnitOfWork unitOfWork, ImateDbContext context, IAuditLogService auditLogService, ISystemConfigService systemConfigService, ISystemNotificationService systemNotificationService)
         {
             _unitOfWork = unitOfWork;
             _context = context;
             _auditLogService = auditLogService;
-            _mediator = mediator;
             _systemConfigService = systemConfigService;
             _systemNotificationService = systemNotificationService;
         }
@@ -550,7 +548,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     Id = qp.PositionId,
                     Name = qp.Position.Name
                 }).ToList(),
-                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id)
+                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id),
+                CommentCount = q.Comments != null ? q.Comments.Count : 0
             }).ToList();
         }
 
@@ -612,12 +611,15 @@ namespace Imate.API.Business.Services.QuestionBank
                     "createdat" => isDescending
                         ? query.OrderByDescending(q => q.CreatedAt)
                         : query.OrderBy(q => q.CreatedAt),
-                    _ => query.OrderByDescending(q => q.CreatedAt)
+                    "popular" => isDescending
+                        ? query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt)
+                        : query.OrderBy(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt),
+                    _ => query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt)
                 };
             }
             else
             {
-                query = query.OrderByDescending(q => q.CreatedAt);
+                query = query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt);
             }
 
             // Get saved question IDs
@@ -652,7 +654,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     Id = qp.PositionId,
                     Name = qp.Position.Name
                 }).ToList(),
-                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id)
+                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id),
+                CommentCount = q.Comments.Count
             });
 
             return await PagedList<PublicSystemQuestionResponseModel>.CreateAsync(response, questionParams.PageNumber, questionParams.PageSize);
@@ -740,12 +743,15 @@ namespace Imate.API.Business.Services.QuestionBank
                     "createdat" => isDescending
                         ? query.OrderByDescending(q => q.CreatedAt)
                         : query.OrderBy(q => q.CreatedAt),
-                    _ => query.OrderByDescending(q => q.CreatedAt)
+                    "popular" => isDescending
+                        ? query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt)
+                        : query.OrderBy(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt),
+                    _ => query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt)
                 };
             }
             else
             {
-                query = query.OrderByDescending(q => q.CreatedAt);
+                query = query.OrderByDescending(q => q.Comments.Count).ThenByDescending(q => q.CreatedAt);
             }
 
             // Get saved question IDs
@@ -794,7 +800,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     CompanyURL = q.ContributedDetail.Company != null ? q.ContributedDetail.Company.ImageUrl : string.Empty,
                 } : null,
                 Difficulty = q.Difficulty.ToString(),
-                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id)
+                IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id),
+                CommentCount = q.Comments.Count
             });
 
             return await PagedList<PublicContributedQuestionResponseModel>.CreateAsync(response, questionParams.PageNumber, questionParams.PageSize);
@@ -839,7 +846,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     Company = question.ContributedDetail.Company.Name,
                     CompanyURL = question.ContributedDetail.Company.ImageUrl,
                 } : null,
-                IsSaved = savedQuestionIds.Count > 0 && savedQuestionIds.Contains(question.Id)
+                IsSaved = savedQuestionIds.Count > 0 && savedQuestionIds.Contains(question.Id),
+                CommentCount = question.Comments != null ? question.Comments.Count : 0
             };
 
             return response;
@@ -1045,7 +1053,6 @@ namespace Imate.API.Business.Services.QuestionBank
 
             // --- KẾT THÚC ÁNH XẠ ---
             await _unitOfWork.Questions.CreateContributedQuestionAsync(question);
-            await _mediator.Publish(new NewContributedQuestionEvent(question));
         }
 
         public async Task<Question> CreateSystemQuestionForStaffAsync(CreateSystemQuestionForStaffRequest request, int creatorId)
@@ -1325,12 +1332,10 @@ namespace Imate.API.Business.Services.QuestionBank
             if (status)
             {
                 await _systemNotificationService.CreateAndSendNotificationAsync(questionToUpdate.CreatorId, "Câu hỏi đóng góp của bạn đã được chấp nhận", null);
-                await _mediator.Publish(new QuestionApprovedEvent(questionToUpdate, staffId));
             }
             else
             {
                 await _systemNotificationService.CreateAndSendNotificationAsync(questionToUpdate.CreatorId, "Câu hỏi đóng góp của bạn đã bị từ chối", null);
-                await _mediator.Publish(new QuestionRejectedEvent(questionToUpdate, staffId));
             }
 
             return questionToUpdate;

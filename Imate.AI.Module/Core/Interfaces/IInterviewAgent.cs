@@ -13,8 +13,11 @@ namespace Imate.AI.Module.Core.Interfaces
         Task<string> GenerateWelcomeMessageAsync(string? cvContent, string? positionName, string? companyName, string? language = null);
 
         /// <summary>Tạo câu hỏi phỏng vấn tiếp theo (adaptive) — build prompt + parse JSON</summary>
-        Task<GenerateQuestionResult> GenerateQuestionAsync(InterviewSessionData session, List<InterviewResponseData> existingResponses, double? estimatedAbility = null);
-
+        Task<GenerateQuestionResult> GenerateQuestionAsync(
+                    InterviewSessionData session,
+                    List<InterviewResponseData> existingResponses,
+                    double? estimatedAbility = null,
+                    List<string>? selectedGaps = null);
         /// <summary>Phân loại JD bằng AI — trích xuất vị trí, kỹ năng, cấp độ</summary>
         Task<SetupInterviewResult> ClassifyJobDescriptionAsync(string jobDescriptionText, string? cvText = null);
 
