@@ -1,9 +1,12 @@
 using System.Text;
 using Imate.AI.Module.Core.Interfaces;
+using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.DataAccess.Interfaces.UserManagement;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using UglyToad.PdfPig;
+using Imate.API.DataAccess.ApplicationDbContext;
 
 namespace Imate.API.Business.Services
 {
@@ -16,12 +19,62 @@ namespace Imate.API.Business.Services
         private readonly IUserCvRepository _cvRepository;
         private readonly IAwsS3StorageService _s3Storage;
         private readonly ILogger<CvDataProvider> _logger;
+        private readonly ImateDbContext _context;
+        private readonly ISystemConfigService _systemConfigService;
 
-        public CvDataProvider(IUserCvRepository cvRepository, IAwsS3StorageService s3Storage, ILogger<CvDataProvider> logger)
+        public CvDataProvider(
+            IUserCvRepository cvRepository,
+            IAwsS3StorageService s3Storage,
+            ILogger<CvDataProvider> logger,
+            ImateDbContext context,
+            ISystemConfigService systemConfigService)
         {
             _cvRepository = cvRepository;
             _s3Storage = s3Storage;
             _logger = logger;
+            _context = context;
+            _systemConfigService = systemConfigService;
+        }
+
+        public async Task<CvAnalysisEligibility> CheckCvAnalysisEligibilityAsync(int accountId)
+        {
+            // Lấy subscription đang active của user (include Package để lấy Rank)
+            var activeSub = await _context.UserSubscriptions
+                .Include(s => s.Package)
+                .Where(s => s.CandidateId == accountId && s.IsActive)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            // 1. Không có subscription hoặc package rank = 0 → không được dùng
+            if (activeSub == null || activeSub.Package.Rank == 0)
+            {
+                return new CvAnalysisEligibility
+                {
+                    IsEligible = false,
+                    Message = "Tính năng Phân tích CV yêu cầu gói trả phí. Vui lòng nâng cấp gói để sử dụng dịch vụ này."
+                };
+            }
+
+            // 2. Lấy số token cần thiết từ SystemConfig
+            int tokenCost = await _systemConfigService.GetAnalyseCvCostPointAsync();
+
+            // 3. Kiểm tra số token còn lại (InitialMockLimit - MockInterviewUsed)
+            int remaining = activeSub.InitialMockLimit - activeSub.MockInterviewUsed;
+            if (remaining < tokenCost)
+            {
+                return new CvAnalysisEligibility
+                {
+                    IsEligible = false,
+                    Message = $"Bạn không đủ AI Credit để phân tích CV. " +
+                              $"Dịch vụ này cần {tokenCost} AI Credit, bạn còn {Math.Max(0, remaining)} AI Credit trong gói {activeSub.Package.Name}."
+                };
+            }
+
+            _logger.LogInformation(
+                "[CvDataProvider] Eligibility OK for accountId={AccountId}: remaining={Remaining}, tokenCost={Cost}",
+                accountId, remaining, tokenCost);
+
+            return new CvAnalysisEligibility { IsEligible = true };
         }
 
         public async Task<string> GetCvTextAsync(int accountId, int cvId)
@@ -191,6 +244,31 @@ namespace Imate.API.Business.Services
             var result = sb.ToString().Trim();
             _logger.LogInformation("[CvDataProvider] DOCX extracted {Length} chars", result.Length);
             return result;
+        }
+
+        public async Task ConsumeCvAnalysisCostAsync(int accountId)
+        {
+            // Lấy subscription active
+            var activeSub = await _context.UserSubscriptions
+                .Include(s => s.Package)
+                .Where(s => s.CandidateId == accountId && s.IsActive)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (activeSub == null)
+                throw new Exception("Không tìm thấy gói subscription.");
+
+            // Lấy cost từ system config
+            int tokenCost = await _systemConfigService.GetAnalyseCvCostPointAsync();
+
+            // Trừ token
+            activeSub.MockInterviewUsed += tokenCost;
+
+            _logger.LogInformation(
+                "[CvDataProvider] Consumed {Cost} tokens for accountId={AccountId}. New used={Used}",
+                tokenCost, accountId, activeSub.MockInterviewUsed);
+
+            await _context.SaveChangesAsync();
         }
     }
 }

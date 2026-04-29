@@ -108,6 +108,24 @@ namespace Imate.API.Presentation.Controllers
             }
         }
 
+        [HttpGet("cv/analyse-cost")]
+        public async Task<IActionResult> GetAnalyseCvCost()
+        {
+            try
+            {
+                var cost = await _cvService.GetAnalyseCvCostAsync();
+
+                return Ok(new
+                {
+                    cost
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Helper: Get accountId from JWT claims
         /// </summary>
