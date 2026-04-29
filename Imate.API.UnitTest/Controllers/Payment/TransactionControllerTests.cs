@@ -123,5 +123,158 @@ namespace Imate.API.UnitTest.Controllers.Payment
             result.Should().BeOfType<OkObjectResult>();
             _mockTransactionService.Verify(s => s.ProcessBookingPayoutAsync(transactionId, 1, "Payout processed"), Times.Once);
         }
+
+        [Fact]
+        public async Task ApproveWithdrawal_NotFound_WhenIdInvalid()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var transactionId = 999;
+            var request = new WithdrawalActionRequest { ResponseNote = "Approved" };
+            _mockTransactionService.Setup(s => s.ApproveWithdrawalAsync(transactionId, 1, "Approved"))
+                .ThrowsAsync(new KeyNotFoundException("Transaction not found"));
+
+            // Act
+            var result = await _controller.ApproveWithdrawal(transactionId, request);
+
+            // Assert
+            result.Should().BeOfType<NotFoundObjectResult>();
+        }
+
+        [Fact]
+        public async Task ApproveWithdrawal_Forbidden_WhenUserIsNotStaff()
+        {
+            // Arrange
+            SetupUser(1, "Candidate"); // Non-staff
+            var transactionId = 100;
+            var request = new WithdrawalActionRequest { ResponseNote = "Approved" };
+
+            // Act
+            var result = await _controller.ApproveWithdrawal(transactionId, request);
+
+            // Assert
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            objectResult.StatusCode.Should().Be(403);
+        }
+
+        [Fact]
+        public async Task RejectWithdrawal_BadRequest_WhenNoteIsEmpty()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var transactionId = 100;
+            var request = new WithdrawalActionRequest { ResponseNote = "" };
+            
+            _mockTransactionService.Setup(s => s.RejectWithdrawalAsync(transactionId, 1, ""))
+                .ThrowsAsync(new ArgumentException("Note required"));
+
+            // Act
+            var result = await _controller.RejectWithdrawal(transactionId, request);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task RejectWithdrawal_NotFound_WhenIdInvalid()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var transactionId = 999;
+            var request = new WithdrawalActionRequest { ResponseNote = "Rejected" };
+            _mockTransactionService.Setup(s => s.RejectWithdrawalAsync(transactionId, 1, "Rejected"))
+                .ThrowsAsync(new KeyNotFoundException("Transaction not found"));
+
+            // Act
+            var result = await _controller.RejectWithdrawal(transactionId, request);
+
+            // Assert
+            result.Should().BeOfType<NotFoundObjectResult>();
+        }
+
+        [Fact]
+        public async Task ApproveWithdrawal_BadRequest_WhenAlreadyProcessed()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var transactionId = 100;
+            var request = new WithdrawalActionRequest { ResponseNote = "Approved" };
+            _mockTransactionService.Setup(s => s.ApproveWithdrawalAsync(transactionId, 1, "Approved"))
+                .ThrowsAsync(new ArgumentException("Transaction already processed"));
+
+            // Act
+            var result = await _controller.ApproveWithdrawal(transactionId, request);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task RejectWithdrawal_BadRequest_WhenAlreadyProcessed()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var transactionId = 100;
+            var request = new WithdrawalActionRequest { ResponseNote = "Rejected" };
+            _mockTransactionService.Setup(s => s.RejectWithdrawalAsync(transactionId, 1, "Rejected"))
+                .ThrowsAsync(new ArgumentException("Transaction already rejected"));
+
+            // Act
+            var result = await _controller.RejectWithdrawal(transactionId, request);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task ProcessBookingPayout_Forbidden_WhenUserIsCandidate()
+        {
+            // Arrange
+            SetupUser(1, "Candidate");
+            var transactionId = 100;
+            var request = new WithdrawalActionRequest { ResponseNote = "Payout" };
+
+            // Act
+            var result = await _controller.ProcessBookingPayout(transactionId, request);
+
+            // Assert
+            result.Should().BeOfType<ForbidResult>();
+        }
+
+        [Fact]
+        public async Task ApproveWithdrawal_VerifiesServiceCalledWithCorrectParams()
+        {
+            // Arrange
+            SetupUser(5, "Staff");
+            var transactionId = 200;
+            var request = new WithdrawalActionRequest { ResponseNote = "Audit note" };
+
+            // Act
+            var result = await _controller.ApproveWithdrawal(transactionId, request);
+
+            // Assert
+            result.Should().BeOfType<OkObjectResult>();
+            _mockTransactionService.Verify(
+                s => s.ApproveWithdrawalAsync(200, 5, "Audit note"),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task RejectWithdrawal_VerifiesServiceCalledWithCorrectParams()
+        {
+            // Arrange
+            SetupUser(5, "Staff");
+            var transactionId = 200;
+            var request = new WithdrawalActionRequest { ResponseNote = "Reject audit" };
+
+            // Act
+            var result = await _controller.RejectWithdrawal(transactionId, request);
+
+            // Assert
+            result.Should().BeOfType<OkObjectResult>();
+            _mockTransactionService.Verify(
+                s => s.RejectWithdrawalAsync(200, 5, "Reject audit"),
+                Times.Once);
+        }
     }
 }

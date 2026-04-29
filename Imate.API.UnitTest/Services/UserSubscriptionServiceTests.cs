@@ -11,7 +11,6 @@ using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using MockQueryable;
 using MockQueryable.Moq;
-using Xunit;
 using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.UnitTest.Services
