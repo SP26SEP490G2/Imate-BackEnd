@@ -320,6 +320,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 Level = a.ContributedDetail.Level,
                 CompanyName = a.ContributedDetail.Company.Name,
                 ContributedDetailId = a.ContributedDetailId,
+                InterviewDate = a.ContributedDetail.InterviewDate.ToString("dd-MM-yyyy"),
                 Comments = a.Comments.Select(c => new CommentDto
                 {
                     Id = c.Id,
@@ -335,7 +336,6 @@ namespace Imate.API.Business.Services.QuestionBank
                     TotalVotes = c.Votes?.Count ?? 0,
                     CurrentUserVoteIsUpvote = accountId.HasValue ? c.Votes?.FirstOrDefault(v => v.AccountId == accountId.Value)?.IsUpvote : null
                 }).ToList()
-
                 // THAY THẾ .ToListAsync() bằng .FirstOrDefaultAsync() để chỉ lấy 1 đối tượng.
 
 
