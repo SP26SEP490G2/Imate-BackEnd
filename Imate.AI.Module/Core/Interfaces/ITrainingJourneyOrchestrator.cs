@@ -90,6 +90,7 @@ namespace Imate.AI.Module.Core.Interfaces
         public int SessionId { get; set; }
         public int SessionNumber { get; set; }
         public string StartTime { get; set; } = string.Empty;
+        public string Status { get; set; } = "Completed";
         public double? EstimatedAbility { get; set; }
         public string? LevelName { get; set; }
         public string SessionGapsJson { get; set; } = "[]";

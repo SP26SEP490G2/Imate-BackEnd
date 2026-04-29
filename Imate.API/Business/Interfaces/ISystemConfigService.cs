@@ -27,6 +27,7 @@ namespace Imate.API.Business.Interfaces
         Task<int> GetInterviewCostPointsAsync();
         Task<int> GetPracticeQuestionCostPointsAsync();
         Task<decimal> GetGuaranteeDepositRateAsync();
+        Task<int> GetAnalyseCvCostPointAsync();
     }
 }
 

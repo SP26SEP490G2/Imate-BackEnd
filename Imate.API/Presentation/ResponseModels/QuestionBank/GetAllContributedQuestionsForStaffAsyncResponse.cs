@@ -17,6 +17,7 @@ namespace Imate.API.Presentation.ResponseModels.QuestionBank
         public string CompanyName { get; set; }
         public string? SampleAnswer { get; set; }
         public int? ContributedDetailId { get; set; } // Cho phép 
+        public string? InterviewDate { get; set; }
         public ContributedDetail ContributedDetail { get; set; } // Quan hệ 1:0..1
         public List<CommentDto> Comments { get; set; }
         public List<string> CategoriesName { get; set; }
