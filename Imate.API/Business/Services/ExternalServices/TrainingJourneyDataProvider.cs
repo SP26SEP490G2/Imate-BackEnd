@@ -1,4 +1,4 @@
-﻿// Imate.API/Business/Services/ExternalServices/TrainingJourneyDataProvider.cs
+// Imate.API/Business/Services/ExternalServices/TrainingJourneyDataProvider.cs
 
 using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.Entities;
@@ -112,6 +112,7 @@ namespace Imate.API.Business.Services.ExternalServices
                 SessionId = s.Id,
                 SessionNumber = index + 1,
                 StartTime = s.StartTime.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                Status = s.Status.ToString(),
                 EstimatedAbility = s.EstimatedAbility,
                 LevelName = s.LevelName,
                 SessionGapsJson = "[]"

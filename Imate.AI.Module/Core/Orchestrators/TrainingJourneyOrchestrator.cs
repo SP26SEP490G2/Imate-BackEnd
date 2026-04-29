@@ -313,6 +313,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                         SessionId = s.SessionId,
                         SessionNumber = idx + 1,
                         StartTime = DateTimeOffset.Parse(s.StartTime).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                        Status = s.Status,
                         EstimatedAbility = s.EstimatedAbility,
                         LevelName = s.LevelName
                     })
