@@ -63,13 +63,17 @@ namespace Imate.AI.Module.Core.Agents
 
             var sb = new StringBuilder();
 
+            var skillInfo = !string.IsNullOrWhiteSpace(request.Skill)
+                ? $", tập trung vào kỹ năng {request.Skill}"
+                : "";
+
             sb.AppendLine($@"Bạn là một chuyên gia tuyển dụng IT và giáo dục công nghệ với hơn 15 năm kinh nghiệm.
-Nhiệm vụ: Sinh bài test {testTypeDesc} cho vị trí {request.Field} cấp bậc {request.Level}.
+Nhiệm vụ: Sinh bài test {testTypeDesc} cho vị trí {request.Field} cấp bậc {request.Level}{skillInfo}.
 
 Yêu cầu:
 1. Tạo đúng {request.NumberOfQuestions} câu hỏi trắc nghiệm (4 đáp án A, B, C, D)
 2. Độ khó phù hợp với cấp bậc {request.Level}
-3. Câu hỏi phải thực tế, liên quan đến công việc {request.Field}
+3. Câu hỏi phải thực tế, liên quan đến công việc {request.Field}{(string.IsNullOrWhiteSpace(request.Skill) ? "" : $" với kỹ năng {request.Skill}")}
 4. Mỗi câu hỏi cần có giải thích đáp án đúng
 5. Chủ đề đa dạng, bao phủ nhiều khía cạnh của {request.Field}");
 
@@ -124,6 +128,7 @@ PHẢI trả về ĐÚNG JSON format sau (không markdown, không code block, CH
   ""testTitle"": ""<tiêu đề bài test>"",
   ""testType"": ""{request.TestType}"",
   ""field"": ""{request.Field}"",
+  ""skill"": ""{request.Skill}"",
   ""level"": ""{request.Level}"",
   ""totalQuestions"": {request.NumberOfQuestions},
   ""timeLimitMinutes"": <thời gian làm bài tính bằng phút>,
@@ -150,14 +155,18 @@ PHẢI trả về ĐÚNG JSON format sau (không markdown, không code block, CH
         {
             var sb = new StringBuilder();
 
+            var skillPart = !string.IsNullOrWhiteSpace(request.Skill)
+                ? $", kỹ năng {request.Skill}"
+                : "";
+
             if (ragQuestions.Count > 0)
             {
-                sb.AppendLine($"Dựa vào {ragQuestions.Count} câu hỏi tham khảo từ ngân hàng câu hỏi, hãy tạo bài test {request.TestType} cho vị trí {request.Field}, cấp bậc {request.Level}, gồm {request.NumberOfQuestions} câu hỏi trắc nghiệm.");
+                sb.AppendLine($"Dựa vào {ragQuestions.Count} câu hỏi tham khảo từ ngân hàng câu hỏi, hãy tạo bài test {request.TestType} cho vị trí {request.Field}{skillPart}, cấp bậc {request.Level}, gồm {request.NumberOfQuestions} câu hỏi trắc nghiệm.");
                 sb.AppendLine("Chuyển đổi các câu hỏi tham khảo thành dạng trắc nghiệm 4 đáp án với đáp án nhiễu hợp lý.");
             }
             else
             {
-                sb.AppendLine($"Hãy tạo bài test {request.TestType} cho vị trí {request.Field}, cấp bậc {request.Level}, gồm {request.NumberOfQuestions} câu hỏi trắc nghiệm.");
+                sb.AppendLine($"Hãy tạo bài test {request.TestType} cho vị trí {request.Field}{skillPart}, cấp bậc {request.Level}, gồm {request.NumberOfQuestions} câu hỏi trắc nghiệm.");
             }
 
             if (!string.IsNullOrWhiteSpace(cvContext))
@@ -184,6 +193,7 @@ PHẢI trả về ĐÚNG JSON format sau (không markdown, không code block, CH
                 // Ensure metadata is correct
                 result.TestType = request.TestType;
                 result.Field = request.Field;
+                result.Skill = request.Skill;
                 result.Level = request.Level;
                 result.TotalQuestions = result.Questions.Count;
 

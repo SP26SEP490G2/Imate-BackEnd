@@ -6,6 +6,7 @@ using Imate.API.Presentation.RequestModels.Comunity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Imate.API.Business.Exceptions;
 using Xunit;
 
 namespace Imate.API.UnitTest.Controllers.Comunity
@@ -101,6 +102,7 @@ namespace Imate.API.UnitTest.Controllers.Comunity
             result.Should().BeOfType<NoContentResult>();
             _mockCommentService.Verify(s => s.DeleteCommentAsync(commentId, userId), Times.Once);
         }
+
         [Fact]
         public async Task CreateComment_Unauthorized_WhenNoUserId()
         {
@@ -154,6 +156,138 @@ namespace Imate.API.UnitTest.Controllers.Comunity
 
             // Assert
             result.Should().BeOfType<UnauthorizedObjectResult>();
+        }
+
+        [Fact]
+        public async Task CreateComment_BadRequest_WhenContentIsEmpty()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            var request = new CreateCommentRequestModel { Content = "", QuestionId = 101 };
+            
+            _mockCommentService.Setup(s => s.CreateCommentAsync(userId, request))
+                .ThrowsAsync(new BadRequestException("Content empty"));
+
+            // Act
+            var result = await _controller.CreateComment(request);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task UpdateComment_NotFound_WhenIdInvalid()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            var commentId = 999;
+            var request = new UpdateCommentRequestModel { Content = "Updated" };
+            
+            _mockCommentService.Setup(s => s.UpdateCommentAsync(commentId, userId, request))
+                .ThrowsAsync(new KeyNotFoundException("Comment not found"));
+
+            // Act
+            var result = await _controller.UpdateComment(commentId, request);
+
+            // Assert
+            result.Should().BeOfType<NotFoundObjectResult>();
+        }
+
+        [Fact]
+        public async Task DeleteComment_Forbidden_WhenUserIsNotOwner()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            var commentId = 10;
+            
+            _mockCommentService.Setup(s => s.DeleteCommentAsync(commentId, userId))
+                .ThrowsAsync(new UnauthorizedAccessException("Not owner"));
+
+            // Act
+            var result = await _controller.DeleteComment(commentId);
+
+            // Assert
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            objectResult.StatusCode.Should().Be(403);
+        }
+
+        [Fact]
+        public async Task CreateComment_BadRequest_WhenContentIsWhitespaceOnly()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            var request = new CreateCommentRequestModel { Content = "   ", QuestionId = 101 };
+            
+            _mockCommentService.Setup(s => s.CreateCommentAsync(userId, request))
+                .ThrowsAsync(new BadRequestException("Content cannot be whitespace only"));
+
+            // Act
+            var result = await _controller.CreateComment(request);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task UpdateComment_Forbidden_WhenUserIsNotOwner()
+        {
+            // Arrange
+            var userId = 2; // User B
+            SetupUser(userId);
+            var commentId = 10; // Comment owned by User A
+            var request = new UpdateCommentRequestModel { Content = "Hacked content" };
+
+            _mockCommentService.Setup(s => s.UpdateCommentAsync(commentId, userId, request))
+                .ThrowsAsync(new UnauthorizedAccessException("Not the comment owner"));
+
+            // Act
+            var result = await _controller.UpdateComment(commentId, request);
+
+            // Assert
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            objectResult.StatusCode.Should().Be(403);
+        }
+
+        [Fact]
+        public async Task CreateComment_BadRequest_WhenQuestionIdNotExists()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            var request = new CreateCommentRequestModel { Content = "Valid content", QuestionId = 99999 };
+
+            _mockCommentService.Setup(s => s.CreateCommentAsync(userId, request))
+                .ThrowsAsync(new BadRequestException("Question not found"));
+
+            // Act
+            var result = await _controller.CreateComment(request);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task VoteComment_Forbidden_WhenSelfVoting()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            var commentId = 10;
+            var request = new VoteCommentRequestModel { IsUpvote = true };
+
+            _mockCommentService.Setup(s => s.ToggleVoteAsync(commentId, userId, request))
+                .ThrowsAsync(new UnauthorizedAccessException("Cannot vote on your own comment"));
+
+            // Act
+            var result = await _controller.VoteComment(commentId, request);
+
+            // Assert
+            var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+            objectResult.StatusCode.Should().Be(403);
         }
     }
 }

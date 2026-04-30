@@ -2358,7 +2358,7 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Tỷ lệ hoa hồng (%)",
                             Key = "COMMISSION_RATE",
                             Value = "20.0"
@@ -2366,15 +2366,23 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Số lượt phỏng vấn miễn phí mặc định",
                             Key = "FREE_INTERVIEW_LIMIT",
                             Value = "3"
                         },
                         new
                         {
+                            Id = 3,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Điểm thưởng khi đóng góp câu hỏi",
+                            Key = "CONTRIBUTION_REWARD_POINTS",
+                            Value = "1000"
+                        },
+                        new
+                        {
                             Id = 4,
-                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Thời gian khóa tiền sau khi hoàn thành (giờ)",
                             Key = "ESCROW_HOURS",
                             Value = "24"
@@ -2382,18 +2390,155 @@ namespace Imate.API.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Thời gian đặt lịch trước tối thiểu (giờ)",
                             Key = "MIN_BOOKING_ADVANCE_HOURS",
                             Value = "6"
                         },
                         new
                         {
+                            Id = 6,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Thời hạn hủy phạt (giờ trước khi bắt đầu)",
+                            Key = "CANCELLATION_DEADLINE_HOURS",
+                            Value = "24"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Thời hạn khiếu nại sau khi hoàn thành (giờ)",
+                            Key = "REPORT_DEADLINE_HOURS",
+                            Value = "24"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Tỷ lệ hoàn tiền khi hủy chậm (%)",
+                            Key = "CANCELLATION_REFUND_RATE",
+                            Value = "80"
+                        },
+                        new
+                        {
                             Id = 9,
-                            CreatedAt = new DateTimeOffset(new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
                             Description = "Số tiền nạp tối thiểu (VNĐ)",
                             Key = "MIN_DEPOSIT_AMOUNT",
                             Value = "1000"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Khoảng cách giữa các lần cập nhật giá (ngày)",
+                            Key = "PRICE_UPDATE_COOLDOWN_DAYS",
+                            Value = "7"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Thời gian hết hạn token Agora (giờ)",
+                            Key = "AGORA_TOKEN_EXPIRATION_HOURS",
+                            Value = "1"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Kích thước trang thông báo",
+                            Key = "NOTIFICATION_PAGE_SIZE",
+                            Value = "20"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Giới hạn tối đa gói Pro",
+                            Key = "SUBSCRIPTION_PRO_MAX_LIMIT",
+                            Value = "7300"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Hệ số giới hạn gói Pro / ngày",
+                            Key = "SUBSCRIPTION_PRO_LIMIT_MULTIPLIER",
+                            Value = "20"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Giới hạn gói Basic",
+                            Key = "SUBSCRIPTION_BASIC_LIMIT",
+                            Value = "3"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Giới hạn gói Rush",
+                            Key = "SUBSCRIPTION_RUSH_LIMIT",
+                            Value = "20"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Chi phí điểm phỏng vấn",
+                            Key = "INTERVIEW_COST_POINTS",
+                            Value = "2000"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Chi phí điểm câu hỏi luyện tập",
+                            Key = "PRACTICE_QUESTION_COST_POINTS",
+                            Value = "1000"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 14, 14, 48, 33, 761, DateTimeKind.Unspecified).AddTicks(304), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Tỉ lệ tiền đảm bảo (%)",
+                            Key = "GUARANTEE_DEPOSIT_RATE",
+                            Value = "20.0"
+
+                        },
+                        new
+                        {
+                            Id = 20,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 29, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Số lượt (token) tiêu thụ mỗi lần phân tích CV",
+                            Key = "ANALYSE_CV_COST_POINT",
+                            Value = "1"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 29, 17, 22, 3, 300, DateTimeKind.Unspecified).AddTicks(2557), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Số tiền nạp tối đa (VNĐ)",
+                            Key = "MAX_DEPOSIT_AMOUNT",
+                            Value = "10000000"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 30, 2, 52, 7, 724, DateTimeKind.Unspecified).AddTicks(4448), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Thời gian timeout thanh toán nạp tiền (phút)",
+                            Key = "DEPOSIT_TIMEOUT_MINUTES",
+                            Value = "5"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 4, 30, 2, 52, 7, 724, DateTimeKind.Unspecified).AddTicks(4456), new TimeSpan(0, 0, 0, 0, 0)),
+                            Description = "Thời gian tự động hoàn tiền nếu chưa xử lý (giờ)",
+                            Key = "WITHDRAWAL_AUTO_REFUND_HOURS",
+                            Value = "48"
                         });
                 });
 

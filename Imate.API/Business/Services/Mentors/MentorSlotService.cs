@@ -4,21 +4,19 @@ using Imate.API.Presentation.ResponseModels.Mentors;
 using Imate.API.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.Business.Services.Mentors
 {
     public class MentorSlotService : IMentorSlotService
     {
         private readonly IUnitOfWork _unitOfWork;
-        // Using a similar approach as Imate but adapting to IMATE structure
-        // Since there's no dedicated MentorRecurringSlot repository in IUnitOfWork yet, 
-        // we might need to access it via context or add it. 
-        // For now, let's assume we can use the Slot repository or I'll implement it within BookingService 
-        // OR add it to UnitOfWork. Let's add it to UnitOfWork for cleanliness.
+        private readonly ISystemNotificationService _systemNotificationService;
 
-        public MentorSlotService(IUnitOfWork unitOfWork)
+        public MentorSlotService(IUnitOfWork unitOfWork, ISystemNotificationService systemNotificationService)
         {
             _unitOfWork = unitOfWork;
+            _systemNotificationService = systemNotificationService;
         }
 
         public async Task<MentorRecurringSlotsResponse> GetMentorRecurringSlotsAsync(int mentorId)
@@ -95,6 +93,14 @@ namespace Imate.API.Business.Services.Mentors
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Notify mentor
+            try
+            {
+                await _systemNotificationService.CreateAndSendNotificationAsync(mentorId, "Bạn đã cập nhật danh sách khung giờ trống thành công.", "/mentor/manage-slots");
+            }
+            catch (Exception) { }
+
             return true;
         }
 
@@ -111,6 +117,14 @@ namespace Imate.API.Business.Services.Mentors
             _unitOfWork.MentorRecurringSlots.Update(slot);
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Notify mentor
+            try
+            {
+                await _systemNotificationService.CreateAndSendNotificationAsync(mentorId, "Bạn đã xóa 1 khung giờ trống khỏi lịch.", "/mentor/manage-slots");
+            }
+            catch (Exception) { }
+
             return true;
         }
     }

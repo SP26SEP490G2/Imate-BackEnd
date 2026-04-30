@@ -10,6 +10,7 @@ namespace Imate.API.Models.Entities
         public string TestTitle { get; set; } = string.Empty;
         public string TestType { get; set; } = string.Empty; // "Technical" | "Language"
         public string Field { get; set; } = string.Empty;
+        public string Skill { get; set; } = string.Empty;
         public string Level { get; set; } = string.Empty;
         public int TotalQuestions { get; set; }
         public int CorrectAnswers { get; set; }

@@ -1,6 +1,7 @@
 using Moq;
 using FluentAssertions;
 using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.Business.Exceptions;
 using Imate.API.Business.Services.Payment;
 using Imate.API.DataAccess.Interfaces;
@@ -11,7 +12,6 @@ using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using MockQueryable;
 using MockQueryable.Moq;
-using Xunit;
 using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.UnitTest.Services

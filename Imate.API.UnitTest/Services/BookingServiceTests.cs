@@ -15,6 +15,7 @@ using Imate.API.DataAccess.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Microsoft.EntityFrameworkCore;
+using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -22,6 +23,7 @@ namespace Imate.API.UnitTest.Services
     {
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IConfiguration> _mockConfiguration;
+        private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
         private readonly BookingService _service;
 
         private readonly Mock<IBookingRepository> _mockBookingRepo;
@@ -47,7 +49,9 @@ namespace Imate.API.UnitTest.Services
             _mockUnitOfWork.Setup(u => u.Slots).Returns(_mockSlotRepo.Object);
             _mockUnitOfWork.Setup(u => u.Transactions).Returns(_mockTransactionRepo.Object);
 
-            _service = new BookingService(_mockUnitOfWork.Object, _mockConfiguration.Object);
+            _mockSystemNotificationService = new Mock<ISystemNotificationService>();
+
+            _service = new BookingService(_mockUnitOfWork.Object, _mockConfiguration.Object, _mockSystemNotificationService.Object);
         }
 
         #region CreateBookingAsync
@@ -193,7 +197,7 @@ namespace Imate.API.UnitTest.Services
                 new Booking
                 {
                     Id = 1, CandidateId = 1, BookDate = new DateOnly(2026, 1, 1),
-                    StartTime = DateTimeOffset.UtcNow,
+                    StartTime = DateTimeOffset.UtcNow, Status = BookingStatus.Confirmed,
                     Mentor = new Mentor { Account = new Account { FullName = "M", AvatarUrl = "url" } },
                     AgoraChannelName = "room1", PriceAtBooking = 100
                 }
@@ -221,7 +225,7 @@ namespace Imate.API.UnitTest.Services
                 new Booking
                 {
                     Id = 1, MentorId = 1, BookDate = new DateOnly(2026, 1, 1),
-                    StartTime = DateTimeOffset.UtcNow,
+                    StartTime = DateTimeOffset.UtcNow.AddHours(1), Status = BookingStatus.Confirmed,
                     Candidate = new Account { FullName = "C", AvatarUrl = "url" },
                     AgoraChannelName = "room1", PriceAtBooking = 100
                 },
@@ -238,9 +242,10 @@ namespace Imate.API.UnitTest.Services
 
             var result = await _service.GetMentorBookingsAsync(1);
 
-            result.Should().HaveCount(2);
-            result.Should().Contain(r => r.BookingId == 2 && r.Status == BookingStatus.Completed);
-            _mockUnitOfWork.Verify(u => u.SaveChangesAsync(), Times.AtLeastOnce); // Due to auto-complete
+            // Only the future/confirmed booking should remain in the active schedule
+            result.Should().HaveCount(1);
+            result[0].BookingId.Should().Be(1);
+            _mockUnitOfWork.Verify(u => u.SaveChangesAsync(), Times.AtLeastOnce); // Due to auto-complete of booking 2
         }
 
         [Fact]
@@ -482,17 +487,40 @@ namespace Imate.API.UnitTest.Services
         #region CancelBookingAsync
 
         [Fact]
-        public async Task CancelBookingAsync_Success()
+        public async Task CancelBookingAsync_CandidateSuccess()
         {
-            var booking = new Booking { Id = 1, CandidateId = 1, Status = BookingStatus.Confirmed, StartTime = DateTimeOffset.UtcNow.AddHours(24) };
+            var booking = new Booking { Id = 1, CandidateId = 1, MentorId = 2, Status = BookingStatus.Confirmed, StartTime = DateTimeOffset.UtcNow.AddHours(24) };
             var account = new Account { Id = 1, Balance = 0 };
             var trans = new Transaction { BookingId = 1, Status = TransactionStatus.Escrow, Amount = 100 };
             _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(booking);
             _mockTransactionRepo.Setup(r => r.GetBookingTransactionAsync(1)).ReturnsAsync(trans);
             _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(account);
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(booking.MentorId)).ReturnsAsync(new Account { FullName = "M" });
+
             await _service.CancelBookingAsync(1, 1);
+
             booking.Status.Should().Be(BookingStatus.Cancelled);
             account.Balance.Should().Be(100);
+            _mockSystemNotificationService.Verify(s => s.CreateAndSendNotificationAsync(2, It.IsAny<string>(), It.IsAny<string>()), Times.Once); // Notify Mentor
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_MentorSuccess()
+        {
+            var booking = new Booking { Id = 1, CandidateId = 1, MentorId = 2, Status = BookingStatus.Confirmed, StartTime = DateTimeOffset.UtcNow.AddHours(2) };
+            var account = new Account { Id = 1, Balance = 0 };
+            var trans = new Transaction { BookingId = 1, Status = TransactionStatus.Escrow, Amount = 100 };
+            
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(booking);
+            _mockTransactionRepo.Setup(r => r.GetBookingTransactionAsync(1)).ReturnsAsync(trans);
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(account);
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Account { FullName = "Mentor" });
+
+            await _service.CancelBookingAsync(1, 2);
+
+            booking.Status.Should().Be(BookingStatus.Cancelled);
+            account.Balance.Should().Be(100);
+            _mockSystemNotificationService.Verify(s => s.CreateAndSendNotificationAsync(1, It.IsAny<string>(), It.IsAny<string>()), Times.Once); // Notify Candidate
         }
 
         [Fact]
@@ -501,22 +529,19 @@ namespace Imate.API.UnitTest.Services
             _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync((Booking?)null);
             await Assert.ThrowsAsync<NotFoundException>(() => _service.CancelBookingAsync(1, 1));
         }
+
         [Fact]
         public async Task CancelBookingAsync_Unauthorized()
         {
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 10 });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 10, MentorId = 20 });
             await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1));
         }
+
         [Fact]
-        public async Task CancelBookingAsync_WrongStatus()
+        public async Task CancelBookingAsync_TooLate_ForCandidate()
         {
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 1, Status = BookingStatus.Completed });
-            await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1));
-        }
-        [Fact]
-        public async Task CancelBookingAsync_TooLate()
-        {
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(new Booking { CandidateId = 1, Status = BookingStatus.Confirmed, StartTime = DateTimeOffset.UtcNow.AddHours(2) });
+            var booking = new Booking { Id = 1, CandidateId = 1, Status = BookingStatus.Confirmed, StartTime = DateTimeOffset.UtcNow.AddHours(2) };
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync(booking);
             await Assert.ThrowsAsync<BadRequestException>(() => _service.CancelBookingAsync(1, 1));
         }
 
