@@ -56,45 +56,6 @@ namespace Imate.API.Presentation.Controllers.Payment
                 });
             }
         }
-
-        [HttpPost("cancel")]
-        public async Task<IActionResult> CancelSubscriptionAsync()
-        {
-            try
-            {
-                var accountId = GetCurrentAccountId();
-                await _userSubscriptionService.CancelSubscriptionAsync(accountId);
-
-                return Ok(new
-                {
-                    message = "Hủy gói thành công."
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
-            }
-        }
-        [HttpGet("cancel-preview")]
-        public async Task<IActionResult> GetCancelPreview()
-        {
-            try
-            {
-                var accountId = GetCurrentAccountId();
-                var preview = await _userSubscriptionService.GetCancelPreviewAsync(accountId);
-                return Ok(preview);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
-            }
-        }
         [HttpGet("history")]
         public async Task<IActionResult> GetUserSubscriptionHistory()
         {
@@ -127,6 +88,21 @@ namespace Imate.API.Presentation.Controllers.Payment
                 {
                     message = ex.Message
                 });
+            }
+        }
+
+        [HttpGet("current-subscription")]
+        public async Task<IActionResult> GetCurrentSubscriptionDetail()
+        {
+            try
+            {
+                var accountId = GetCurrentAccountId();
+                var detail = await _userSubscriptionService.GetCurrentSubscriptionDetailAsync(accountId);
+                return Ok(detail);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
 
