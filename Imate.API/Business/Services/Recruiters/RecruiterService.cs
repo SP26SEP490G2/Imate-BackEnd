@@ -714,7 +714,7 @@ namespace Imate.API.Business.Services.Recruiters
 							<p>Hồ sơ của bạn vẫn đang trong quá trình được nhà tuyển dụng xem xét.</p>
 							";
 				}
-				await _emailService.SendEmailAsync("startingimate@gmail.com", emailSubject, emailBody);
+				await _emailService.SendEmailAsync(jobApplication.Candidate.Email, emailSubject, emailBody);
 				var (oldChanges, newChanges) = AuditHelper.GetChanges(oldData, newData);
 				await _auditLogService.CreateAuditLogAsync(accountId, AuditAction.Update, "JobApplication", jobApplication.Id, oldChanges, newChanges);
 				return jobApplication;
