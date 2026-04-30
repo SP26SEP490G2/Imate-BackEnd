@@ -49,7 +49,7 @@ namespace Imate.AI.Module.Core.Orchestrators
         public async Task<CvAnalysisResponse> AnalyseCvAsync(int accountId, AnalyseCvRequest request)
         {
             // 0. Kiểm tra điều kiện subscription trước khi làm bất kỳ thứ gì
-            if (_cvDataProvider != null)
+            if (_cvDataProvider != null && request.ForceReanalyze == true)
             {
                 var eligibility = await _cvDataProvider.CheckCvAnalysisEligibilityAsync(accountId);
                 if (!eligibility.IsEligible)
