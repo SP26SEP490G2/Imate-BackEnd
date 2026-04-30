@@ -1572,7 +1572,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     SampleAnswer = request.SampleAnswer,
                     CreatorId = creatorId,
                     IsFromSystem = true,
-                    IsActive = true
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.Now
                     // CreatedDate và UpdatedDate sẽ được tự động gán bởi BaseEntity
                 };
 
