@@ -17,6 +17,7 @@ namespace Imate.API.Business.Services
         private const string REPORT_DEADLINE_HOURS_KEY = "REPORT_DEADLINE_HOURS";
         private const string CANCELLATION_REFUND_RATE_KEY = "CANCELLATION_REFUND_RATE";
         private const string MIN_DEPOSIT_AMOUNT_KEY = "MIN_DEPOSIT_AMOUNT";
+        private const string MAX_DEPOSIT_AMOUNT_KEY = "MAX_DEPOSIT_AMOUNT";
         private const string PRICE_UPDATE_COOLDOWN_DAYS_KEY = "PRICE_UPDATE_COOLDOWN_DAYS";
         private const string AGORA_TOKEN_EXPIRATION_HOURS_KEY = "AGORA_TOKEN_EXPIRATION_HOURS";
         private const string NOTIFICATION_PAGE_SIZE_KEY = "NOTIFICATION_PAGE_SIZE";
@@ -28,6 +29,8 @@ namespace Imate.API.Business.Services
         private const string PRACTICE_QUESTION_COST_POINTS_KEY = "PRACTICE_QUESTION_COST_POINTS";
         private const string GUARANTEE_DEPOSIT_RATE_KEY = "GUARANTEE_DEPOSIT_RATE";
         private const string ANALYSE_CV_COST_POINT_KEY = "ANALYSE_CV_COST_POINT";
+        private const string DEPOSIT_TIMEOUT_MINUTES_KEY = "DEPOSIT_TIMEOUT_MINUTES";
+        private const string WITHDRAWAL_AUTO_REFUND_HOURS_KEY = "WITHDRAWAL_AUTO_REFUND_HOURS";
 
         public SystemConfigService(IUnitOfWork unitOfWork)
         {
@@ -101,8 +104,9 @@ namespace Imate.API.Business.Services
                      key == PRICE_UPDATE_COOLDOWN_DAYS_KEY || key == AGORA_TOKEN_EXPIRATION_HOURS_KEY ||
                      key == NOTIFICATION_PAGE_SIZE_KEY ||                      key == SUBSCRIPTION_PRO_MAX_LIMIT_KEY ||
                      key == SUBSCRIPTION_PRO_LIMIT_MULTIPLIER_KEY || key == SUBSCRIPTION_BASIC_LIMIT_KEY ||
-                     key == SUBSCRIPTION_RUSH_LIMIT_KEY || key == MIN_DEPOSIT_AMOUNT_KEY ||
-                     key == INTERVIEW_COST_POINTS_KEY || key == PRACTICE_QUESTION_COST_POINTS_KEY || key == ANALYSE_CV_COST_POINT_KEY)
+                     key == SUBSCRIPTION_RUSH_LIMIT_KEY || key == MIN_DEPOSIT_AMOUNT_KEY || key == MAX_DEPOSIT_AMOUNT_KEY||
+                     key == INTERVIEW_COST_POINTS_KEY || key == PRACTICE_QUESTION_COST_POINTS_KEY || key == ANALYSE_CV_COST_POINT_KEY ||
+                     key == DEPOSIT_TIMEOUT_MINUTES_KEY || key == WITHDRAWAL_AUTO_REFUND_HOURS_KEY)
             {
                 if (!int.TryParse(value, out int intValue) || intValue < 0)
                 {
@@ -255,7 +259,17 @@ namespace Imate.API.Business.Services
             {
                 return amount;
             }
-            return 1000; // Default 1000 VNĐ
+            return 10000;
+        }
+
+        public async Task<int> GetMaxDepositAmountAsync()
+        {
+            var config = await _unitOfWork.SystemConfigs.GetByKeyAsync(MAX_DEPOSIT_AMOUNT_KEY);
+            if (config != null && int.TryParse(config.Value, out int amount))
+            {
+                return amount;
+            }
+            return 10000000;
         }
 
         public async Task<int> GetPriceUpdateCooldownDaysAsync()
@@ -366,6 +380,20 @@ namespace Imate.API.Business.Services
                 return cost;
             }
             return 1;
+        }
+
+        public async Task<int> GetDepositTimeoutMinutesAsync()
+        {
+            var config = await _unitOfWork.SystemConfigs.GetByKeyAsync(DEPOSIT_TIMEOUT_MINUTES_KEY);
+            if (config != null && int.TryParse(config.Value, out int minutes)) return minutes;
+            return 5;
+        }
+
+        public async Task<int> GetWithdrawalAutoRefundHoursAsync()
+        {
+            var config = await _unitOfWork.SystemConfigs.GetByKeyAsync(WITHDRAWAL_AUTO_REFUND_HOURS_KEY);
+            if (config != null && int.TryParse(config.Value, out int hours)) return hours;
+            return 48;
         }
     }
 }

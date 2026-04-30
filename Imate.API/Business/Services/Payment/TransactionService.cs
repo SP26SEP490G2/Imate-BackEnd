@@ -174,6 +174,12 @@ namespace Imate.API.Business.Services.Payment
                 throw new ArgumentException($"Số tiền nạp tối thiểu là {minimumAmount:N0} VNĐ.");
             }
 
+            // PayOS yêu cầu amount tối đa từ config
+            var maximumAmount = await _systemConfigService.GetMaxDepositAmountAsync();
+            if (depositRequestDto.Amount > maximumAmount)
+            {
+                throw new ArgumentException($"Số tiền nạp tối đa là {maximumAmount:N0} VNĐ.");
+            }
             // Validation FrontendBaseUrl
             if (string.IsNullOrWhiteSpace(_frontendBaseUrl))
             {
@@ -408,7 +414,7 @@ namespace Imate.API.Business.Services.Payment
                         account.Balance += transaction.Amount;
                         await _unitOfWork.Accounts.UpdateAsync(account);
                         _logger.LogInformation("Webhook: Đã cộng {Amount} vào balance của account {AccountId}", transaction.Amount, account.Id);
-                        await _systemNotificationService.CreateAndSendNotificationAsync(account .Id, $"Đã cộng {transaction.Amount} vào số ví Imate của bạn", null);
+                        await _systemNotificationService.CreateAndSendNotificationAsync(account .Id, $"Đã cộng {transaction.Amount:N0} imCoin vào ví Imate của bạn. Số dư hiện tại: {account.Balance:N0} imCoin.", null);
 
                     }
                 }
@@ -510,6 +516,20 @@ namespace Imate.API.Business.Services.Payment
                 if (account.Balance < withdrawRequestDto.Amount)
                 {
                     throw new ArgumentException($"Số dư không đủ để thực hiện giao dịch. Số dư hiện tại: {account.Balance:N0} VND. Số tiền muốn rút: {withdrawRequestDto.Amount:N0} VND.");
+                }
+
+                // PayOS yêu cầu amount tối thiểu từ config
+                var minimumAmount = await _systemConfigService.GetMinDepositAmountAsync();
+                if (withdrawRequestDto.Amount < minimumAmount)
+                {
+                    throw new ArgumentException($"Số tiền rút tối thiểu là {minimumAmount:N0} VNĐ.");
+                }
+
+                // PayOS yêu cầu amount tối đa từ config
+                var maximumAmount = await _systemConfigService.GetMaxDepositAmountAsync();
+                if (withdrawRequestDto.Amount > maximumAmount)
+                {
+                    throw new ArgumentException($"Số tiền rút tối đa là {maximumAmount:N0} VNĐ.");
                 }
 
                 // --- LOGIC LẤY THÔNG TIN NGÂN HÀNG THEO VAI TRÒ ---
@@ -752,7 +772,9 @@ namespace Imate.API.Business.Services.Payment
                 await _unitOfWork.Transactions.UpdateAsync(transaction);
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.CommitTransactionAsync();
-                
+
+                await _systemNotificationService.CreateAndSendNotificationAsync(transaction.SourceAccountId.Value, $"Yêu cầu rút {transaction.Amount:N0} imCoin thành công. Tiền đã được chuyển về ngân hàng/ví điện tử của bạn", null);
+
                 // Create audit log
                 var newValue = new { 
                     Status = transaction.Status.ToString(), 
@@ -824,6 +846,8 @@ namespace Imate.API.Business.Services.Payment
                 transaction.ReviewerId = reviewerId;
                 transaction.Reason = responseNote ?? transaction.Reason;
                 transaction.UpdatedAt = DateTime.UtcNow;
+
+                await _systemNotificationService.CreateAndSendNotificationAsync(transaction.SourceAccountId.Value, $"Yêu cầu rút {transaction.Amount:N0} imCoin bị từ chối. imCoin đã được hoàn lại vào ví. Vào lịch sử giao dịch để xem lí do.", null);
 
                 await _unitOfWork.Transactions.UpdateAsync(transaction);
                 await _unitOfWork.SaveChangesAsync();
@@ -1249,6 +1273,11 @@ namespace Imate.API.Business.Services.Payment
             };
         }
 
+        public async Task<int> GetMaxAmountAsync()
+        {
+            return await _systemConfigService.GetMaxDepositAmountAsync();
+        }
+
         public async Task<PagedList<TransactionResponse>> GetRevenueTransactionsAsync(RevenueTransactionQueryParameters parameters)
         {
             // Validate year
@@ -1410,6 +1439,16 @@ namespace Imate.API.Business.Services.Payment
                 pagedTransactions.PageNumber,
                 pagedTransactions.PageSize
             );
+        }
+
+        public async Task<int> GetDepositTimeoutMinutesAsync()
+        {
+            return await _systemConfigService.GetDepositTimeoutMinutesAsync();
+        }
+
+        public async Task<int> GetWithdrawalAutoRefundHoursAsync()
+        {
+            return await _systemConfigService.GetWithdrawalAutoRefundHoursAsync();
         }
     }
 }

@@ -21,6 +21,7 @@ namespace Imate.API.DataAccess.Interfaces.Payment
         Task<PagedList<Transaction>> GetReadyForPayoutBookingsAsync(TransactionQueryParameters paginationParams);
         IQueryable<Transaction> GetAllTransactionsQueryable();
         Task<List<Transaction>> GetPendingTimeoutTransactions(DateTime timeoutTime);
+        Task<List<Transaction>> GetPendingWithdrawalTimeoutTransactions(DateTime timeoutTime);
     }
 }
 
