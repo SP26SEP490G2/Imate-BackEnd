@@ -59,6 +59,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseCors("CorsPolicy");
 app.MapHub<SystemNotificationHub>("/api/systemNotificationHub");
+app.MapHub<InterviewSessionHub>("/api/interviewSessionHub");
 
 app.UseAuthentication();
 app.UseAuthorization();

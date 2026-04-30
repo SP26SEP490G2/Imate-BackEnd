@@ -75,8 +75,8 @@ namespace Imate.AI.Module.Core.Orchestrators
             if (string.IsNullOrWhiteSpace(request.Level))
                 throw new ArgumentException("Vui lòng chọn cấp bậc ứng tuyển.");
 
-            if (request.NumberOfQuestions < 5 || request.NumberOfQuestions > 20)
-                request.NumberOfQuestions = 10;
+            // Luôn cố định 15 câu hỏi
+            request.NumberOfQuestions = 15;
         }
     }
 }

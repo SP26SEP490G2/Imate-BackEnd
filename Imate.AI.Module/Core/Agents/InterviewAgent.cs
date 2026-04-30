@@ -45,7 +45,7 @@ namespace Imate.AI.Module.Core.Agents
         public async Task<string> GenerateWelcomeMessageAsync(string? cvContent, string? positionName, string? companyName, string? language = null)
         {
             var lang = language ?? "vi-VN";
-            var systemPrompt = "Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Trả về text thuần, KHÔNG trả JSON.";
+            var systemPrompt = "Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Gọi ứng viên là \"bạn\", xưng \"mình\" (KHÔNG dùng: anh, chị, em, chú, cậu). Trả về text thuần, KHÔNG trả JSON.";
 
             var sb = new StringBuilder();
             sb.AppendLine("Hãy tạo lời chào mừng cho buổi phỏng vấn với thông tin:");
@@ -88,7 +88,7 @@ namespace Imate.AI.Module.Core.Agents
                 session.LevelName ?? "Junior");
 
             var userPrompt = BuildQuestionUserPrompt(session, existingResponses, estimatedAbility, ragQuestions);
-
+    
             // Xác định chunk hiện tại cho log
             string chunkName = turnNumber switch
             {
@@ -184,6 +184,11 @@ Lưu ý:
         {
             var systemPrompt = @"Bạn là một Mentor (người hướng dẫn) và Senior Interviewer dày dạn kinh nghiệm. 
 Nhiệm vụ: Phản hồi lại câu trả lời của ứng viên một cách tự nhiên, mang tính khích lệ và dẫn dắt (Coaching).
+
+QUY TẮC XƯNG HÔ (BẮT BUỘC):
+- Gọi ứng viên là ""bạn"" (KHÔNG dùng: anh, chị, em, chú, cậu, bác, ông, bà)
+- Xưng ""mình"" hoặc không xưng (KHÔNG dùng: anh, tôi, chú, bác)
+- Giữ giọng ngang hàng, thân thiện, chuyên nghiệp
 
 QUY TẮC PHẢN HỒI:
 1. PHONG CÁCH MENTOR: Phản hồi chuyên nghiệp, thân thiện. Hãy coi ứng viên như một đồng nghiệp tiềm năng cần được chỉ dẫn.

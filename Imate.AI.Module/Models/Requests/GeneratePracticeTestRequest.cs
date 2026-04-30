@@ -37,8 +37,8 @@ namespace Imate.AI.Module.Models.Requests
         public string? CvText { get; set; }
 
         /// <summary>
-        /// Số lượng câu hỏi mong muốn (mặc định 10)
+        /// Số lượng câu hỏi cố định: 15 câu
         /// </summary>
-        public int NumberOfQuestions { get; set; } = 10;
+        public int NumberOfQuestions { get; set; } = 15;
     }
 }
