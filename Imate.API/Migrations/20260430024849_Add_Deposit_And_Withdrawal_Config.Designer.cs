@@ -4,6 +4,7 @@ using Imate.API.DataAccess.ApplicationDbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Imate.API.Migrations
 {
     [DbContext(typeof(ImateDbContext))]
-    partial class ImateDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260430024849_Add_Deposit_And_Withdrawal_Config")]
+    partial class Add_Deposit_And_Withdrawal_Config
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -491,6 +494,10 @@ namespace Imate.API.Migrations
 
                     b.Property<DateOnly>("InterviewDate")
                         .HasColumnType("date");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
@@ -1120,10 +1127,6 @@ namespace Imate.API.Migrations
                     b.Property<int>("Score")
                         .HasColumnType("int");
 
-                    b.Property<string>("Skill")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int?>("TechnicalScore")
                         .HasColumnType("int");
 
@@ -1180,9 +1183,6 @@ namespace Imate.API.Migrations
 
                     b.Property<bool>("IsFromSystem")
                         .HasColumnType("bit");
-
-                    b.Property<string>("Level")
-                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("SampleAnswer")
                         .HasColumnType("nvarchar(max)");

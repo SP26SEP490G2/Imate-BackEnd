@@ -11,7 +11,8 @@ namespace Imate.API.Business.Helper
 
         // Filter theo Enum
         public DifficultyLevel? Difficulty { get; set; } 
-     
+        public Level? Level { get; set; }
+
         // Filter theo trạng thái
         public bool? IsActive { get; set; }
 

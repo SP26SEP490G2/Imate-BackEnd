@@ -64,5 +64,23 @@ namespace Imate.API.UnitTest.Controllers.Notification
             // Assert
             result.Should().BeOfType<UnauthorizedObjectResult>();
         }
+
+        [Fact]
+        public async Task GetMyNotifications_ReturnsEmptyList_WhenNoNotificationsExist()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            _mockNotificationService.Setup(s => s.GetNotificationsForUserAsync(userId))
+                .ReturnsAsync(new List<object>()); // Empty list
+
+            // Act
+            var result = await _controller.GetMyNotifications();
+
+            // Assert
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            var list = okResult.Value.Should().BeAssignableTo<IEnumerable<object>>().Subject;
+            list.Should().BeEmpty();
+        }
     }
 }

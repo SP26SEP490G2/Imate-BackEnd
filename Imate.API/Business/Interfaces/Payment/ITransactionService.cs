@@ -21,6 +21,9 @@ namespace Imate.API.Business.Interfaces.Payment
         Task<PagedList<TransactionResponse>> GetReadyForPayoutBookingsAsync(TransactionQueryParameters paginationParams);
         Task ProcessBookingPayoutAsync(int transactionId, int reviewerId, string? responseNote = null);
         Task<RevenueResponse> GetRevenueAsync(RevenueQueryParameters parameters);
+        Task<int> GetMaxAmountAsync();
         Task<PagedList<TransactionResponse>> GetRevenueTransactionsAsync(RevenueTransactionQueryParameters parameters);
+        Task<int> GetDepositTimeoutMinutesAsync();
+        Task<int> GetWithdrawalAutoRefundHoursAsync();
     }
 }

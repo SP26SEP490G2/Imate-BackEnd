@@ -32,6 +32,7 @@ builder.Services.AddSignalR();
 
 builder.Services.AddHostedService<AutoCloseJobServices>();
 builder.Services.AddHostedService<TransactionTimeoutService>();
+builder.Services.AddHostedService<WithdrawalAutoRefundService>();
 builder.Services.AddHostedService<SubscriptionExpirationService>();
 builder.Services.AddHostedService<Imate.API.Business.Services.Mentors.AutoCompleteBookingService>();
 // Middleware

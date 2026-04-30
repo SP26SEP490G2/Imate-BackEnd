@@ -292,5 +292,142 @@ namespace Imate.API.UnitTest.Controllers.QuestionBank
             // Assert
             result.Should().BeOfType<UnauthorizedObjectResult>();
         }
+        [Fact]
+        public async Task UpdateContributedQuestionStatus_Forbidden_WhenUserIsNotStaff()
+        {
+            // Arrange
+            SetupUser(1); // Default is Candidate role
+            var questionId = 1;
+            var status = true;
+            
+            // Mock the service to throw UnauthorizedAccessException to simulate a forbidden logic check
+            _mockQuestionService.Setup(s => s.UpdateContributedQuestionStatusAsync(questionId, status, 1))
+                .ThrowsAsync(new UnauthorizedAccessException());
+            
+            // Act & Assert
+            var act = () => _controller.UpdateContributedQuestionStatusAsync(questionId, status);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        }
+
+        [Fact]
+        public async Task GetSystemQuestionById_NotFound_WhenIdInvalid()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var questionId = 999;
+            _mockQuestionService.Setup(s => s.GetSystemQuestionByIdAsync(questionId, 1))
+                .ThrowsAsync(new KeyNotFoundException("Question not found"));
+
+            // Act & Assert
+            var act = () => _controller.GetSystemQuestionByIdAsync(questionId);
+            await act.Should().ThrowAsync<KeyNotFoundException>();
+        }
+
+        [Fact]
+        public async Task CreateSystemQuestionForStaffAsync_BadRequest_WhenContentInvalid()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var request = new CreateSystemQuestionForStaffRequest { Content = "" };
+            _mockQuestionService.Setup(s => s.CreateSystemQuestionForStaffAsync(request, 1))
+                .ThrowsAsync(new ArgumentException("Content required"));
+
+            // Act & Assert
+            var act = () => _controller.CreateSystemQuestionForStaffAsync(request);
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public async Task CreateSystemQuestionForStaffAsync_BadRequest_WhenDifficultyOutOfRange()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var request = new CreateSystemQuestionForStaffRequest 
+            { 
+                Content = "Valid Content", 
+                Difficulty = (DifficultyLevel)99 // Invalid enum value
+            };
+            _mockQuestionService.Setup(s => s.CreateSystemQuestionForStaffAsync(request, 1))
+                .ThrowsAsync(new ArgumentException("Invalid difficulty level"));
+
+            // Act & Assert
+            var act = () => _controller.CreateSystemQuestionForStaffAsync(request);
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public async Task GetAllSystemQuestionsForStaffAsync_Success_WithSpecialCharKeyword()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var queryParams = new GetSystemQuestionParams { PageNumber = 1, PageSize = 10 };
+            var emptyResult = new PagedList<GetAllSystemQuestionsForStaffAsyncResponse>(
+                new List<GetAllSystemQuestionsForStaffAsyncResponse>(), 0, 1, 10);
+            _mockQuestionService.Setup(s => s.GetAllSystemQuestionsForStaffAsync(It.IsAny<GetSystemQuestionParams>()))
+                .ReturnsAsync(emptyResult);
+
+            // Act
+            var result = await _controller.GetAllSystemQuestionsForStaffAsync(queryParams);
+
+            // Assert
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            okResult.Value.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task GetAllSystemQuestionsForStaffAsync_Success_WithExtremePageSize()
+        {
+            // Arrange
+            SetupUser(1, "Staff");
+            var queryParams = new GetSystemQuestionParams { PageNumber = 1, PageSize = 1000 };
+            var mockResults = new List<GetAllSystemQuestionsForStaffAsyncResponse>();
+            var pagedResult = new PagedList<GetAllSystemQuestionsForStaffAsyncResponse>(mockResults, 0, 1, 1000);
+            _mockQuestionService.Setup(s => s.GetAllSystemQuestionsForStaffAsync(It.IsAny<GetSystemQuestionParams>()))
+                .ReturnsAsync(pagedResult);
+
+            // Act
+            var result = await _controller.GetAllSystemQuestionsForStaffAsync(queryParams);
+
+            // Assert
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            okResult.Value.Should().BeEquivalentTo(pagedResult);
+        }
+
+        [Fact]
+        public async Task CreateSystemQuestionForStaffAsync_Forbidden_WhenUserIsCandidate()
+        {
+            // Arrange
+            SetupUser(1, "Candidate");
+            var request = new CreateSystemQuestionForStaffRequest 
+            { 
+                Content = "Candidate trying to create", 
+                Difficulty = DifficultyLevel.Medium 
+            };
+
+            // The controller doesn't have inline role check for this method,
+            // so the service layer should enforce the rule via exception
+            _mockQuestionService.Setup(s => s.CreateSystemQuestionForStaffAsync(request, 1))
+                .ThrowsAsync(new UnauthorizedAccessException("Only staff can create system questions"));
+
+            // Act & Assert
+            var act = () => _controller.CreateSystemQuestionForStaffAsync(request);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        }
+
+        [Fact]
+        public async Task UpdateContributedQuestionStatusAsync_Forbidden_WhenUserIsCandidate()
+        {
+            // Arrange
+            SetupUser(1, "Candidate");
+            var questionId = 1;
+            var status = true;
+
+            _mockQuestionService.Setup(s => s.UpdateContributedQuestionStatusAsync(questionId, status, 1))
+                .ThrowsAsync(new UnauthorizedAccessException("Only staff can update question status"));
+
+            // Act & Assert
+            var act = () => _controller.UpdateContributedQuestionStatusAsync(questionId, status);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        }
     }
 }

@@ -33,7 +33,6 @@
     {
         public int Id { get; set; }
         public DateOnly InterviewDate { get; set; }
-        public string Level { get; set; }
         public string Company { get; set; }
 
         public string CompanyURL { get; set; }  

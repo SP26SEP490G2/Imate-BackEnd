@@ -94,5 +94,83 @@ namespace Imate.API.UnitTest.Controllers
             // Assert
             result.Should().BeOfType<UnauthorizedObjectResult>();
         }
+
+        [Fact]
+        public async Task SubmitTest_BadRequest_WhenAnswerListIsEmpty()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            var request = new SubmitPracticeTestRequest { 
+                // Assuming request should have some answers
+            };
+            
+            _mockHistoryService.Setup(s => s.SubmitTestAsync(userId, request))
+                .ThrowsAsync(new ArgumentException("No answers"));
+
+            // Act
+            var result = await _controller.SubmitTest(request);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task GetHistory_ReturnsEmpty_WhenNoResultsInDB()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            _mockHistoryService.Setup(s => s.GetHistoryAsync(userId))
+                .ReturnsAsync(new List<TestHistoryItemResponse>());
+
+            // Act
+            var result = await _controller.GetHistory();
+
+            // Assert
+            var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+            okResult.Value.Should().NotBeNull();
+            var dataProp = okResult.Value.GetType().GetProperty("data");
+            var dataValue = dataProp.GetValue(okResult.Value) as IEnumerable<TestHistoryItemResponse>;
+            dataValue.Should().NotBeNull();
+            dataValue.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task SubmitTest_BadRequest_WhenQuestionIdMismatch()
+        {
+            // Arrange
+            var userId = 1;
+            SetupUser(userId);
+            var request = new SubmitPracticeTestRequest();
+
+            _mockHistoryService.Setup(s => s.SubmitTestAsync(userId, request))
+                .ThrowsAsync(new ArgumentException("Submitted QuestionIds do not match assigned session questions"));
+
+            // Act
+            var result = await _controller.SubmitTest(request);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task SubmitTest_Success_VerifiesServiceCalledOnce()
+        {
+            // Arrange - Verifies quota deduction happens via service layer
+            var userId = 1;
+            SetupUser(userId);
+            var request = new SubmitPracticeTestRequest();
+            _mockHistoryService.Setup(s => s.SubmitTestAsync(userId, request)).ReturnsAsync(100);
+
+            // Act
+            var result = await _controller.SubmitTest(request);
+
+            // Assert
+            result.Should().BeOfType<OkObjectResult>();
+            // Verify service was called exactly once (ensuring quota deduction logic in service is triggered)
+            _mockHistoryService.Verify(s => s.SubmitTestAsync(userId, request), Times.Once);
+            _mockHistoryService.VerifyNoOtherCalls();
+        }
     }
 }

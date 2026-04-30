@@ -10,6 +10,8 @@ namespace Imate.API.Presentation.RequestModels.QuestionBank
         public string Content { get; set; }
         [Required(ErrorMessage = "Độ khó là bắt buộc.")]
         public DifficultyLevel Difficulty { get; set; }
+        [Required(ErrorMessage = "Level là bắt buộc.")]
+        public Level Level { get; set; }
         [Required(ErrorMessage = "Câu trả lời mẫu không được để trống.")]
         [StringLength(2000, ErrorMessage = "Câu trả lời mẫu tối đa 2000 ký tự.")]
         public string SampleAnswer { get; set; }

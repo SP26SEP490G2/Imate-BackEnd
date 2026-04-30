@@ -8,6 +8,7 @@ using MockQueryable;
 using MockQueryable.Moq;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
+using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -17,6 +18,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<IMentorRecurringSlotRepository> _mockMentorRecurringSlotRepo;
         private readonly Mock<ISlotRepository> _mockSlotRepo;
         private readonly Mock<IMentorRepository> _mockMentorRepo;
+        private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
         private readonly MentorSlotService _service;
 
         public MentorSlotServiceTests()
@@ -30,7 +32,8 @@ namespace Imate.API.UnitTest.Services
             _mockUnitOfWork.Setup(u => u.Slots).Returns(_mockSlotRepo.Object);
             _mockUnitOfWork.Setup(u => u.Mentors).Returns(_mockMentorRepo.Object);
 
-            _service = new MentorSlotService(_mockUnitOfWork.Object);
+            _mockSystemNotificationService = new Mock<ISystemNotificationService>();
+            _service = new MentorSlotService(_mockUnitOfWork.Object, _mockSystemNotificationService.Object);
         }
 
         #region View Mentor Slots

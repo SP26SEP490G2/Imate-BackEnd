@@ -85,6 +85,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 Id = q.Id,
                 Content = q.Content,
                 Difficulty = q.Difficulty.ToString(),
+                Level = q.Level.ToString(),
                 SampleAnswer = q.SampleAnswer,
                 CreatorName = q.Creator?.FullName,
                 CreatedAt = q.CreatedAt,
@@ -142,7 +143,6 @@ namespace Imate.API.Business.Services.QuestionBank
                 {
                     Id = question.ContributedDetail.Id,
                     InterviewDate = question.ContributedDetail.InterviewDate,
-                    Level = question.ContributedDetail.Level.ToString(),
                     Company = question.ContributedDetail.Company.Name,
                     CompanyURL = question.ContributedDetail.Company.ImageUrl,
                 } : null,

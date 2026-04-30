@@ -2,16 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
-using Microsoft.EntityFrameworkCore;
-using Imate.API.Business.Interfaces.Mentors;
-using Imate.API.DataAccess.Interfaces;
-using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Mentors;
 using Imate.API.Presentation.ResponseModels.Mentors;
 using Imate.API.Business.Exceptions;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Imate.API.Business.Interfaces.Notification;
+using Imate.API.Business.Interfaces;
 
 namespace Imate.API.Business.Services.Mentors
 {
@@ -19,14 +17,18 @@ namespace Imate.API.Business.Services.Mentors
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
+        private readonly ISystemNotificationService _systemNotificationService;
+        private readonly ISystemConfigService _systemConfigService;
         private const int MIN_BOOKING_ADVANCE_HOURS = 6;
         private const int MIN_CANCEL_ADVANCE_HOURS = 6;
         private const string LocalTimeZoneId = "SE Asia Standard Time";
 
-        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration)
+        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration, ISystemNotificationService systemNotificationService, ISystemConfigService systemConfigService)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
+            _systemNotificationService = systemNotificationService;
+            _systemConfigService = systemConfigService;
         }
 
         public async Task<BookingResponseModel> CreateBookingAsync(BookingCreateRequest request, int candidateId)
@@ -120,7 +122,7 @@ namespace Imate.API.Business.Services.Mentors
                 TransactionType = TransactionType.BookingFee,
                 Amount = price,
                 Status = TransactionStatus.Escrow,
-                EscrowDeadline = startUtc.AddHours(24),
+                EscrowDeadline = startUtc.AddHours(await _systemConfigService.GetReportDeadlineHoursAsync()),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -131,9 +133,26 @@ namespace Imate.API.Business.Services.Mentors
             
             await _unitOfWork.SaveChangesAsync();
 
-            // Setup Agora channel using generated ID
-            booking.AgoraChannelName = booking.Id.ToString();
             await _unitOfWork.SaveChangesAsync();
+
+            // 4. Notifications
+            try
+            {
+                // Notify Mentor
+                await _systemNotificationService.CreateAndSendNotificationAsync(
+                    request.MentorId,
+                    $"Bạn có một lịch hẹn mới từ {candidateAccount.FullName} vào ngày {booking.BookDate:dd/MM/yyyy} lúc {TimeZoneInfo.ConvertTimeFromUtc(booking.StartTime.DateTime, TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId)):HH:mm}.",
+                    "/mentor/interview-schedule"
+                );
+
+                // Notify Candidate
+                await _systemNotificationService.CreateAndSendNotificationAsync(
+                    candidateId,
+                    $"Bạn đã đặt lịch hẹn với Mentor {mentorAccount.FullName} vào ngày {booking.BookDate:dd/MM/yyyy} lúc {TimeZoneInfo.ConvertTimeFromUtc(booking.StartTime.DateTime, TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId)):HH:mm} thành công.",
+                    "/interview-schedule"
+                );
+            }
+            catch (Exception) { /* Tránh ảnh hưởng flow chính nếu notification lỗi */ }
 
             return new BookingResponseModel
             {
@@ -165,7 +184,7 @@ namespace Imate.API.Business.Services.Mentors
         {
             await AutoCompleteExpiredBookingsAsync();
             var bookings = await _unitOfWork.Bookings.GetAllBookings()
-                .Where(b => b.CandidateId == candidateId)
+                .Where(b => b.CandidateId == candidateId && b.Status == BookingStatus.Confirmed)
                 .Select(b => new
                 {
                     b.Id,
@@ -218,7 +237,7 @@ namespace Imate.API.Business.Services.Mentors
         {
             await AutoCompleteExpiredBookingsAsync();
             var bookings = await _unitOfWork.Bookings.GetAllBookings()
-                .Where(b => b.MentorId == mentorId)
+                .Where(b => b.MentorId == mentorId && b.Status == BookingStatus.Confirmed)
                 .Select(b => new
                 {
                     b.Id,
@@ -428,44 +447,55 @@ namespace Imate.API.Business.Services.Mentors
             };
         }
 
-        public async Task CancelBookingAsync(int bookingId, int candidateId)
+        public async Task CancelBookingAsync(int bookingId, int userId)
         {
             var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(bookingId)
                 ?? throw new NotFoundException("Booking not found.");
 
-            if (booking.CandidateId != candidateId)
+            bool isCandidate = (booking.CandidateId == userId);
+            bool isMentor = (booking.MentorId == userId);
+
+            if (!isCandidate && !isMentor)
             {
                 throw new BadRequestException("You are not authorized to cancel this booking.");
             }
 
-            if (booking.Status != BookingStatus.Confirmed)
+            if (booking.Status != BookingStatus.Confirmed && booking.Status != BookingStatus.Pending)
             {
                 throw new BadRequestException($"Cannot cancel booking with status {booking.Status}.");
             }
 
-            // Cancellation deadline: at least 6 hours before StartTime
-            if (booking.StartTime < DateTime.UtcNow.AddHours(6))
+            // Logic for Candidate
+            if (isCandidate)
             {
-                throw new BadRequestException("You can only cancel bookings at least 6 hours before the start time.");
+                // Cancellation deadline: at least 6 hours before StartTime
+                if (booking.StartTime < DateTime.UtcNow.AddHours(6))
+                {
+                    throw new BadRequestException("You can only cancel bookings at least 6 hours before the start time.");
+                }
+            }
+            // Logic for Mentor
+            else if (isMentor)
+            {
+                if (booking.StartTime < DateTime.UtcNow)
+                {
+                    throw new BadRequestException("You cannot cancel a booking that has already started.");
+                }
             }
 
             booking.Status = BookingStatus.Cancelled;
             booking.UpdatedAt = DateTime.UtcNow;
-            // No need to call UpdateAsync as it's already tracked.
 
             // Handle Point Refund
-            // Find the associated transaction
             var transaction = await _unitOfWork.Transactions.GetBookingTransactionAsync(bookingId);
 
             if (transaction != null && transaction.Status == TransactionStatus.Escrow)
             {
                 transaction.Status = TransactionStatus.Cancelled;
                 transaction.UpdatedAt = DateTime.UtcNow;
-                // No need to call UpdateAsync as it's tracked and SaveChangesAsync will catch it.
-                // Using UpdateAsync(transaction) here would trigger the tracking conflict.
 
-                // Assuming points should be returned to candidate balance
-                var candidateAccount = await _unitOfWork.Accounts.GetByIdAsync(candidateId);
+                // Points always returned to candidate balance regardless of who cancels
+                var candidateAccount = await _unitOfWork.Accounts.GetByIdAsync(booking.CandidateId);
                 if (candidateAccount != null)
                 {
                     candidateAccount.Balance += transaction.Amount;
@@ -474,6 +504,49 @@ namespace Imate.API.Business.Services.Mentors
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Notifications
+            try
+            {
+                var canceller = await _unitOfWork.Accounts.GetByIdAsync(userId);
+                var mentorAccount = await _unitOfWork.Accounts.GetByIdAsync(booking.MentorId);
+                var candidateAccount = await _unitOfWork.Accounts.GetByIdAsync(booking.CandidateId);
+                
+                string timeStr = TimeZoneInfo.ConvertTimeFromUtc(booking.StartTime.DateTime, TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId)).ToString("HH:mm");
+                string dateStr = booking.BookDate.ToString("dd/MM/yyyy");
+
+                if (isCandidate)
+                {
+                    // Notify Mentor about candidate cancellation
+                    await _systemNotificationService.CreateAndSendNotificationAsync(
+                        booking.MentorId,
+                        $"Lịch hẹn ngày {dateStr} lúc {timeStr} đã bị hủy bởi ứng viên {canceller?.FullName ?? "vô danh"}.",
+                        "/mentor/interview-history"
+                    );
+
+                    await _systemNotificationService.CreateAndSendNotificationAsync(
+                        userId,
+                        $"Bạn đã hủy lịch hẹn với Mentor {mentorAccount?.FullName ?? "vô danh"} ngày {dateStr} lúc {timeStr}.",
+                        "/candidate/interview-history"
+                    );
+                }
+                else if (isMentor)
+                {
+                    // Notify Candidate about mentor cancellation (Rejection)
+                    await _systemNotificationService.CreateAndSendNotificationAsync(
+                        booking.CandidateId,
+                        $"Mentor {canceller?.FullName ?? "vô danh"} đã hủy lịch hẹn ngày {dateStr} lúc {timeStr}. Số tiền đã được hoàn lại vào ví của bạn.",
+                        "/candidate/interview-history"
+                    );
+
+                    await _systemNotificationService.CreateAndSendNotificationAsync(
+                        userId,
+                        $"Bạn đã hủy lịch hẹn với ứng viên {candidateAccount?.FullName ?? "vô danh"} ngày {dateStr} lúc {timeStr}.",
+                        "/mentor/interview-history"
+                    );
+                }
+            }
+            catch (Exception) { }
         }
 
         public async Task RateMentorAsync(int bookingId, int candidateId, RateMentorRequest request)
@@ -516,6 +589,18 @@ namespace Imate.API.Business.Services.Mentors
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Notify Mentor about rating
+            try
+            {
+                var candidate = await _unitOfWork.Accounts.GetByIdAsync(candidateId);
+                await _systemNotificationService.CreateAndSendNotificationAsync(
+                    booking.MentorId,
+                    $"Bạn nhận được đánh giá {request.RatingScore} sao từ ứng viên {candidate?.FullName ?? "vô danh"}.",
+                    "/mentor/ratings"
+                );
+            }
+            catch (Exception) { }
         }
 
         private (List<string> urls, string? firstUrl) ParseRecordingInfo(Booking booking)

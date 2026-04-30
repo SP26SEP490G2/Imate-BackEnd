@@ -157,6 +157,20 @@ namespace Imate.API.Presentation.Controllers.Payment
             }
         }
 
+        [HttpGet("max-amount")]
+        public async Task<ActionResult<int>> GetMaxAmount()
+        {
+            try
+            {
+                var maxAmount = await _service.GetMaxAmountAsync();
+                return Ok(maxAmount);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi hệ thống: {ex.Message}");
+            }
+        }
+
         [HttpPut("transactions/{transactionId}/cancel")]
         public async Task<IActionResult> CancelTransaction(int transactionId)
         {
@@ -402,6 +416,19 @@ namespace Imate.API.Presentation.Controllers.Payment
             {
                 return StatusCode(500, $"Lỗi hệ thống: {ex.Message}");
             }
+        }
+
+        [HttpGet("transaction-config")]
+        public async Task<IActionResult> GetTransactionConfig()
+        {
+            var depositTimeout = await _service.GetDepositTimeoutMinutesAsync();
+            var withdrawalRefund = await _service.GetWithdrawalAutoRefundHoursAsync();
+
+            return Ok(new
+            {
+                depositTimeoutMinutes = depositTimeout,
+                withdrawalAutoRefundHours = withdrawalRefund
+            });
         }
 
         // Thêm hàm helper để lấy Role

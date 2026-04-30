@@ -1,4 +1,8 @@
+using Imate.API.Business.Helper;
+using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces;
+using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -61,6 +65,8 @@ namespace Imate.API.Business.Services.Mentors
         {
             using var scope = _scopeFactory.CreateScope();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var systemConfigService = scope.ServiceProvider.GetRequiredService<ISystemConfigService>();
+            var systemNotificationService = scope.ServiceProvider.GetRequiredService<ISystemNotificationService>();
             var now = DateTime.UtcNow;
 
             // --- Phase 1: Auto-complete Confirmed bookings that have passed their 1h mark ---
@@ -102,22 +108,71 @@ namespace Imate.API.Business.Services.Mentors
                         continue;
                     }
 
-                    // Release funds to mentor
-                    escrowTransaction.Status = TransactionStatus.Released;
+                    // Release funds to mentor (with commission deduction)
+                    decimal commissionRate = await systemConfigService.GetCommissionRateAsync();
+                    
+                    var originalAmount = escrowTransaction.Amount;
+                    var commission = (int)(originalAmount * commissionRate / 100);
+                    var payoutAmount = originalAmount - commission;
+
+                    escrowTransaction.Status = TransactionStatus.Completed;
+                    escrowTransaction.CommissionRateApplied = commissionRate;
                     escrowTransaction.UpdatedAt = now;
 
                     var mentorAccount = await unitOfWork.Accounts.GetByIdAsync(booking.MentorId);
                     if (mentorAccount != null)
                     {
-                        mentorAccount.Balance += escrowTransaction.Amount;
-                        _logger.LogInformation("AutoCompleteBooking: Released {Amount} to Mentor #{MentorId} for Booking #{BookingId}.", 
-                            escrowTransaction.Amount, booking.MentorId, booking.Id);
+                        mentorAccount.Balance += payoutAmount;
+                        
+                        // Create Payout Transaction record for history
+                        var payoutTransaction = new Transaction
+                        {
+                            SourceAccountId = null, // System payout
+                            TargetAccountId = mentorAccount.Id,
+                            TransactionType = TransactionType.BookingPayout,
+                            Amount = payoutAmount,
+                            BookingId = booking.Id,
+                            Status = TransactionStatus.Completed,
+                            CommissionRateApplied = commissionRate,
+                            Reason = $"Tự động giải ngân cho booking #{booking.Id} (Hoa hồng: {commissionRate}%)",
+                            CreatedAt = now
+                        };
+                        payoutTransaction.EnsureExternalTransactionCode();
+                        await unitOfWork.Transactions.AddAsync(payoutTransaction);
+
+                        _logger.LogInformation("AutoCompleteBooking: Released {PayoutAmount} (after {Commission} fee) to Mentor #{MentorId} for Booking #{BookingId}.", 
+                            payoutAmount, commission, booking.MentorId, booking.Id);
                     }
                     
                     // Also ensure booking status is Completed if it was still Confirmed
                     if (booking.Status == BookingStatus.Confirmed) {
                         booking.Status = BookingStatus.Completed;
                         booking.UpdatedAt = now;
+                    }
+
+                    // Notifications
+                    try
+                    {
+                        var candidateAccount = await unitOfWork.Accounts.GetByIdAsync(booking.CandidateId);
+                        
+                        // Notify Mentor
+                        await systemNotificationService.CreateAndSendNotificationAsync(
+                            booking.MentorId, 
+                            $"Lịch hẹn với {candidateAccount?.FullName ?? "ứng viên"} đã hoàn thành. Bạn nhận được {payoutAmount:N0} imCoin (đã trừ {commissionRate}% hoa hồng).",
+                            "/wallet"
+                        );
+
+                        // Notify Candidate
+                        var mentorAccountName = mentorAccount?.FullName ?? "Mentor";
+                        await systemNotificationService.CreateAndSendNotificationAsync(
+                            booking.CandidateId,
+                            $"Lịch hẹn với Mentor {mentorAccountName} đã được hệ thống xác nhận hoàn thành.",
+                            "/candidate/interview-history"
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"Failed to send auto-complete notification for booking {booking.Id}: {ex.Message}");
                     }
                 }
                 catch (Exception ex)

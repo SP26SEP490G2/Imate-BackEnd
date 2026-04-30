@@ -16,6 +16,7 @@ namespace Imate.API.Presentation.ResponseModels.QuestionBank
         public string CreatorAvatarUrl { get; set; }
         public string CreatorRole { get; set; }
         public string Difficulty { get; set; }
+        public string Level { get; set; }
 
         // Contributed Detail info
         public ContributedDetailDto ContributedDetail { get; set; }

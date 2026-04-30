@@ -7,6 +7,7 @@ namespace Imate.API.Presentation.ResponseModels.QuestionBank
         public int Id { get; set; }
         public string Content { get; set; }
         public DifficultyLevel? Difficulty { get; set; }
+        public Level? Level { get; set; }
         public bool IsFromSystem { get; set; }
         public bool IsActive { get; set; }
         public int CreatorId { get; set; }

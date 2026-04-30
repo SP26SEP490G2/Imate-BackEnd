@@ -222,7 +222,7 @@ namespace Imate.API.DataAccess.Repositories.Mentors
             return await _context.Bookings
                 .Include(b => b.Candidate)
                 .Where(b => b.MentorId == mentorId
-                    && b.Status == BookingStatus.Completed)
+                    && (b.Status == BookingStatus.Completed || b.Status == BookingStatus.Cancelled))
                 .OrderByDescending(b => b.StartTime)
                 .ToListAsync();
         }

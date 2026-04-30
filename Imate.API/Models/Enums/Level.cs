@@ -4,9 +4,8 @@ namespace Imate.API.Models.Enums
     {
         Intern,
         Junior,
+        Fresher,
         Middle,
-        Senior,
-        Lead,
-        Manager
+        Senior
     }
 }
