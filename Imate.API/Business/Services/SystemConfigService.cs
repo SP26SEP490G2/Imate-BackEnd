@@ -349,7 +349,7 @@ namespace Imate.API.Business.Services
             {
                 return cost;
             }
-            return 2000; // Default 2000 Imateints
+            return 1; // Default 2000 Imateints
         }
 
         public async Task<int> GetPracticeQuestionCostPointsAsync()

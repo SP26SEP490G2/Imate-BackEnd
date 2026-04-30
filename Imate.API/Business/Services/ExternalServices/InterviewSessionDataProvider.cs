@@ -3,6 +3,7 @@ using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.AI.Module.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Imate.API.Business.Interfaces;
 
 namespace Imate.API.Business.Services.ExternalServices
 {
@@ -13,10 +14,12 @@ namespace Imate.API.Business.Services.ExternalServices
     public class InterviewSessionDataProvider : IInterviewSessionDataProvider
     {
         private readonly ImateDbContext _context;
+        private readonly ISystemConfigService _systemConfigService;
 
-        public InterviewSessionDataProvider(ImateDbContext context)
+        public InterviewSessionDataProvider(ImateDbContext context, ISystemConfigService systemConfigService)
         {
             _context = context;
+            _systemConfigService = systemConfigService;
         }
 
         // ── Session ──
@@ -177,15 +180,15 @@ namespace Imate.API.Business.Services.ExternalServices
                     .FirstOrDefaultAsync(sc => sc.Key == "FREE_INTERVIEW_LIMIT");
                 int limit = freeLimitConfig != null && int.TryParse(freeLimitConfig.Value, out var l) ? l : 3;
 
-                // Đếm số interview trong tháng này (giờ VN)
-                var vietnamNow = now.ToOffset(TimeSpan.FromHours(7));
-                var monthStart = new DateTimeOffset(vietnamNow.Year, vietnamNow.Month, 1, 0, 0, 0, TimeSpan.FromHours(7));
-                var nextMonthStart = monthStart.AddMonths(1);
+                // Lấy thông tin Account để lấy số lượt đã dùng
+                var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Id == accountId);
+                if (account != null)
+                {
+                    // Kiểm tra reset tháng cho người dùng free
+                    await CheckAndResetFreeMonthlyUsageAsync(account);
+                }
 
-                var usedInMonth = await _context.InterviewSessions
-                    .CountAsync(s => s.AccountId == accountId &&
-                                    s.StartTime >= monthStart &&
-                                    s.StartTime < nextMonthStart);
+                int usedInMonth = account?.FreeUsedMock ?? 0;
 
                 return new InterviewLimitStatus
                 {
@@ -205,19 +208,23 @@ namespace Imate.API.Business.Services.ExternalServices
                 // Reset số lượt dùng nếu đã sang tháng mới
                 await CheckAndResetMonthlyUsageAsync(activeSub);
 
+                // Lấy cost từ system config
+                int interviewCost = await _systemConfigService.GetInterviewCostPointsAsync();
+
                 int limit = activeSub.InitialMockLimit;
                 int used = activeSub.MockInterviewUsed;
+                int remaining = Math.Max(0, limit - used);
 
                 return new InterviewLimitStatus
                 {
                     IsFree = false,
                     LimitCount = limit,
                     UsedCount = used,
-                    RemainingCount = Math.Max(0, limit - used),
-                    CanStart = used < limit,
-                    Message = used < limit
-                        ? $"Bạn còn {limit - used} lượt phỏng vấn trong gói {activeSub.Package.Name}."
-                        : $"Gói {activeSub.Package.Name} của bạn đã hết lượt phỏng vấn."
+                    RemainingCount = remaining,
+                    CanStart = remaining >= interviewCost,
+                    Message = remaining >= interviewCost
+                        ? $"Bạn còn {remaining} lượt phỏng vấn (tốn {interviewCost} lượt/lần) trong gói {activeSub.Package.Name}."
+                        : $"Gói {activeSub.Package.Name} của bạn không đủ lượt phỏng vấn (cần {interviewCost} lượt)."
                 };
             }
         }
@@ -246,10 +253,45 @@ namespace Imate.API.Business.Services.ExternalServices
                     // Kiểm tra reset tháng trước khi tăng
                     await CheckAndResetMonthlyUsageAsync(activeSub);
 
-                    activeSub.MockInterviewUsed++;
+                    // Lấy cost từ system config
+                    int interviewCost = await _systemConfigService.GetInterviewCostPointsAsync();
+
+                    activeSub.MockInterviewUsed += interviewCost;
                     activeSub.UpdatedAt = DateTimeOffset.UtcNow;
                     await _context.SaveChangesAsync();
                 }
+            }
+            else
+            {
+                // TRƯỜNG HỢP: FREE
+                var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Id == accountId);
+                if (account != null)
+                {
+                    // Kiểm tra reset tháng cho người dùng free
+                    await CheckAndResetFreeMonthlyUsageAsync(account);
+
+                    account.FreeUsedMock++;
+                    account.UpdatedAt = DateTimeOffset.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private async Task CheckAndResetFreeMonthlyUsageAsync(Account account)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var vietnamNow = now.ToOffset(TimeSpan.FromHours(7));
+
+            var lastUpdate = account.UpdatedAt ?? account.CreatedAt;
+            var vietnamLastUpdate = lastUpdate.ToOffset(TimeSpan.FromHours(7));
+
+            // Nếu năm hiện tại lớn hơn hoặc (cùng năm nhưng tháng hiện tại lớn hơn)
+            if (vietnamNow.Year > vietnamLastUpdate.Year || 
+                (vietnamNow.Year == vietnamLastUpdate.Year && vietnamNow.Month > vietnamLastUpdate.Month))
+            {
+                account.FreeUsedMock = 0;
+                account.UpdatedAt = now;
+                // Lưu thay đổi được thực hiện bởi caller
             }
         }
 
