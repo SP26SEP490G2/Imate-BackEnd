@@ -2,10 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Imate.API.Business.Interfaces.Mentors;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
-using Microsoft.EntityFrameworkCore;
-using Imate.API.Business.Interfaces.Mentors;
-using Imate.API.DataAccess.Interfaces;
-using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Mentors;
 using Imate.API.Presentation.ResponseModels.Mentors;
@@ -13,6 +9,7 @@ using Imate.API.Business.Exceptions;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Imate.API.Business.Interfaces.Notification;
+using Imate.API.Business.Interfaces;
 
 namespace Imate.API.Business.Services.Mentors
 {
