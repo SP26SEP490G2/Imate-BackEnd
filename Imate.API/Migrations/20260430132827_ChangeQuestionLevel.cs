@@ -10,6 +10,9 @@ namespace Imate.API.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "Level",
+                table: "ContributedDetails");
             migrationBuilder.AlterColumn<string>(
                 name: "Level",
                 table: "Questions",
@@ -22,6 +25,12 @@ namespace Imate.API.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<string>(
+                name: "Level",
+                table: "ContributedDetails",
+                type: "nvarchar(50)",
+                nullable: false,
+                defaultValue: "");
             migrationBuilder.AlterColumn<int>(
                 name: "Level",
                 table: "Questions",
