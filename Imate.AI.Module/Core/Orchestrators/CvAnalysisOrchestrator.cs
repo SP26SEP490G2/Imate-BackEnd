@@ -115,11 +115,6 @@ namespace Imate.AI.Module.Core.Orchestrators
         public async Task ValidateCvIsItAsync(IFormFile file)
         {
             var ext = Path.GetExtension(file.FileName)?.ToLowerInvariant();
-            if (ext == ".doc")
-            {
-                _logger.LogInformation("[CvValidate] .doc file — skipping IT validation, allowing upload.");
-                return;
-            }
 
             string cvText;
             try
@@ -134,7 +129,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                 throw new ArgumentException("Không thể đọc nội dung file. Vui lòng kiểm tra lại file CV.");
             }
 
-            if (string.IsNullOrWhiteSpace(cvText) || cvText.Length < 50)
+            if (string.IsNullOrWhiteSpace(cvText) || cvText.Length < 100)
             {
                 _logger.LogWarning("[CvValidate] Extracted text too short ({Length} chars) for {FileName}", cvText?.Length ?? 0, file.FileName);
                 throw new ArgumentException("File CV không có nội dung hoặc nội dung quá ngắn.");
