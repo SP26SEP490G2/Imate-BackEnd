@@ -231,5 +231,15 @@ namespace Imate.API.DataAccess.Repositories.Payment
                          && t.TransactionType == TransactionType.Deposit)
                 .ToListAsync();
         }
+
+        public async Task<List<Transaction>> GetPendingWithdrawalTimeoutTransactions(DateTime timeoutTime)
+        {
+            return await _context.Transactions
+                .Include(t => t.SourceAccount)
+                .Where(t => t.Status == TransactionStatus.Pending
+                         && t.CreatedAt <= timeoutTime
+                         && t.TransactionType == TransactionType.Withdrawal)
+                .ToListAsync();
+        }
     }
 }

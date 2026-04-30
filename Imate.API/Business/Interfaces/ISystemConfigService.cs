@@ -17,6 +17,7 @@ namespace Imate.API.Business.Interfaces
         Task<int> GetReportDeadlineHoursAsync();
         Task<decimal> GetCancellationRefundRateAsync();
         Task<int> GetMinDepositAmountAsync();
+        Task<int> GetMaxDepositAmountAsync();
         Task<int> GetPriceUpdateCooldownDaysAsync();
         Task<int> GetAgoraTokenExpirationHoursAsync();
         Task<int> GetNotificationPageSizeAsync();
@@ -28,6 +29,8 @@ namespace Imate.API.Business.Interfaces
         Task<int> GetPracticeQuestionCostPointsAsync();
         Task<decimal> GetGuaranteeDepositRateAsync();
         Task<int> GetAnalyseCvCostPointAsync();
+        Task<int> GetDepositTimeoutMinutesAsync();
+        Task<int> GetWithdrawalAutoRefundHoursAsync();
     }
 }
 
