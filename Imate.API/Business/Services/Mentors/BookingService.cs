@@ -21,15 +21,17 @@ namespace Imate.API.Business.Services.Mentors
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
         private readonly ISystemNotificationService _systemNotificationService;
+        private readonly ISystemConfigService _systemConfigService;
         private const int MIN_BOOKING_ADVANCE_HOURS = 6;
         private const int MIN_CANCEL_ADVANCE_HOURS = 6;
         private const string LocalTimeZoneId = "SE Asia Standard Time";
 
-        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration, ISystemNotificationService systemNotificationService)
+        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration, ISystemNotificationService systemNotificationService, ISystemConfigService systemConfigService)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
             _systemNotificationService = systemNotificationService;
+            _systemConfigService = systemConfigService;
         }
 
         public async Task<BookingResponseModel> CreateBookingAsync(BookingCreateRequest request, int candidateId)
@@ -123,7 +125,7 @@ namespace Imate.API.Business.Services.Mentors
                 TransactionType = TransactionType.BookingFee,
                 Amount = price,
                 Status = TransactionStatus.Escrow,
-                EscrowDeadline = startUtc.AddHours(24),
+                EscrowDeadline = startUtc.AddHours(await _systemConfigService.GetReportDeadlineHoursAsync()),
                 CreatedAt = DateTime.UtcNow
             };
 

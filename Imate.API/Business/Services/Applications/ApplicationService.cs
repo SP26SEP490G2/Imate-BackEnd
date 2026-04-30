@@ -229,9 +229,23 @@ namespace Imate.API.Business.Services.Applications
             {
                 throw new BadRequestException("Mô tả lỗi không được để trống.");
             }
-            if (await _unitOfWork.Bookings.GetBookingByIdAsync(request.BookingId) == null)
+            
+            var booking = await _unitOfWork.Bookings.GetBookingByIdAsync(request.BookingId);
+            if (booking == null)
             {
                 throw new NotFoundException("Không tìm thấy booking tương ứng.");
+            }
+
+            // 2. Kiểm tra thời hạn báo cáo (Deadline check)
+            var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
+            var now = DateTime.UtcNow;
+            
+            // Thời hạn báo cáo = Thời gian bắt đầu buổi học + 1 giờ (thời lượng học) + X giờ deadline
+            var reportCutoff = booking.StartTime.AddHours(1 + reportDeadlineHours);
+            
+            if (now > reportCutoff)
+            {
+                throw new BadRequestException($"Đã quá thời hạn báo cáo cho buổi học này (Thời hạn là {reportDeadlineHours} giờ sau khi học xong).");
             }
 
             // 3. Xử lý File Upload (Giống RegisterProfileAsync)
