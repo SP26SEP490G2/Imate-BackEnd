@@ -16,6 +16,7 @@ namespace Imate.API.Business.Services
                 {
                     "Content",
                     "Difficulty",
+                    "Level",
                     "SampleAnswer",
                     "CategoryNames",
                     "SkillNames",
@@ -40,6 +41,7 @@ namespace Imate.API.Business.Services
                     {
                         "Bạn sẽ làm gì khi có xung đột với đồng nghiệp trong dự án?",
                         "Medium",
+                        "Junior",
                         "Lắng nghe quan điểm của họ, tìm ra điểm chung và cùng hướng tới mục tiêu chung của team.",
                         "Behavioral",
                         "Soft Skills",
@@ -49,6 +51,7 @@ namespace Imate.API.Business.Services
                     {
                         "Giải thích sự khác biệt giữa Interface và Abstract Class.",
                         "Easy",
+                        "Intern",
                         "Interface chỉ chứa khai báo, Abstract Class có thể chứa cả khai báo và định nghĩa chi tiết.",
                         "Technical",
                         "Java, C#",
@@ -80,15 +83,17 @@ namespace Imate.API.Business.Services
                     "",
                     "1. Content: Nội dung câu hỏi (Bắt buộc, không được trùng)",
                     "2. Difficulty: Mức độ (Easy, Medium, Hard)",
-                    "3. SampleAnswer: Câu trả lời mẫu (Bắt buộc)",
-                    "4. CategoryNames: Tên các thể loại, ngăn cách bằng dấu phẩy (VD: Behavioral, Technical)",
-                    "5. SkillNames: Tên các kỹ năng, ngăn cách bằng dấu phẩy (VD: Java, C#, React)",
-                    "6. PositionNames: Tên các vị trí, ngăn cách bằng dấu phẩy (VD: Frontend Developer, Backend Developer)",
+                    "3. Level (Intern, Fresher, Junior, Middle, Senior)",
+                    "4. SampleAnswer: Câu trả lời mẫu (Bắt buộc)",
+                    "5. CategoryNames: Tên các thể loại, ngăn cách bằng dấu phẩy (VD: Behavioral, Technical)",
+                    "6. SkillNames: Tên các kỹ năng, ngăn cách bằng dấu phẩy (VD: Java, C#, React)",
+                    "7. PositionNames: Tên các vị trí, ngăn cách bằng dấu phẩy (VD: Frontend Developer, Backend Developer)",
                     "",
                     "LƯU Ý:",
                     "- Tên Category, Skill, Position phải tồn tại trong hệ thống",
                     "- Nội dung câu hỏi không được trùng lặp",
                     "- Mức độ chỉ được là: Easy, Medium, hoặc Hard",
+                    "-  chỉ được là: Easy, Medium, hoặc Hard",
                     "- Xem sheet 'Questions' để biết ví dụ"
                 };
 
@@ -126,6 +131,7 @@ namespace Imate.API.Business.Services
                 {
                     "Content",
                     "Difficulty",
+                    "Level",
                     "SampleAnswer",
                     "CategoryNames",
                     "SkillNames",
@@ -151,14 +157,15 @@ namespace Imate.API.Business.Services
 
                     worksheet.Cell(excelRow, 1).Value = question.Content ?? string.Empty;
                     worksheet.Cell(excelRow, 2).Value = question.Difficulty?.ToString() ?? string.Empty;
-                    worksheet.Cell(excelRow, 3).Value = question.SampleAnswer ?? string.Empty;
-                    worksheet.Cell(excelRow, 4).Value = question.CategoriesName != null && question.CategoriesName.Any() 
+                    worksheet.Cell(excelRow, 3).Value = question.Level?.ToString() ?? string.Empty;
+                    worksheet.Cell(excelRow, 4).Value = question.SampleAnswer ?? string.Empty;
+                    worksheet.Cell(excelRow, 5).Value = question.CategoriesName != null && question.CategoriesName.Any() 
                         ? string.Join(", ", question.CategoriesName) 
                         : string.Empty;
-                    worksheet.Cell(excelRow, 5).Value = question.SkillsName != null && question.SkillsName.Any() 
+                    worksheet.Cell(excelRow, 6).Value = question.SkillsName != null && question.SkillsName.Any() 
                         ? string.Join(", ", question.SkillsName) 
                         : string.Empty;
-                    worksheet.Cell(excelRow, 6).Value = question.PositionsName != null && question.PositionsName.Any() 
+                    worksheet.Cell(excelRow, 7).Value = question.PositionsName != null && question.PositionsName.Any() 
                         ? string.Join(", ", question.PositionsName) 
                         : string.Empty;
 

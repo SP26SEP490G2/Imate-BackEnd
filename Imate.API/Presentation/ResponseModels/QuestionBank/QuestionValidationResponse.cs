@@ -6,6 +6,7 @@
         public int RowIndex { get; set; } // Số dòng trong file Excel để người dùng biết
         public string? Content { get; set; }
         public string? Difficulty { get; set; }
+        public string? Level { get; set; }
         public string? SampleAnswer { get; set; }
         public string? CategoryNames { get; set; } // Giữ dạng chuỗi để người dùng có thể sửa
         public string? SkillNames { get; set; }

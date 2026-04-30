@@ -13,7 +13,6 @@ namespace Imate.API.DataAccess.Configurations
             builder.Property(e => e.Id).UseIdentityColumn();
 
             builder.Property(e => e.InterviewDate).IsRequired();
-            builder.Property(e => e.Level).IsRequired().HasConversion<string>().HasColumnType("nvarchar(50)");
             builder.Property(e => e.CreatedAt).IsRequired().HasColumnType("datetimeoffset");
             builder.Property(e => e.UpdatedAt).IsRequired(false).HasColumnType("datetimeoffset");
 

@@ -29,6 +29,7 @@ namespace Imate.API.Business.Services.QuestionBank
     {
         "Content",
         "Difficulty",
+        "Level",
         "SampleAnswer",
         "CategoryNames",
         "SkillNames",
@@ -154,12 +155,16 @@ namespace Imate.API.Business.Services.QuestionBank
             {
                 query = query.Where(q => q.QuestionCategories.Any(qp => qp.CategoryId == questionParams.CategoryId.Value));
             }
-            // 5. Filter theo Difficulty (Level)
+            // 5. Filter theo Difficulty
             if (questionParams.Difficulty.HasValue)
             {
                 query = query.Where(q => q.Difficulty == questionParams.Difficulty.Value);
             }
-
+            // 6. Filter theo Level
+            if (questionParams.Level.HasValue)
+            {
+                query = query.Where(q => q.Level == questionParams.Level.Value);
+            }
 
 
 
@@ -192,6 +197,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 Id = q.Id,
                 Content = q.Content,
                 Difficulty = q.Difficulty,
+                Level = q.Level,
                 IsFromSystem = q.IsFromSystem,
                 IsActive = q.IsActive,
                 CreatorId = q.CreatorId,
@@ -251,7 +257,7 @@ namespace Imate.API.Business.Services.QuestionBank
             // 6. Filter theo Difficulty (Level)
             if (questionParams.Level.HasValue)
             {
-                query = query.Where(q => q.ContributedDetail.Level == questionParams.Level.Value);
+                query = query.Where(q => q.Level == questionParams.Level.Value);
             }
 
 
@@ -288,7 +294,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 CreatorName = q.Creator.FullName ?? string.Empty,
                 SampleAnswer = q.SampleAnswer,
                 ContributedDetailId = q.ContributedDetailId,
-                Level = q.ContributedDetail.Level,
+                Level = q.Level,
                 CompanyName = q.ContributedDetail.Company.Name,
                 CategoriesName = q.QuestionCategories.Select(qc => qc.Category.Name).ToList(),
                 SkillsName = q.QuestionSkills.Select(qs => qs.Skill.Name ?? string.Empty).ToList(),
@@ -317,7 +323,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 CategoriesName = a.QuestionCategories.Select(c => c.Category.Name).ToList(),
                 SkillsName = a.QuestionSkills.Select(s => s.Skill.Name).ToList(),
                 PositionsName = a.QuestionPositions.Select(p => p.Position.Name).ToList(),
-                Level = a.ContributedDetail.Level,
+                Level = a.Level,
                 CompanyName = a.ContributedDetail.Company.Name,
                 ContributedDetailId = a.ContributedDetailId,
                 InterviewDate = a.ContributedDetail.InterviewDate.ToString("dd-MM-yyyy"),
@@ -414,7 +420,7 @@ namespace Imate.API.Business.Services.QuestionBank
             // 6. Filter theo Difficulty (Level)
             if (questionParams.Level.HasValue)
             {
-                query = query.Where(q => q.ContributedDetail.Level == questionParams.Level.Value);
+                query = query.Where(q => q.Level == questionParams.Level.Value);
             }
 
 
@@ -450,7 +456,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 CreatorId = q.CreatorId,
                 CreatorName = q.Creator.FullName ?? string.Empty,
                 SampleAnswer = q.SampleAnswer,
-                Level = q.ContributedDetail.Level,
+                Level = q.Level,
                 CompanyName = q.ContributedDetail.Company.Name,
                 CategoriesName = q.QuestionCategories.Select(qc => qc.Category.Name).ToList(),
                 SkillsName = q.QuestionSkills.Select(qs => qs.Skill.Name ?? string.Empty).ToList(),
@@ -530,6 +536,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 Id = q.Id,
                 Content = q.Content,
                 Difficulty = q.Difficulty.ToString(),
+                Level = q.Level.ToString(),
                 SampleAnswer = q.SampleAnswer,
                 CreatorName = q.Creator?.FullName,
                 CreatedAt = q.CreatedAt,
@@ -597,6 +604,12 @@ namespace Imate.API.Business.Services.QuestionBank
             if (questionParams.Difficulty.HasValue)
             {
                 query = query.Where(q => q.Difficulty == questionParams.Difficulty.Value);
+            }
+
+            // 6. Filter theo Level
+            if (questionParams.Level.HasValue)
+            {
+                query = query.Where(q => q.Level == questionParams.Level.Value);
             }
 
             // 6. Sorting
@@ -723,7 +736,7 @@ namespace Imate.API.Business.Services.QuestionBank
             // 7. Filter theo Level
             if (questionParams.Level.HasValue)
             {
-                query = query.Where(q => q.ContributedDetail != null && q.ContributedDetail.Level == questionParams.Level.Value);
+                query = query.Where(q => q.ContributedDetail != null && q.Level == questionParams.Level.Value);
             }
             if (questionParams.Difficulty.HasValue)
             {
@@ -795,11 +808,11 @@ namespace Imate.API.Business.Services.QuestionBank
                 {
                     Id = q.ContributedDetail.Id,
                     InterviewDate = q.ContributedDetail.InterviewDate,
-                    Level = q.ContributedDetail.Level.ToString(),
                     Company = q.ContributedDetail.Company != null ? q.ContributedDetail.Company.Name : string.Empty,
                     CompanyURL = q.ContributedDetail.Company != null ? q.ContributedDetail.Company.ImageUrl : string.Empty,
                 } : null,
                 Difficulty = q.Difficulty.ToString(),
+                Level = q.Level.ToString(),
                 IsSaved = accountId.HasValue && savedQuestionIds.Contains(q.Id),
                 CommentCount = q.Comments.Count
             });
@@ -842,7 +855,6 @@ namespace Imate.API.Business.Services.QuestionBank
                 {
                     Id = question.ContributedDetail.Id,
                     InterviewDate = question.ContributedDetail.InterviewDate,
-                    Level = question.ContributedDetail.Level.ToString(),
                     Company = question.ContributedDetail.Company.Name,
                     CompanyURL = question.ContributedDetail.Company.ImageUrl,
                 } : null,
@@ -886,7 +898,6 @@ namespace Imate.API.Business.Services.QuestionBank
                 {
                     Id = question.ContributedDetail.Id,
                     InterviewDate = question.ContributedDetail.InterviewDate,
-                    Level = question.ContributedDetail.Level.ToString(),
                     Company = question.ContributedDetail.Company.Name,
                     CompanyURL = question.ContributedDetail.Company.ImageUrl,
                 } : null,
@@ -965,7 +976,6 @@ namespace Imate.API.Business.Services.QuestionBank
             var contributedDetail = new ContributedDetail
             {
                 InterviewDate = request.InterviewDate,
-                Level = request.Level,
                 CompanyId = request.CompanyId
             };
 
@@ -982,6 +992,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 SampleAnswer = request.UserAnswer,
                 CreatorId = creatorId,
                 Difficulty = request.Difficulty,
+                Level = request.Level,
                 IsFromSystem = false,
                 IsActive = false,
                 CreatedAt = DateTime.UtcNow,
@@ -1069,6 +1080,7 @@ namespace Imate.API.Business.Services.QuestionBank
             {
                 Content = request.Content,
                 Difficulty = request.Difficulty,
+                Level = request.Level,
                 SampleAnswer = request.SampleAnswer,
                 CreatorId = creatorId,
                 IsFromSystem = true,
@@ -1150,6 +1162,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 Id = a.Id,
                 Content = a.Content,
                 Difficulty = a.Difficulty,
+                Level = a.Level,
                 SampleAnswer = a.SampleAnswer,
                 IsFromSystem = a.IsFromSystem,
                 IsActive = a.IsActive,
@@ -1228,6 +1241,7 @@ namespace Imate.API.Business.Services.QuestionBank
             questionToUpdate.Content = request.Content;
             questionToUpdate.SampleAnswer = request.SampleAnswer;
             questionToUpdate.Difficulty = request.Difficulty;
+            questionToUpdate.Level = request.Level;
             questionToUpdate.IsActive = request.IsActive;
             questionToUpdate.UpdatedAt = DateTime.UtcNow;
             UpdateQuestionRelationships(questionToUpdate, request, questionId);
@@ -1453,10 +1467,11 @@ namespace Imate.API.Business.Services.QuestionBank
                         // Đọc dữ liệu từ các ô
                         result.Content = row.Cell(1).GetValue<string>();
                         result.Difficulty = row.Cell(2).GetValue<string>();
-                        result.SampleAnswer = row.Cell(3).GetValue<string>();
-                        result.CategoryNames = row.Cell(4).GetValue<string>();
-                        result.SkillNames = row.Cell(5).GetValue<string>();
-                        result.PositionNames = row.Cell(6).GetValue<string>();
+                        result.Level = row.Cell(3).GetValue<string>();
+                        result.SampleAnswer = row.Cell(4).GetValue<string>();
+                        result.CategoryNames = row.Cell(5).GetValue<string>();
+                        result.SkillNames = row.Cell(6).GetValue<string>();
+                        result.PositionNames = row.Cell(7).GetValue<string>();
 
                         // --- KIỂM TRA LỖI CHO TRƯỜNG CONTENT ---
                         if (string.IsNullOrWhiteSpace(result.Content))
@@ -1485,6 +1500,12 @@ namespace Imate.API.Business.Services.QuestionBank
                         {
                             result.IsValid = false;
                             result.Errors["Difficulty"] = "Mức độ không hợp lệ (Phải là Easy, Medium, Hard).";
+                        }
+
+                        if (!Enum.TryParse<Level>(result.Level, true, out _))
+                        {
+                            result.IsValid = false;
+                            result.Errors["Level"] = "Level lệ (Phải là Intern, Fresher, Junior, Middle, Senior).";
                         }
                         // 1. Kiểm tra Category Names cho dòng hiện tại
                         var categoryNamesInRow = ParseNames(result.CategoryNames);
@@ -1564,11 +1585,15 @@ namespace Imate.API.Business.Services.QuestionBank
                 {
                     difficulty = DifficultyLevel.Easy; // Gán giá trị mặc định nếu có lỗi
                 }
-
+                if (!Enum.TryParse<Level>(request.Level, true, out var level))
+                {
+                    level = Level.Intern; // Gán giá trị mặc định nếu có lỗi
+                }
                 var question = new Question
                 {
                     Content = request.Content,
                     Difficulty = difficulty,
+                    Level = level,
                     SampleAnswer = request.SampleAnswer,
                     CreatorId = creatorId,
                     IsFromSystem = true,
@@ -1666,6 +1691,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 RowIndex = 0,
                 Content = request.Content,
                 Difficulty = request.Difficulty,
+                Level = request.Level,
                 SampleAnswer = request.SampleAnswer,
                 CategoryNames = request.CategoryNames,
                 SkillNames = request.SkillNames,
@@ -1701,6 +1727,12 @@ namespace Imate.API.Business.Services.QuestionBank
             {
                 validationResult.IsValid = false;
                 validationResult.Errors["Difficulty"] = "Mức độ không hợp lệ (Phải là Easy, Medium, Hard).";
+            }
+
+            if (!Enum.TryParse<Level>(validationResult.Level, true, out _))
+            {
+                validationResult.IsValid = false;
+                validationResult.Errors["Level"] = "Level không hợp lệ (Phải là Intern, Fresher, Junior, Middle, Senior).";
             }
 
             if (nonExistentCategoryNames.Any())
@@ -1762,7 +1794,7 @@ namespace Imate.API.Business.Services.QuestionBank
             // 6. Filter theo Level
             if (questionParams.Level.HasValue)
             {
-                query = query.Where(q => q.ContributedDetail != null && q.ContributedDetail.Level == questionParams.Level.Value);
+                query = query.Where(q => q.ContributedDetail != null && q.Level == questionParams.Level.Value);
             }
 
             // --- LOGIC SẮP XẾP (SORTING) ---
@@ -1803,7 +1835,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 {
                     Id = q.ContributedDetail.Id,
                     InterviewDate = q.ContributedDetail.InterviewDate,
-                    Level = q.ContributedDetail.Level.ToString(),
+                    Level = q.Level.ToString(),
                     Company = q.ContributedDetail.Company != null ? new CompanyDto
                     {
                         Id = q.ContributedDetail.Company.Id,
@@ -1834,6 +1866,7 @@ namespace Imate.API.Business.Services.QuestionBank
                 PositionId = questionParams.PositionId,
                 CategoryId = questionParams.CategoryId,
                 Difficulty = questionParams.Difficulty,
+                Level = questionParams.Level,
                 SortBy = questionParams.SortBy
             });
 

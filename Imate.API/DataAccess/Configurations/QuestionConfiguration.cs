@@ -14,6 +14,7 @@ namespace Imate.API.DataAccess.Configurations
 
             builder.Property(e => e.Content).IsRequired().HasColumnType("nvarchar(max)");
             builder.Property(e => e.Difficulty).IsRequired(false).HasConversion<string>().HasColumnType("nvarchar(50)");
+            builder.Property(e => e.Level).IsRequired(false).HasConversion<string>().HasColumnType("nvarchar(50)");
             builder.Property(e => e.ApprovalStatus).IsRequired(false).HasConversion<string>().HasColumnType("nvarchar(50)");
             builder.Property(e => e.IsFromSystem).IsRequired();
             builder.Property(e => e.IsActive).IsRequired();

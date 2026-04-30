@@ -5,6 +5,7 @@
         public int Id { get; set; }
         public string Content { get; set; }
         public string Difficulty { get; set; }
+        public string Level { get; set; }
         public string SampleAnswer { get; set; }
         public string CreatorName { get; set; }
         public DateTimeOffset CreatedAt { get; set; }

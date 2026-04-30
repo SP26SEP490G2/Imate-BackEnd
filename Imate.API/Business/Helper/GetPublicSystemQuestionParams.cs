@@ -11,6 +11,7 @@ namespace Imate.API.Business.Helper
 
         // Filter theo Enum
         public DifficultyLevel? Difficulty { get; set; }
+        public Level? Level { get; set; }
 
         // Sắp xếp
         public string? SortBy { get; set; } // "content", "createdAt"
