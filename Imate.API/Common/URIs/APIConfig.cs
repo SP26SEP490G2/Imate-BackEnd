@@ -78,7 +78,11 @@ namespace Imate.API.Common.Router
         {
             public const string GetSubscriptionPackages = "subscription-packages";
             public const string GetSubscriptionOverview = "subscription-packages/overview";
+            public const string CreateSubscriptionPackage = "subscription-packages";
             public const string UpdateSubscriptionPackagePrice = "subscription-packages/{id}/price";
+            public const string UpdateSubscriptionPackageBenefits = "subscription-packages/{id}/benefits";
+            public const string UpdateSubscriptionPackageName = "subscription-packages/{id}/name";
+            public const string DeleteSubscriptionPackage = "subscription-packages/{id}";
         }
         public class CV
         {

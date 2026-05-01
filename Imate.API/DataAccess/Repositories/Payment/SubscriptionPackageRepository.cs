@@ -46,6 +46,12 @@ namespace Imate.API.DataAccess.Repositories.Payment
                 .OrderBy(p => p.Rank)
                 .FirstAsync();
         }
+
+        public async Task AddAsync(SubscriptionPackage package)
+        {
+            await _context.SubscriptionPackages.AddAsync(package);
+            await _context.SaveChangesAsync();
+        }
     }
 }
 

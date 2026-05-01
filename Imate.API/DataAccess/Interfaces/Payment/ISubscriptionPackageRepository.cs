@@ -9,5 +9,6 @@ namespace Imate.API.DataAccess.Interfaces.Payment
         Task UpdateAsync(SubscriptionPackage package);
         Task<SubscriptionPackage> GetSubscriptionPackageByIdAsync(int id);
         Task<SubscriptionPackage> GetLowestRankPackageAsync();
+        Task AddAsync(SubscriptionPackage package);
     }
 }

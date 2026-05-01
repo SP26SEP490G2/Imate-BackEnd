@@ -104,6 +104,72 @@ namespace Imate.API.Business.Services.Payment
             await _subscriptionPackageRepository.UpdateAsync(package);
         }
 
+        public async Task UpdatePackageBenefitsAsync(int packageId, List<string> benefits)
+        {
+            var package = await _subscriptionPackageRepository.GetByIdAsync(packageId);
+            if (package == null)
+                throw new NotFoundException($"Không tìm thấy gói đăng ký với ID {packageId}");
+
+            // Lưu dưới dạng JSON array ["item1","item2",...]
+            package.Benefits = JsonSerializer.Serialize(benefits);
+            await _subscriptionPackageRepository.UpdateAsync(package);
+        }
+
+        public async Task UpdatePackageNameAsync(int packageId, string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Tên gói không được để trống.");
+
+            var package = await _subscriptionPackageRepository.GetByIdAsync(packageId);
+            if (package == null)
+                throw new NotFoundException($"Không tìm thấy gói đăng ký với ID {packageId}");
+
+            package.Name = name.Trim();
+            await _subscriptionPackageRepository.UpdateAsync(package);
+        }
+
+        public async Task<SubscriptionPackageItemResponse> CreatePackageAsync(string name, decimal price, int durationDays, List<string> benefits, bool isRecommended)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Tên gói không được để trống.");
+
+            var activePackages = await _subscriptionPackageRepository.GetActivePackagesOrderedByPriceAsync();
+            int nextRank = activePackages.Any() ? activePackages.Max(p => p.Rank) + 1 : 1;
+
+            var newPackage = new Imate.API.Models.Entities.SubscriptionPackage
+            {
+                Name = name.Trim(),
+                Price = price,
+                DurationDays = durationDays > 0 ? durationDays : null,
+                Benefits = JsonSerializer.Serialize(benefits),
+                IsRecommended = isRecommended,
+                Rank = nextRank,
+                IsActive = true,
+            };
+
+            await _subscriptionPackageRepository.AddAsync(newPackage);
+
+            return new SubscriptionPackageItemResponse(
+                newPackage.Id,
+                newPackage.Name,
+                newPackage.Price,
+                FormatDuration(newPackage.DurationDays),
+                benefits,
+                newPackage.IsRecommended,
+                newPackage.Rank
+            );
+        }
+
+        public async Task DeactivatePackageAsync(int packageId)
+        {
+            var package = await _subscriptionPackageRepository.GetByIdAsync(packageId);
+            if (package == null)
+                throw new NotFoundException($"Không tìm thấy gói đăng ký với ID {packageId}");
+
+            package.IsActive = false;
+            await _subscriptionPackageRepository.UpdateAsync(package);
+        }
+
         private static List<string> ParseBenefits(string? benefitsJson)
         {
             if (string.IsNullOrWhiteSpace(benefitsJson))

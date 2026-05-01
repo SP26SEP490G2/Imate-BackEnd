@@ -17,10 +17,25 @@ namespace Imate.API.Presentation.Controllers
     public class PracticeTestHistoryController : ControllerBase
     {
         private readonly IPracticeTestHistoryService _historyService;
+        private readonly ISystemConfigService _systemConfigService;
 
-        public PracticeTestHistoryController(IPracticeTestHistoryService historyService)
+        public PracticeTestHistoryController(
+            IPracticeTestHistoryService historyService,
+            ISystemConfigService systemConfigService)
         {
             _historyService = historyService;
+            _systemConfigService = systemConfigService;
+        }
+
+        /// <summary>
+        /// Lấy chi phí mỗi bài Practice Test từ bảng SystemConfigs
+        /// GET /api/practice-test/cost
+        /// </summary>
+        [HttpGet("cost")]
+        public async Task<IActionResult> GetCost()
+        {
+            int cost = await _systemConfigService.GetPracticeQuestionCostPointsAsync();
+            return Ok(new { success = true, data = new { cost }, message = "Lấy chi phí thành công." });
         }
 
         /// <summary>
