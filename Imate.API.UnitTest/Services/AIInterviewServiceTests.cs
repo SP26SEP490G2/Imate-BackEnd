@@ -94,15 +94,28 @@ namespace Imate.API.UnitTest.Services
         }
 
         [Fact]
-        public async Task SetupInterviewAsync_ShouldNotThrowException_WhenLevelGapIsTwoOrMore()
+        public async Task SetupInterviewAsync_ShouldNotThrowException_WhenLevelGapIsTwo()
         {
             _mockCvDataProvider.Setup(p => p.GetCvTextAsync(1, 10)).ReturnsAsync("Intern CV");
             _mockInterviewAgent.Setup(a => a.ClassifyJobDescriptionAsync(It.IsAny<string>(), "Intern CV"))
-                .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = true, IsItRelatedCv = true, Level = "Senior", CvEstimatedLevel = "Intern" });
+                .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = true, IsItRelatedCv = true, Level = "Junior", CvEstimatedLevel = "Intern" });
 
-            var result = await _orchestrator.SetupInterviewAsync(1, "Senior Job", 10);
+            var result = await _orchestrator.SetupInterviewAsync(1, "Junior Job", 10);
 
-            result.Level.Should().Be("Senior");
+            result.Level.Should().Be("Junior");
+            result.LevelMismatchWarning.Should().NotBeNullOrEmpty();
+        }
+
+        [Fact]
+        public async Task SetupInterviewAsync_ShouldThrowException_WhenLevelGapIsThreeOrMore()
+        {
+            _mockCvDataProvider.Setup(p => p.GetCvTextAsync(1, 10)).ReturnsAsync("Intern CV");
+            _mockInterviewAgent.Setup(a => a.ClassifyJobDescriptionAsync(It.IsAny<string>(), "Intern CV"))
+                .ReturnsAsync(new SetupInterviewResult { IsItRelatedJd = true, IsItRelatedCv = true, Level = "Middle", CvEstimatedLevel = "Intern" });
+
+            var act = () => _orchestrator.SetupInterviewAsync(1, "Middle Job", 10);
+
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Chênh lệch cấp bậc quá lớn*");
         }
 
         [Fact]

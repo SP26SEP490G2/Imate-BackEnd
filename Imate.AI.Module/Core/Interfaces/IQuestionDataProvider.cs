@@ -8,12 +8,12 @@ namespace Imate.AI.Module.Core.Interfaces
     public interface IQuestionDataProvider
     {
         /// <summary>
-        /// Lấy câu hỏi từ ngân hàng câu hỏi theo vị trí và độ khó
+        /// Lấy câu hỏi từ ngân hàng câu hỏi theo skill và level
         /// </summary>
-        /// <param name="positionName">Tên vị trí (VD: "Backend Developer")</param>
+        /// <param name="skillName">Tên kỹ năng (VD: "C#", "Java", "React")</param>
         /// <param name="level">Cấp bậc (VD: "Junior", "Senior")</param>
         /// <param name="maxCount">Số câu hỏi tối đa cần lấy</param>
-        Task<List<QuestionBankItem>> GetQuestionsAsync(string positionName, string level, int maxCount = 10);
+        Task<List<QuestionBankItem>> GetQuestionsAsync(string skillName, string positionName, string level, int maxCount = 10);
     }
 
     /// <summary>

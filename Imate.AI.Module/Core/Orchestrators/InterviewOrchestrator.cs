@@ -126,7 +126,13 @@ namespace Imate.AI.Module.Core.Orchestrators
                     _logger.LogInformation("[SETUP] Level comparison: CV={CvLevel}({CvIdx}) vs JD={JdLevel}({JdIdx}), Gap={Gap}",
                         cvLevel, cvLevelIdx, jdLevel, jdLevelIdx, gap);
 
-                    if (gap >= 2)
+                    if (gap >= 3)
+                    {
+                        throw new InvalidOperationException(
+                            $"Chênh lệch cấp bậc quá lớn ({gap} bậc). Ứng viên có level {cvLevel} nhưng JD yêu cầu cấp bậc {jdLevel}. " +
+                            "Hệ thống không thể tạo phiên phỏng vấn phù hợp.");
+                    }
+                    else if (gap >= 2)
                     {
                         result.LevelMismatchWarning =
                             $"Ứng viên có level {cvLevel} (từ CV) nhưng JD yêu cầu cấp bậc {jdLevel} — " +
@@ -172,6 +178,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                     if (string.IsNullOrEmpty(cvContent))
                     {
                         cvContent = await _cvDataProvider.GetCvTextAsync(accountId, request.CvId.Value) ?? "";
+                        session.CvContent = cvContent; // Gán CV text vào session để dùng cho prompt
                     }
 
                     // Tìm journey đã có hoặc tạo mới trực tiếp qua DataProvider
@@ -356,9 +363,24 @@ namespace Imate.AI.Module.Core.Orchestrators
                     _logger.LogWarning(ex, "[INTERVIEW] Lỗi trích xuất gap từ SessionGapJson, fallback không dùng gaps");
                 }
             }
+            // Xác định đây có phải phiên đầu tiên trong Journey không
+            // Phiên đầu: dò thăm toàn diện bằng câu hỏi DB + gaps
+            // Phiên sau: tập trung luyện tập theo gaps
+            bool isFirstSession = true;
+            if (session.TrainingJourneyId.HasValue)
+            {
+                var allSessions = await _dataProvider.GetSessionsByAccountIdAsync(accountId);
+                var journeySessions = allSessions
+                    .Where(s => s.TrainingJourneyId == session.TrainingJourneyId.Value && s.Id != sessionId)
+                    .ToList();
+                isFirstSession = journeySessions.Count == 0;
+                _logger.LogInformation(
+                    "[INTERVIEW] Session {SessionId} in Journey {JourneyId}: isFirstSession={IsFirst} (previous sessions: {Count})",
+                    sessionId, session.TrainingJourneyId.Value, isFirstSession, journeySessions.Count);
+            }
 
-            // Gọi Agent tạo câu hỏi, truyền selectedGaps để filter RAG questions
-            var result = await _interviewAgent.GenerateQuestionAsync(session, existingResponses, estimatedAbility, selectedGaps);
+            // Gọi Agent tạo câu hỏi, truyền selectedGaps và isFirstSession
+            var result = await _interviewAgent.GenerateQuestionAsync(session, existingResponses, estimatedAbility, selectedGaps, isFirstSession);
 
             if (result.IsTerminated)
             {
@@ -871,7 +893,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                     {
                         foreach (var item in root.EnumerateArray())
                         {
-                            var name = item.TryGetProperty("gapName", out var gn) ? gn.GetString() : item.GetString();
+                            var name = ExtractGapName(item);
                             if (!string.IsNullOrEmpty(name))
                                 gaps.Add(name.Trim());
                         }
@@ -881,7 +903,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                     {
                         foreach (var item in selectedGapsArr.EnumerateArray())
                         {
-                            var name = item.TryGetProperty("gapName", out var gn) ? gn.GetString() : item.GetString();
+                            var name = ExtractGapName(item);
                             if (!string.IsNullOrEmpty(name))
                                 gaps.Add(name.Trim());
                         }
@@ -908,6 +930,33 @@ namespace Imate.AI.Module.Core.Orchestrators
                 _logger.LogWarning(ex, "[INTERVIEW] Lỗi trích xuất gap names từ SessionGapJson");
                 return gaps;
             }
+        }
+
+        /// <summary>
+        /// Trích xuất tên gap từ một JSON element — hỗ trợ cả string lẫn object.
+        /// </summary>
+        private static string? ExtractGapName(System.Text.Json.JsonElement item)
+        {
+            // Nếu item là string thuần: ["Java", "Docker"]
+            if (item.ValueKind == System.Text.Json.JsonValueKind.String)
+                return item.GetString();
+
+            // Nếu item là object: [{"gapName":"Java","gapType":"hardSkill",...}]
+            if (item.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                if (item.TryGetProperty("gapName", out var gn))
+                    return gn.GetString();
+                if (item.TryGetProperty("GapName", out var gn2))
+                    return gn2.GetString();
+                if (item.TryGetProperty("name", out var n))
+                    return n.GetString();
+                // Fallback: lấy giá trị đầu tiên
+                foreach (var prop in item.EnumerateObject())
+                    if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return prop.Value.GetString();
+            }
+
+            return item.ToString();
         }
 
     }

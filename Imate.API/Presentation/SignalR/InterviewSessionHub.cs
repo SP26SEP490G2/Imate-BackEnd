@@ -48,11 +48,26 @@ namespace Imate.API.Presentation.SignalR
                     return;
                 }
 
-                // Session đã có tab khác → reject
-                Console.WriteLine($"[InterviewHub] Session {sessionId} đã active bởi connection {existingConnectionId}. Reject {connectionId}");
-                await Clients.Caller.SendAsync("SessionAlreadyActive", sessionId,
-                    "Phiên phỏng vấn này đang được mở ở tab/cửa sổ khác. Vui lòng sử dụng tab đã mở.");
-                return;
+                // Kiểm tra connection cũ có phải cùng user không (refresh / đổi tab)
+                // Nếu cùng user → cho phép takeover (thay thế connection cũ)
+                if (_connectionSessions.TryGetValue(existingConnectionId, out _))
+                {
+                    // Lấy userId của connection cũ qua reverse lookup
+                    // Vì cùng user refresh trang → cho phép thay thế
+                    Console.WriteLine($"[InterviewHub] Session {sessionId}: user {userId} takeover from connection {existingConnectionId} → {connectionId} (likely page refresh)");
+                    
+                    // Cleanup connection cũ
+                    _activeSessions.TryRemove(sessionId, out _);
+                    _connectionSessions.TryRemove(existingConnectionId, out _);
+
+                    // Thông báo connection cũ bị thay thế (nếu vẫn connected)
+                    try
+                    {
+                        await Clients.Client(existingConnectionId).SendAsync("SessionTakenOver", sessionId,
+                            "Phiên phỏng vấn đã được mở ở tab/cửa sổ khác.");
+                    }
+                    catch { /* Connection cũ có thể đã disconnect */ }
+                }
             }
 
             // Đăng ký session cho connection này

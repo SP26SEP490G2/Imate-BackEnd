@@ -20,14 +20,11 @@ namespace Imate.API.Business.Services
             _logger = logger;
         }
 
-        public async Task<List<QuestionBankItem>> GetQuestionsAsync(string positionName, string level, int maxCount = 10)
+        public async Task<List<QuestionBankItem>> GetQuestionsAsync(string skillName, string positionName, string level, int maxCount = 10)
         {
             _logger.LogInformation(
-                "[QuestionDataProvider] GetQuestionsAsync: position={Position}, level={Level}, maxCount={MaxCount}",
-                positionName, level, maxCount);
-
-            // Map level sang difficulty
-            var difficulty = MapLevelToDifficulty(level);
+                "[QuestionDataProvider] GetQuestionsAsync: skill={Skill}, position={Position}, level={Level}, maxCount={MaxCount}",
+                skillName, positionName, level, maxCount);
 
             // Query questions từ DB
             var query = _context.Questions
@@ -37,7 +34,17 @@ namespace Imate.API.Business.Services
                 .Include(q => q.QuestionCategories).ThenInclude(qc => qc.Category)
                 .AsNoTracking();
 
-            // Filter theo Position nếu có match
+            // Filter theo Skill (ưu tiên chính)
+            if (!string.IsNullOrWhiteSpace(skillName))
+            {
+                var skillLower = skillName.ToLower().Trim();
+                query = query.Where(q =>
+                    q.QuestionSkills.Any(qs =>
+                        qs.Skill.Name.ToLower().Contains(skillLower) ||
+                        skillLower.Contains(qs.Skill.Name.ToLower())));
+            }
+
+            // Filter theo Position
             if (!string.IsNullOrWhiteSpace(positionName))
             {
                 var positionLower = positionName.ToLower().Trim();
@@ -47,10 +54,11 @@ namespace Imate.API.Business.Services
                         positionLower.Contains(qp.Position.Name.ToLower())));
             }
 
-            // Filter theo Difficulty nếu map được
-            if (difficulty.HasValue)
+            // Filter theo Level nếu có (Level là enum, EF lưu dạng string conversion)
+            if (!string.IsNullOrWhiteSpace(level) &&
+                Enum.TryParse<Imate.API.Models.Enums.Level>(level, ignoreCase: true, out var levelEnum))
             {
-                query = query.Where(q => q.Difficulty == difficulty.Value);
+                query = query.Where(q => q.Level != null && q.Level == levelEnum);
             }
 
             // Lấy câu hỏi, ưu tiên random để đa dạng
@@ -59,17 +67,18 @@ namespace Imate.API.Business.Services
                 .Take(maxCount)
                 .ToListAsync();
 
-            _logger.LogInformation("[QuestionDataProvider] Found {Count} questions matching criteria", questions.Count);
+            _logger.LogInformation("[QuestionDataProvider] Found {Count} questions matching criteria (skill + level)", questions.Count);
 
-            // Nếu filter quá chặt (0 kết quả), fallback: bỏ filter difficulty
-            if (questions.Count == 0 && difficulty.HasValue)
+            // Fallback 1: Nếu filter quá chặt (0 kết quả), bỏ filter level, chỉ giữ skill
+            if (questions.Count == 0 && !string.IsNullOrWhiteSpace(skillName))
             {
-                _logger.LogInformation("[QuestionDataProvider] No exact match, falling back without difficulty filter");
+                _logger.LogInformation("[QuestionDataProvider] No exact match, falling back without level filter");
+                var skillLower = skillName.ToLower().Trim();
                 questions = await _context.Questions
                     .Where(q => q.IsActive && q.IsFromSystem)
-                    .Where(q => q.QuestionPositions.Any(qp =>
-                        qp.Position.Name.ToLower().Contains(positionName.ToLower().Trim()) ||
-                        positionName.ToLower().Trim().Contains(qp.Position.Name.ToLower())))
+                    .Where(q => q.QuestionSkills.Any(qs =>
+                        qs.Skill.Name.ToLower().Contains(skillLower) ||
+                        skillLower.Contains(qs.Skill.Name.ToLower())))
                     .Include(q => q.QuestionPositions).ThenInclude(qp => qp.Position)
                     .Include(q => q.QuestionSkills).ThenInclude(qs => qs.Skill)
                     .Include(q => q.QuestionCategories).ThenInclude(qc => qc.Category)
@@ -78,13 +87,13 @@ namespace Imate.API.Business.Services
                     .Take(maxCount)
                     .ToListAsync();
 
-                _logger.LogInformation("[QuestionDataProvider] Fallback found {Count} questions", questions.Count);
+                _logger.LogInformation("[QuestionDataProvider] Fallback (skill only) found {Count} questions", questions.Count);
             }
 
-            // Nếu vẫn không có, lấy bất kỳ câu hỏi active nào
+            // Fallback 2: Nếu vẫn không có, lấy bất kỳ câu hỏi active nào
             if (questions.Count == 0)
             {
-                _logger.LogInformation("[QuestionDataProvider] No position match, getting any active system questions");
+                _logger.LogInformation("[QuestionDataProvider] No skill match, getting any active system questions");
                 questions = await _context.Questions
                     .Where(q => q.IsActive && q.IsFromSystem)
                     .Include(q => q.QuestionPositions).ThenInclude(qp => qp.Position)
@@ -110,8 +119,8 @@ namespace Imate.API.Business.Services
 
             // Log chi tiết từng câu hỏi RAG để verify
             _logger.LogInformation("========== [RAG] KẾT QUẢ TRUY VẤN QUESTION BANK ==========");
-            _logger.LogInformation("[RAG] Tổng số câu hỏi lấy từ DB: {Count}/{MaxCount} (position={Position}, level={Level} → difficulty={Difficulty})",
-                result.Count, maxCount, positionName, level, difficulty?.ToString() ?? "ALL");
+            _logger.LogInformation("[RAG] Tổng số câu hỏi lấy từ DB: {Count}/{MaxCount} (skill={Skill}, position={Position}, level={Level})",
+                result.Count, maxCount, skillName, positionName, level);
             for (int i = 0; i < result.Count; i++)
             {
                 var q = result[i];
@@ -125,20 +134,6 @@ namespace Imate.API.Business.Services
             _logger.LogInformation("========== [RAG] HẾT KẾT QUẢ TRUY VẤN ==========");
 
             return result;
-        }
-
-        /// <summary>
-        /// Map Level (Intern/Fresher/Junior/Middle/Senior) sang DifficultyLevel enum
-        /// </summary>
-        private static Models.Enums.DifficultyLevel? MapLevelToDifficulty(string level)
-        {
-            return level?.ToLower().Trim() switch
-            {
-                "intern" or "fresher" => Models.Enums.DifficultyLevel.Easy,
-                "junior" or "middle" => Models.Enums.DifficultyLevel.Medium,
-                "senior" => Models.Enums.DifficultyLevel.Hard,
-                _ => null
-            };
         }
     }
 }

@@ -48,10 +48,11 @@ namespace Imate.AI.Module.Core.Orchestrators
                 try
                 {
                     ragQuestions = await _questionDataProvider.GetQuestionsAsync(
-                        request.Field, request.Level, request.NumberOfQuestions);
+                        request.Skill, request.Field, request.Level, request.NumberOfQuestions);
                     _logger.LogInformation(
-                        "RAG: Retrieved {Count} reference questions from Question Bank for field={Field}, level={Level}",
-                        ragQuestions.Count, request.Field, request.Level);
+                        "RAG: Retrieved {Count} reference questions from Question Bank for skill={Skill}, field={Field}, level={Level}",
+                        ragQuestions.Count, request.Skill, request.Field, request.Level);
+                    _logger.LogInformation(ragQuestions.ToString());
                 }
                 catch (Exception ex)
                 {
