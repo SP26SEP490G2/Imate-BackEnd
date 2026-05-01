@@ -227,7 +227,9 @@ namespace Imate.API.Infrastructure.Configurations
 
                         // Chỉ thực hiện khi có token VÀ request đi đến Hub của bạn
                         if (!string.IsNullOrEmpty(accessToken) &&
-                            path.StartsWithSegments("/api/systemNotificationHub")) // << Tên Hub của bạn
+                            (path.StartsWithSegments("/api/systemNotificationHub") ||
+                             path.StartsWithSegments("/api/balanceHub") ||
+                             path.StartsWithSegments("/api/interviewSessionHub")))
                         {
                             // Gán token này cho context để xác thực
                             context.Token = accessToken;
