@@ -1,15 +1,17 @@
-using Microsoft.EntityFrameworkCore;
+using Imate.API.Business.Exceptions;
+using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Mentors;
+using Imate.API.Business.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.RequestModels.Mentors;
 using Imate.API.Presentation.ResponseModels.Mentors;
-using Imate.API.Business.Exceptions;
-using System.Text.Json;
+using Imate.API.Presentation.SignalR.Events.Transactions;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Imate.API.Business.Interfaces.Notification;
-using Imate.API.Business.Interfaces;
+using System.Text.Json;
 
 namespace Imate.API.Business.Services.Mentors
 {
@@ -22,13 +24,15 @@ namespace Imate.API.Business.Services.Mentors
         private const int MIN_BOOKING_ADVANCE_HOURS = 6;
         private const int MIN_CANCEL_ADVANCE_HOURS = 6;
         private const string LocalTimeZoneId = "SE Asia Standard Time";
+        private readonly IMediator _mediator;
 
-        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration, ISystemNotificationService systemNotificationService, ISystemConfigService systemConfigService)
+        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration, ISystemNotificationService systemNotificationService, ISystemConfigService systemConfigService, IMediator mediator)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
             _systemNotificationService = systemNotificationService;
             _systemConfigService = systemConfigService;
+            _mediator = mediator;
         }
 
         public async Task<BookingResponseModel> CreateBookingAsync(BookingCreateRequest request, int candidateId)
@@ -500,6 +504,8 @@ namespace Imate.API.Business.Services.Mentors
                 {
                     candidateAccount.Balance += transaction.Amount;
                     await _unitOfWork.Accounts.UpdateAsync(candidateAccount);
+                    var balanceEvent = new BalanceUpdatedEvent(booking.CandidateId, candidateAccount.Balance);
+                    await _mediator.Publish(balanceEvent);
                 }
             }
 

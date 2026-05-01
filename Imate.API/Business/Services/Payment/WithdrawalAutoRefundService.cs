@@ -2,6 +2,8 @@
 using Imate.API.Business.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Enums;
+using Imate.API.Presentation.SignalR.Events.Transactions;
+using MediatR;
 
 namespace Imate.API.Business.Services.Payment
 {
@@ -16,6 +18,12 @@ namespace Imate.API.Business.Services.Payment
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+        }
+
+        // Helper method to resolve IMediator from the service scope
+        private IMediator GetMediator(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<IMediator>();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,6 +41,7 @@ namespace Imate.API.Business.Services.Payment
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var systemConfigService = scope.ServiceProvider.GetRequiredService<ISystemConfigService>();
             var notificationService = scope.ServiceProvider.GetRequiredService<ISystemNotificationService>();
+            var mediator = GetMediator(scope.ServiceProvider);
 
             try
             {
@@ -66,6 +75,11 @@ namespace Imate.API.Business.Services.Payment
                                     "[WithdrawalAutoRefund] Đã hoàn {Amount} vào ví account {AccountId} (Transaction #{TxId})",
                                     tx.Amount, account.Id, tx.Id);
                                 await notificationService.CreateAndSendNotificationAsync(tx.SourceAccountId.Value, $"Yêu cầu rút {tx.Amount:N0} imCoin bị hủy do chưa được duyệt sau {autoRefundHours} giờ. imCoin đã được hoàn lại vào ví.", null);
+
+                                // Phát event SignalR để cập nhật balance realtime
+                                var balanceEvent = new BalanceUpdatedEvent(account.Id, account.Balance);
+                                await mediator.Publish(balanceEvent);
+                                _logger.LogInformation("Published BalanceUpdatedEvent for auto-refund - accountId={AccountId}, newBalance={Balance}", account.Id, account.Balance);
                             }
                             else
                             {
