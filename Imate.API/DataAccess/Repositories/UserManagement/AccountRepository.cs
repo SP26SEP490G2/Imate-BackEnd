@@ -116,7 +116,7 @@ namespace Imate.API.DataAccess.Repositories.UserManagement
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
-        public async Task<Account> GetByIdRecruiter(int id)
+        public async Task<Account?> GetByIdRecruiter(int id)
         {
             return await _context.Accounts
                 .Include(a => a.Recruiter)

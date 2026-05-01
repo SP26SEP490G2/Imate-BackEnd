@@ -21,7 +21,7 @@ namespace Imate.API.Business.Services.Payment
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly PayOSClient _payosClient;
-        private readonly IConfiguration _configuration;
+        private readonly IConfiguration _configuration; 
         private readonly string _frontendBaseUrl;
         private readonly ILogger<TransactionService> _logger;
         private readonly ISystemConfigService _systemConfigService;
@@ -87,22 +87,9 @@ namespace Imate.API.Business.Services.Payment
                 var pricePerSession = mentor.PricePerSession;
                 var guaranteePerNewBooking = pricePerSession * guaranteeDepositRate / 100m;
 
-                // Tính các booking đang cần tiền đảm bảo:
-                // 1. Confirmed
-                // 2. Completed nhưng chưa hết thời gian report
-                var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
-                var now = DateTime.UtcNow;
-                var bookingsRequiringGuarantee = await _unitOfWork.Bookings.GetAllBookings()
-                    .Where(b => b.MentorId == accountId
-                        && (b.Status == BookingStatus.Confirmed
-                            || (b.Status == BookingStatus.Completed
-                                && b.StartTime.AddHours(1 + reportDeadlineHours) > now)))
-                    .ToListAsync();
-
-                var escrowCount = bookingsRequiringGuarantee.Count;
-                var existingGuaranteeAmount = bookingsRequiringGuarantee
-                    .Sum(b => b.PriceAtBooking * guaranteeDepositRate / 100m);
-
+                // 2. Tính các booking đang cần tiền đảm bảo:
+                var existingGuaranteeAmount = await GetRequiredGuaranteeAmountAsync(accountId);
+                
                 // Tính số lượt booking có thể nhận: (balance - tiền đảm bảo hiện tại) / tiền đảm bảo cho 1 booking mới
                 var availableBalanceForNewBookings = (decimal)account.Balance - existingGuaranteeAmount;
                 var maxBookingsCanReceive = guaranteePerNewBooking > 0 && availableBalanceForNewBookings >= guaranteePerNewBooking
@@ -110,7 +97,7 @@ namespace Imate.API.Business.Services.Payment
                     : 0;
 
                 summary.PricePerSession = pricePerSession;
-                summary.CurrentEscrowBookings = escrowCount;
+                summary.CurrentEscrowBookings = await GetCurrentEscrowBookingsCountAsync(accountId);
                 summary.RequiredBalanceForOneBooking = (int)(guaranteePerNewBooking);
                 summary.MaxBookingsCanReceive = maxBookingsCanReceive;
                 summary.GuaranteeDepositRate = guaranteeDepositRate;
@@ -245,7 +232,7 @@ namespace Imate.API.Business.Services.Payment
             var cancelUrl = $"{_frontendBaseUrl.TrimEnd('/')}/wallet";
 
             // Validation URL format
-            if (!Uri.TryCreate(returnUrl, UriKind.Absolute, out var returnUri) ||
+            if (!Uri.TryCreate(returnUrl, UriKind.Absolute, out var returnUri) || 
                 !Uri.TryCreate(cancelUrl, UriKind.Absolute, out var cancelUri))
             {
                 await _unitOfWork.RollbackTransactionAsync();
@@ -279,8 +266,8 @@ namespace Imate.API.Business.Services.Payment
             var apiKey = _configuration["PayOS:ApiKey"];
             var checksumKey = _configuration["PayOS:ChecksumKey"];
 
-            if (string.IsNullOrWhiteSpace(clientId) ||
-                string.IsNullOrWhiteSpace(apiKey) ||
+            if (string.IsNullOrWhiteSpace(clientId) || 
+                string.IsNullOrWhiteSpace(apiKey) || 
                 string.IsNullOrWhiteSpace(checksumKey))
             {
                 await _unitOfWork.RollbackTransactionAsync();
@@ -320,7 +307,7 @@ namespace Imate.API.Business.Services.Payment
             {
                 // Lỗi này xảy ra nếu PayOS trả về code != "00" (ví dụ: key request sai)
                 _logger.LogError(
-                    apiEx,
+                    apiEx, 
                     "Lỗi API PayOS (ApiException). Đang Rollback Txn ID: {TxnId}. ErrorCode: {ErrorCode}, Message: {Message}. Request details - OrderCode: {OrderCode}, Amount: {Amount}, ReturnUrl: {ReturnUrl}, CancelUrl: {CancelUrl}, Description: {Description}",
                     newTransaction.Id, apiEx.ErrorCode, apiEx.Message, orderCode, depositRequestDto.Amount, returnUrl, cancelUrl, description);
                 await _unitOfWork.RollbackTransactionAsync();
@@ -330,7 +317,7 @@ namespace Imate.API.Business.Services.Payment
             {
                 // Bắt các lỗi khác
                 _logger.LogError(
-                    ex,
+                    ex, 
                     "Lỗi không xác định khi gọi CreateAsync. Đang Rollback Txn ID: {TxnId}. Request details - OrderCode: {OrderCode}, Amount: {Amount}, ReturnUrl: {ReturnUrl}, CancelUrl: {CancelUrl}",
                     newTransaction.Id, orderCode, depositRequestDto.Amount, returnUrl, cancelUrl);
                 await _unitOfWork.RollbackTransactionAsync();
@@ -403,7 +390,7 @@ namespace Imate.API.Business.Services.Payment
                 {
                     // Completed: Thanh toán thành công
                     _logger.LogInformation("Webhook: Transaction {TransactionId} thành công (Code: {Code})", transactionId, verifiedData.Code);
-
+                    
                     transaction.Status = TransactionStatus.Completed;
                     await _unitOfWork.Transactions.UpdateAsync(transaction);
 
@@ -414,23 +401,19 @@ namespace Imate.API.Business.Services.Payment
                         account.Balance += transaction.Amount;
                         await _unitOfWork.Accounts.UpdateAsync(account);
                         _logger.LogInformation("Webhook: Đã cộng {Amount} vào balance của account {AccountId}", transaction.Amount, account.Id);
-                        await _systemNotificationService.CreateAndSendNotificationAsync(account.Id, $"Đã cộng {transaction.Amount:N0} imCoin vào ví Imate của bạn. Số dư hiện tại: {account.Balance:N0} imCoin.", null);
+                        await _systemNotificationService.CreateAndSendNotificationAsync(account .Id, $"Đã cộng {transaction.Amount:N0} imCoin vào ví Imate của bạn. Số dư hiện tại: {account.Balance:N0} imCoin.", null);
 
-                        // Phát event SignalR để cập nhật balance realtime
-                        var balanceEvent = new BalanceUpdatedEvent(account.Id, account.Balance);
-                        await _mediator.Publish(balanceEvent);
-                        _logger.LogInformation("Published BalanceUpdatedEvent for accountId={AccountId}, balance={Balance}", account.Id, account.Balance);
                     }
                 }
                 else
                 {
                     // FAILED hoặc CANCELLED: Giao dịch thất bại hoặc bị hủy
-                    _logger.LogWarning("Webhook: Transaction {TransactionId} thất bại/hủy (Code: {Code}, Description: {Description})",
+                    _logger.LogWarning("Webhook: Transaction {TransactionId} thất bại/hủy (Code: {Code}, Description: {Description})", 
                         transactionId, verifiedData.Code, verifiedData.Description);
-
+                    
                     transaction.Status = TransactionStatus.Failed;
                     await _unitOfWork.Transactions.UpdateAsync(transaction);
-
+                    
                     // Log thông tin webhook để debug
                     _logger.LogInformation("Webhook data: Code={Code}, OrderCode={OrderCode}, Description={Description}, Amount={Amount}",
                         verifiedData.Code, verifiedData.OrderCode, verifiedData.Description, verifiedData.Amount);
@@ -439,21 +422,21 @@ namespace Imate.API.Business.Services.Payment
                 // Lưu thay đổi
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.CommitTransactionAsync();
-
+                
                 _logger.LogInformation("Webhook: Đã cập nhật transaction {TransactionId} thành công", transactionId);
             }
             catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
                 _logger.LogError(ex, "Webhook: Lỗi khi xử lý webhook cho transaction {TransactionId}", transactionId);
-                throw;
+                throw; 
             }
         }
 
         public async Task CancelTransactionAsync(int transactionId, int accountId)
         {
             var transaction = await _unitOfWork.Transactions.GetByIdAsync(transactionId);
-
+            
             if (transaction == null)
             {
                 throw new KeyNotFoundException("Không tìm thấy giao dịch.");
@@ -501,7 +484,7 @@ namespace Imate.API.Business.Services.Payment
             transaction.Status = TransactionStatus.Cancelled;
             await _unitOfWork.Transactions.UpdateAsync(transaction);
             await _unitOfWork.SaveChangesAsync();
-
+            
             _logger.LogInformation("Transaction {TransactionId} đã được hủy thành công", transactionId);
         }
 
@@ -545,7 +528,6 @@ namespace Imate.API.Business.Services.Payment
                 if (role.Equals("Mentor", StringComparison.OrdinalIgnoreCase))
                 {
                     // Mentor: Lấy thông tin từ profile Mentor
-                    // Giả định PK của Mentor là AccountId, nên dùng GetByIdAsync
                     mentorProfile = await _unitOfWork.Mentors.GetMentorByIdAsync(accountId);
                     if (mentorProfile == null)
                     {
@@ -586,30 +568,8 @@ namespace Imate.API.Business.Services.Payment
                 // 2.5. KIỂM TRA TIỀN ĐẢM BẢO CHO MENTOR
                 if (role.Equals("Mentor", StringComparison.OrdinalIgnoreCase) && mentorProfile != null)
                 {
-                    // Lấy guarantee deposit rate từ config
-                    decimal guaranteeDepositRate = await _systemConfigService.GetGuaranteeDepositRateAsync();
-                    var guaranteePerBooking = mentorProfile.PricePerSession * guaranteeDepositRate / 100m;
-
-                    // Lấy thời gian report deadline từ config
-                    var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
-                    var now = DateTime.UtcNow;
-
-                    // Các booking cần tiền đảm bảo:
-                    // 1. Confirmed
-                    // 2. Completed nhưng chưa hết thời gian report
-                    var bookingsRequiringGuarantee = await _unitOfWork.Bookings.GetAllBookings()
-                        .Where(b => b.MentorId == accountId
-                            && (b.Status == BookingStatus.Confirmed
-                                || (b.Status == BookingStatus.Completed
-                                    && b.StartTime.AddHours(1 + reportDeadlineHours) > now)))
-                        .Select(b => b.PriceAtBooking)
-                        .ToListAsync();
-
-                    var bookingsRequiringGuaranteeCount = bookingsRequiringGuarantee.Count;
-
-                    // Tính số tiền đảm bảo cần giữ lại theo giá tại thời điểm booking
-                    var requiredGuaranteeAmount = bookingsRequiringGuarantee
-                        .Sum(price => price * guaranteeDepositRate / 100m);
+                    // Tính số tiền đảm bảo cần giữ lại
+                    var requiredGuaranteeAmount = await GetRequiredGuaranteeAmountAsync(accountId);
 
                     // Số tiền có thể rút = balance - tiền đảm bảo cần giữ
                     // Đảm bảo withdrawableAmount không âm
@@ -617,8 +577,9 @@ namespace Imate.API.Business.Services.Payment
 
                     if (withdrawRequestDto.Amount > withdrawableAmount)
                     {
-                        var errorMessage = bookingsRequiringGuaranteeCount > 0
-                            ? $"Bạn đang có {bookingsRequiringGuaranteeCount} booking cần tiền đảm bảo. Số tiền đảm bảo cần giữ lại: {requiredGuaranteeAmount:N0} VND."
+                        var bookingsCount = await GetCurrentEscrowBookingsCountAsync(accountId);
+                        var errorMessage = bookingsCount > 0
+                            ? $"Bạn đang có {bookingsCount} booking cần tiền đảm bảo. Số tiền đảm bảo cần giữ lại: {requiredGuaranteeAmount:N0} VND."
                             : $"Số dư không đủ. Số dư hiện tại: {account.Balance:N0} VND.";
 
                         throw new ArgumentException(errorMessage);
@@ -628,11 +589,6 @@ namespace Imate.API.Business.Services.Payment
                 // 3. Trừ tiền (như cũ)
                 account.Balance -= withdrawRequestDto.Amount;
                 await _unitOfWork.Accounts.UpdateAsync(account);
-
-                // Phát event SignalR để cập nhật balance realtime
-                var balanceEvent = new BalanceUpdatedEvent(accountId, account.Balance);
-                await _mediator.Publish(balanceEvent);
-                _logger.LogInformation("Published BalanceUpdatedEvent for withdrawal - accountId={AccountId}, newBalance={Balance}", accountId, account.Balance);
 
                 // 4. Tạo Giao dịch và Chi tiết Rút tiền (dùng biến đã gán)
                 var newTransaction = new Transaction
@@ -657,14 +613,14 @@ namespace Imate.API.Business.Services.Payment
                 // 5. Lưu và Commit (như cũ)
                 await _unitOfWork.Transactions.AddAsync(newTransaction);
                 await _unitOfWork.SaveChangesAsync(); // Lưu để lấy ID
-
+                
                 // Set ExternalTransactionCode nếu chưa có (entity đã được track, không cần UpdateAsync)
                 newTransaction.EnsureExternalTransactionCode();
                 if (newTransaction.ExternalTransactionCode != null)
                 {
                     await _unitOfWork.SaveChangesAsync(); // Lưu ExternalTransactionCode
                 }
-
+                
                 await _unitOfWork.CommitTransactionAsync();
                 await _mediator.Publish(new WithdrawalRequestCreateEvent(newTransaction));
 
@@ -676,6 +632,38 @@ namespace Imate.API.Business.Services.Payment
                 await _unitOfWork.RollbackTransactionAsync();
                 throw;
             }
+        }
+
+        public async Task<decimal> GetRequiredGuaranteeAmountAsync(int accountId)
+        {
+            var mentor = await _unitOfWork.Mentors.GetMentorByIdAsync(accountId);
+            if (mentor == null) return 0;
+
+            decimal guaranteeDepositRate = await _systemConfigService.GetGuaranteeDepositRateAsync();
+            var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
+            var now = DateTime.UtcNow;
+
+            var bookingsRequiringGuarantee = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.MentorId == accountId
+                    && (b.Status == BookingStatus.Confirmed
+                        || (b.Status == BookingStatus.Completed
+                            && b.StartTime.AddHours(1 + reportDeadlineHours) > now)))
+                .Select(b => b.PriceAtBooking)
+                .ToListAsync();
+
+            return bookingsRequiringGuarantee.Sum(price => price * guaranteeDepositRate / 100m);
+        }
+
+        private async Task<int> GetCurrentEscrowBookingsCountAsync(int accountId)
+        {
+            var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
+            var now = DateTime.UtcNow;
+
+            return await _unitOfWork.Bookings.GetAllBookings()
+                .CountAsync(b => b.MentorId == accountId
+                    && (b.Status == BookingStatus.Confirmed
+                        || (b.Status == BookingStatus.Completed
+                            && b.StartTime.AddHours(1 + reportDeadlineHours) > now)));
         }
 
         private TransactionResponse MapTransactionToDto(Transaction txn)
@@ -711,7 +699,7 @@ namespace Imate.API.Business.Services.Payment
             // Map thủ công (tái sử dụng hàm map đã viết)   
             // For user: Escrowed status should display as "Completed"
             var dtos = transactions
-                .Select(txn =>
+                .Select(txn => 
                 {
                     var dto = MapTransactionToDto(txn);
                     // Override status for user view: Escrowed -> Completed
@@ -766,9 +754,8 @@ namespace Imate.API.Business.Services.Payment
                 }
 
                 // Get old value before update
-                var oldValue = new
-                {
-                    Status = transaction.Status.ToString(),
+                var oldValue = new { 
+                    Status = transaction.Status.ToString(), 
                     Amount = transaction.Amount,
                     Reason = transaction.Reason
                 };
@@ -786,9 +773,8 @@ namespace Imate.API.Business.Services.Payment
                 await _systemNotificationService.CreateAndSendNotificationAsync(transaction.SourceAccountId.Value, $"Yêu cầu rút {transaction.Amount:N0} imCoin thành công. Tiền đã được chuyển về ngân hàng/ví điện tử của bạn", null);
 
                 // Create audit log
-                var newValue = new
-                {
-                    Status = transaction.Status.ToString(),
+                var newValue = new { 
+                    Status = transaction.Status.ToString(), 
                     Amount = transaction.Amount,
                     Reason = transaction.Reason,
                     ReviewerId = reviewerId
@@ -801,7 +787,7 @@ namespace Imate.API.Business.Services.Payment
                     oldValue,
                     newValue
                 );
-
+                
                 await _mediator.Publish(new WithdrawalRequestApprovedEvent(transaction));
                 _logger.LogInformation("Withdrawal transaction {TransactionId} đã được duyệt bởi {ReviewerId}", transactionId, reviewerId);
             }
@@ -835,9 +821,8 @@ namespace Imate.API.Business.Services.Payment
                 }
 
                 // Get old value before update
-                var oldValue = new
-                {
-                    Status = transaction.Status.ToString(),
+                var oldValue = new { 
+                    Status = transaction.Status.ToString(), 
                     Amount = transaction.Amount,
                     Reason = transaction.Reason
                 };
@@ -850,8 +835,6 @@ namespace Imate.API.Business.Services.Payment
                     {
                         account.Balance += transaction.Amount;
                         await _unitOfWork.Accounts.UpdateAsync(account);
-                        var balanceEvent = new BalanceUpdatedEvent(transaction.SourceAccountId.Value, account.Balance);
-                        await _mediator.Publish(balanceEvent);
                     }
                 }
 
@@ -866,11 +849,10 @@ namespace Imate.API.Business.Services.Payment
                 await _unitOfWork.Transactions.UpdateAsync(transaction);
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.CommitTransactionAsync();
-
+                
                 // Create audit log
-                var newValue = new
-                {
-                    Status = transaction.Status.ToString(),
+                var newValue = new { 
+                    Status = transaction.Status.ToString(), 
                     Amount = transaction.Amount,
                     Reason = transaction.Reason,
                     ReviewerId = reviewerId
@@ -883,7 +865,7 @@ namespace Imate.API.Business.Services.Payment
                     oldValue,
                     newValue
                 );
-
+                
                 await _mediator.Publish(new WithdrawalRequestRejectedEvent(transaction));
 
                 _logger.LogInformation("Withdrawal transaction {TransactionId} đã bị từ chối bởi {ReviewerId}", transactionId, reviewerId);
@@ -922,11 +904,11 @@ namespace Imate.API.Business.Services.Payment
                 .GetReadyForPayoutBookingsAsync(paginationParams);
 
             var dtos = new List<TransactionResponse>();
-
+            
             foreach (var txn in pagedTransactions.Items)
             {
                 var dto = MapTransactionToDto(txn);
-
+                
                 // Check if there are pending or in-review mentor reports for this booking
                 if (txn.BookingId.HasValue)
                 {
@@ -934,14 +916,14 @@ namespace Imate.API.Business.Services.Payment
                         .AnyAsync(a => a.BookingId == txn.BookingId.Value
                             && a.ApplicationType == ApplicationType.ReportMentor
                             && (a.Status == ApplicationStatus.Pending || a.Status == ApplicationStatus.InReview));
-
+                    
                     dto.HasPendingMentorReport = hasPendingReport;
                 }
                 else
                 {
                     dto.HasPendingMentorReport = false;
                 }
-
+                
                 dtos.Add(dto);
             }
 
@@ -1048,9 +1030,8 @@ namespace Imate.API.Business.Services.Payment
                 payoutAmount -= commission;
 
                 // Get old value before update
-                var oldValue = new
-                {
-                    Status = bookingFeeTransaction.Status.ToString(),
+                var oldValue = new { 
+                    Status = bookingFeeTransaction.Status.ToString(), 
                     Amount = bookingFeeTransaction.Amount,
                     CommissionRateApplied = bookingFeeTransaction.CommissionRateApplied,
                     Reason = bookingFeeTransaction.Reason
@@ -1084,20 +1065,19 @@ namespace Imate.API.Business.Services.Payment
                 };
                 await _unitOfWork.Transactions.AddAsync(payoutTransaction);
                 await _unitOfWork.SaveChangesAsync(); // Lưu để lấy ID
-
+                
                 // Set ExternalTransactionCode nếu chưa có (entity đã được track, không cần UpdateAsync)
                 payoutTransaction.EnsureExternalTransactionCode();
                 if (payoutTransaction.ExternalTransactionCode != null)
                 {
                     await _unitOfWork.SaveChangesAsync(); // Lưu ExternalTransactionCode
                 }
-
+                
                 await _unitOfWork.CommitTransactionAsync();
 
                 // Create audit log
-                var newValue = new
-                {
-                    Status = bookingFeeTransaction.Status.ToString(),
+                var newValue = new { 
+                    Status = bookingFeeTransaction.Status.ToString(), 
                     Amount = bookingFeeTransaction.Amount,
                     CommissionRateApplied = bookingFeeTransaction.CommissionRateApplied,
                     Reason = bookingFeeTransaction.Reason,
@@ -1121,7 +1101,7 @@ namespace Imate.API.Business.Services.Payment
                     bookingFeeTransaction.BookingId!.Value
                 ));
 
-                _logger.LogInformation("Booking payout processed. Transaction {TransactionId}, Original amount: {OriginalAmount}, Commission: {Commission}%, Payout amount: {PayoutAmount}, Mentor: {MentorId}",
+                _logger.LogInformation("Booking payout processed. Transaction {TransactionId}, Original amount: {OriginalAmount}, Commission: {Commission}%, Payout amount: {PayoutAmount}, Mentor: {MentorId}", 
                     transactionId, bookingFeeTransaction.Amount, commissionRate, payoutAmount, mentorAccount.Id);
             }
             catch (Exception ex)
@@ -1335,8 +1315,8 @@ namespace Imate.API.Business.Services.Payment
             // Filter PointRefund: only get configured refund rate refunds (exclude 100% refunds)
             var refundRate = await _systemConfigService.GetCancellationRefundRateAsync();
             var refundRateString = $"{refundRate}%";
-            query = query.Where(t =>
-                t.TransactionType != TransactionType.Refund ||
+            query = query.Where(t => 
+                t.TransactionType != TransactionType.Refund || 
                 (t.TransactionType == TransactionType.Refund && t.Reason != null && t.Reason.Contains(refundRateString))
             );
 
@@ -1390,7 +1370,7 @@ namespace Imate.API.Business.Services.Payment
             // - PointBookingPayout: Fee - Payout (commission)
             // - PointDeposit: -Amount (chi phí)
             // - Các loại khác (PointSubscriptionFee, PointPenalty, PointInterviewFee): Amount (lợi nhuận)
-
+            
             var payoutDtos = dtos
                 .Where(d => d.BookingId.HasValue && d.TransactionType == TransactionType.BookingPayout.ToString())
                 .ToList();

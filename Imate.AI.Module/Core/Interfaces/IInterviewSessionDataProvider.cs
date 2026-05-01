@@ -98,6 +98,7 @@ namespace Imate.AI.Module.Core.Interfaces
         public int LimitCount { get; set; }
         public int RemainingCount { get; set; }
         public bool IsFree { get; set; }
+        public int Cost { get; set; }
         public string Message { get; set; } = string.Empty;
     }
 }
