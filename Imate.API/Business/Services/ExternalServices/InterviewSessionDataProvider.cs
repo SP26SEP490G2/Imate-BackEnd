@@ -1,9 +1,11 @@
+using Imate.AI.Module.Core.Interfaces;
+using Imate.API.Business.Interfaces;
 using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
-using Imate.AI.Module.Core.Interfaces;
+using Imate.API.Presentation.SignalR.Events.Transactions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Imate.API.Business.Interfaces;
 
 namespace Imate.API.Business.Services.ExternalServices
 {
@@ -15,11 +17,13 @@ namespace Imate.API.Business.Services.ExternalServices
     {
         private readonly ImateDbContext _context;
         private readonly ISystemConfigService _systemConfigService;
+        private readonly IMediator _mediator;
 
-        public InterviewSessionDataProvider(ImateDbContext context, ISystemConfigService systemConfigService)
+        public InterviewSessionDataProvider(ImateDbContext context, ISystemConfigService systemConfigService, IMediator mediator)
         {
             _context = context;
             _systemConfigService = systemConfigService;
+            _mediator = mediator;
         }
 
         // ── Session ──
@@ -259,6 +263,11 @@ namespace Imate.API.Business.Services.ExternalServices
                     activeSub.MockInterviewUsed += interviewCost;
                     activeSub.UpdatedAt = DateTimeOffset.UtcNow;
                     await _context.SaveChangesAsync();
+
+                    int remainingAiCredit = Math.Max(activeSub.InitialMockLimit - activeSub.MockInterviewUsed,0);
+
+                    var balanceUpdateEvent = new BalanceUpdatedEvent(accountId, remainingAiCredit);
+                    await _mediator.Publish(balanceUpdateEvent);
                 }
             }
             else
