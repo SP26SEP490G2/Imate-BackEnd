@@ -5,11 +5,14 @@ using Imate.AI.Module.Core.Interfaces;
 using Imate.AI.Module.Core.Orchestrators;
 using Imate.AI.Module.Models.Requests;
 using Imate.AI.Module.Models.Responses;
+using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.ExternalServices;
 using Imate.API.Business.Services;
+using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.DataAccess.Interfaces.UserManagement;
 using Imate.API.Models.Entities;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -27,6 +30,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<ILogger<CvService>> _mockCvServiceLogger;
         private readonly Mock<ILogger<CvAnalysisOrchestrator>> _mockOrchestratorLogger;
         private readonly Mock<ILogger<CvDataProvider>> _mockDataProviderLogger;
+        private readonly Mock<ISystemConfigService> _mockSystemConfigService;
         
         private readonly CvService _cvService;
         private readonly CvAnalysisOrchestrator _orchestrator;
@@ -43,11 +47,13 @@ namespace Imate.API.UnitTest.Services
             _mockCvServiceLogger = new Mock<ILogger<CvService>>();
             _mockOrchestratorLogger = new Mock<ILogger<CvAnalysisOrchestrator>>();
             _mockDataProviderLogger = new Mock<ILogger<CvDataProvider>>();
+            _mockSystemConfigService = new Mock<ISystemConfigService>();
 
             _cvService = new CvService(
                 _mockCvRepo.Object, 
                 _mockS3Storage.Object, 
-                _mockCvAnalysisOrchestrator.Object
+                _mockCvAnalysisOrchestrator.Object,
+                _mockSystemConfigService.Object
             );
 
             _orchestrator = new CvAnalysisOrchestrator(
@@ -60,7 +66,9 @@ namespace Imate.API.UnitTest.Services
             _dataProvider = new CvDataProvider(
                 _mockCvRepo.Object, 
                 _mockS3Storage.Object, 
-                _mockDataProviderLogger.Object
+                _mockDataProviderLogger.Object,
+                null,
+                _mockSystemConfigService.Object
             );
         }
 

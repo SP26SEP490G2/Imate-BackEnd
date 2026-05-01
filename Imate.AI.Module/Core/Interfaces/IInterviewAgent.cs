@@ -17,7 +17,8 @@ namespace Imate.AI.Module.Core.Interfaces
                     InterviewSessionData session,
                     List<InterviewResponseData> existingResponses,
                     double? estimatedAbility = null,
-                    List<string>? selectedGaps = null);
+                    List<string>? selectedGaps = null,
+                    bool isFirstSession = true);
         /// <summary>Phân loại JD bằng AI — trích xuất vị trí, kỹ năng, cấp độ</summary>
         Task<SetupInterviewResult> ClassifyJobDescriptionAsync(string jobDescriptionText, string? cvText = null);
 

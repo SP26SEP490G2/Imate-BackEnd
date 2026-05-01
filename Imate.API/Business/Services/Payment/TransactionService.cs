@@ -87,30 +87,17 @@ namespace Imate.API.Business.Services.Payment
                 var pricePerSession = mentor.PricePerSession;
                 var guaranteePerNewBooking = pricePerSession * guaranteeDepositRate / 100m;
 
-                // Tính các booking đang cần tiền đảm bảo:
-                // 1. Confirmed
-                // 2. Completed nhưng chưa hết thời gian report
-                var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
-                var now = DateTime.UtcNow;
-                var bookingsRequiringGuarantee = await _unitOfWork.Bookings.GetAllBookings()
-                    .Where(b => b.MentorId == accountId
-                        && (b.Status == BookingStatus.Confirmed
-                            || (b.Status == BookingStatus.Completed
-                                && b.StartTime.AddHours(1 + reportDeadlineHours) > now)))
-                    .ToListAsync();
-
-                var escrowCount = bookingsRequiringGuarantee.Count;
-                var existingGuaranteeAmount = bookingsRequiringGuarantee
-                    .Sum(b => b.PriceAtBooking * guaranteeDepositRate / 100m);
+                // 2. Tính các booking đang cần tiền đảm bảo:
+                var existingGuaranteeAmount = await GetRequiredGuaranteeAmountAsync(accountId);
                 
                 // Tính số lượt booking có thể nhận: (balance - tiền đảm bảo hiện tại) / tiền đảm bảo cho 1 booking mới
                 var availableBalanceForNewBookings = (decimal)account.Balance - existingGuaranteeAmount;
                 var maxBookingsCanReceive = guaranteePerNewBooking > 0 && availableBalanceForNewBookings >= guaranteePerNewBooking
                     ? (int)Math.Floor(availableBalanceForNewBookings / guaranteePerNewBooking)
                     : 0;
-                
+
                 summary.PricePerSession = pricePerSession;
-                summary.CurrentEscrowBookings = escrowCount;
+                summary.CurrentEscrowBookings = await GetCurrentEscrowBookingsCountAsync(accountId);
                 summary.RequiredBalanceForOneBooking = (int)(guaranteePerNewBooking);
                 summary.MaxBookingsCanReceive = maxBookingsCanReceive;
                 summary.GuaranteeDepositRate = guaranteeDepositRate;
@@ -541,7 +528,6 @@ namespace Imate.API.Business.Services.Payment
                 if (role.Equals("Mentor", StringComparison.OrdinalIgnoreCase))
                 {
                     // Mentor: Lấy thông tin từ profile Mentor
-                    // Giả định PK của Mentor là AccountId, nên dùng GetByIdAsync
                     mentorProfile = await _unitOfWork.Mentors.GetMentorByIdAsync(accountId);
                     if (mentorProfile == null)
                     {
@@ -582,30 +568,8 @@ namespace Imate.API.Business.Services.Payment
                 // 2.5. KIỂM TRA TIỀN ĐẢM BẢO CHO MENTOR
                 if (role.Equals("Mentor", StringComparison.OrdinalIgnoreCase) && mentorProfile != null)
                 {
-                    // Lấy guarantee deposit rate từ config
-                    decimal guaranteeDepositRate = await _systemConfigService.GetGuaranteeDepositRateAsync();
-                    var guaranteePerBooking = mentorProfile.PricePerSession * guaranteeDepositRate / 100m;
-
-                    // Lấy thời gian report deadline từ config
-                    var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
-                    var now = DateTime.UtcNow;
-
-                    // Các booking cần tiền đảm bảo:
-                    // 1. Confirmed
-                    // 2. Completed nhưng chưa hết thời gian report
-                    var bookingsRequiringGuarantee = await _unitOfWork.Bookings.GetAllBookings()
-                        .Where(b => b.MentorId == accountId 
-                            && (b.Status == BookingStatus.Confirmed
-                                || (b.Status == BookingStatus.Completed
-                                    && b.StartTime.AddHours(1 + reportDeadlineHours) > now)))
-                        .Select(b => b.PriceAtBooking)
-                        .ToListAsync();
-
-                    var bookingsRequiringGuaranteeCount = bookingsRequiringGuarantee.Count;
-
-                    // Tính số tiền đảm bảo cần giữ lại theo giá tại thời điểm booking
-                    var requiredGuaranteeAmount = bookingsRequiringGuarantee
-                        .Sum(price => price * guaranteeDepositRate / 100m);
+                    // Tính số tiền đảm bảo cần giữ lại
+                    var requiredGuaranteeAmount = await GetRequiredGuaranteeAmountAsync(accountId);
 
                     // Số tiền có thể rút = balance - tiền đảm bảo cần giữ
                     // Đảm bảo withdrawableAmount không âm
@@ -613,10 +577,11 @@ namespace Imate.API.Business.Services.Payment
 
                     if (withdrawRequestDto.Amount > withdrawableAmount)
                     {
-                        var errorMessage = bookingsRequiringGuaranteeCount > 0
-                            ? $"Bạn đang có {bookingsRequiringGuaranteeCount} booking cần tiền đảm bảo. Số tiền đảm bảo cần giữ lại: {requiredGuaranteeAmount:N0} VND."
+                        var bookingsCount = await GetCurrentEscrowBookingsCountAsync(accountId);
+                        var errorMessage = bookingsCount > 0
+                            ? $"Bạn đang có {bookingsCount} booking cần tiền đảm bảo. Số tiền đảm bảo cần giữ lại: {requiredGuaranteeAmount:N0} VND."
                             : $"Số dư không đủ. Số dư hiện tại: {account.Balance:N0} VND.";
-                        
+
                         throw new ArgumentException(errorMessage);
                     }
                 }
@@ -667,6 +632,38 @@ namespace Imate.API.Business.Services.Payment
                 await _unitOfWork.RollbackTransactionAsync();
                 throw;
             }
+        }
+
+        public async Task<decimal> GetRequiredGuaranteeAmountAsync(int accountId)
+        {
+            var mentor = await _unitOfWork.Mentors.GetMentorByIdAsync(accountId);
+            if (mentor == null) return 0;
+
+            decimal guaranteeDepositRate = await _systemConfigService.GetGuaranteeDepositRateAsync();
+            var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
+            var now = DateTime.UtcNow;
+
+            var bookingsRequiringGuarantee = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.MentorId == accountId
+                    && (b.Status == BookingStatus.Confirmed
+                        || (b.Status == BookingStatus.Completed
+                            && b.StartTime.AddHours(1 + reportDeadlineHours) > now)))
+                .Select(b => b.PriceAtBooking)
+                .ToListAsync();
+
+            return bookingsRequiringGuarantee.Sum(price => price * guaranteeDepositRate / 100m);
+        }
+
+        private async Task<int> GetCurrentEscrowBookingsCountAsync(int accountId)
+        {
+            var reportDeadlineHours = await _systemConfigService.GetReportDeadlineHoursAsync();
+            var now = DateTime.UtcNow;
+
+            return await _unitOfWork.Bookings.GetAllBookings()
+                .CountAsync(b => b.MentorId == accountId
+                    && (b.Status == BookingStatus.Confirmed
+                        || (b.Status == BookingStatus.Completed
+                            && b.StartTime.AddHours(1 + reportDeadlineHours) > now)));
         }
 
         private TransactionResponse MapTransactionToDto(Transaction txn)

@@ -4,6 +4,8 @@ using Imate.API.Business.Interfaces.Notification;
 using Imate.API.DataAccess.Interfaces;
 using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
+using Imate.API.Presentation.SignalR.Events.Transactions;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Imate.API.Business.Services.Mentors
@@ -18,6 +20,7 @@ namespace Imate.API.Business.Services.Mentors
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<AutoCompleteBookingService> _logger;
+        private readonly IMediator _mediator;
 
         /// <summary>
         /// How often the job runs (every 30 minutes).
@@ -31,10 +34,12 @@ namespace Imate.API.Business.Services.Mentors
 
         public AutoCompleteBookingService(
             IServiceScopeFactory scopeFactory,
-            ILogger<AutoCompleteBookingService> logger)
+            ILogger<AutoCompleteBookingService> logger,
+            IMediator mediator)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _mediator = mediator;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -139,6 +144,8 @@ namespace Imate.API.Business.Services.Mentors
                         };
                         payoutTransaction.EnsureExternalTransactionCode();
                         await unitOfWork.Transactions.AddAsync(payoutTransaction);
+                        var balanceEvent = new BalanceUpdatedEvent(mentorAccount.Id, (decimal)mentorAccount.Balance);
+                        await _mediator.Publish(balanceEvent);
 
                         _logger.LogInformation("AutoCompleteBooking: Released {PayoutAmount} (after {Commission} fee) to Mentor #{MentorId} for Booking #{BookingId}.", 
                             payoutAmount, commission, booking.MentorId, booking.Id);

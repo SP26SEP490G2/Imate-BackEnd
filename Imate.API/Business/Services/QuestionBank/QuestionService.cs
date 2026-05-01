@@ -572,8 +572,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     .ThenInclude(qs => qs.Skill)
                 .Include(q => q.QuestionPositions)
                     .ThenInclude(qp => qp.Position)
-                .AsNoTracking();
-
+                .AsNoTracking()
+                .AsSplitQuery();
             // 1. Filter theo SearchTerm (trên Content và SampleAnswer)
             if (!string.IsNullOrWhiteSpace(questionParams.SearchTerm))
             {
@@ -690,7 +690,8 @@ namespace Imate.API.Business.Services.QuestionBank
                     .ThenInclude(qp => qp.Position)
                 .Include(q => q.ContributedDetail)
                     .ThenInclude(cd => cd.Company)
-                .AsNoTracking();
+                .AsNoTracking()
+                 .AsSplitQuery();
 
             // 1. Filter theo SearchTerm (trên Content và SampleAnswer)
             if (!string.IsNullOrWhiteSpace(questionParams.SearchTerm))

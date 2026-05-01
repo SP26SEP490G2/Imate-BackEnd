@@ -45,7 +45,7 @@ namespace Imate.AI.Module.Core.Agents
         public async Task<string> GenerateWelcomeMessageAsync(string? cvContent, string? positionName, string? companyName, string? language = null)
         {
             var lang = language ?? "vi-VN";
-            var systemPrompt = "Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Trả về text thuần, KHÔNG trả JSON.";
+            var systemPrompt = "Bạn là phỏng vấn viên AI tên imAI, chuyên phỏng vấn IT. Hãy tạo lời chào mừng ngắn gọn, thân thiện, chuyên nghiệp cho buổi phỏng vấn. Gọi ứng viên là \"bạn\", xưng \"mình\" (KHÔNG dùng: anh, chị, em, chú, cậu). Trả về text thuần, KHÔNG trả JSON.";
 
             var sb = new StringBuilder();
             sb.AppendLine("Hãy tạo lời chào mừng cho buổi phỏng vấn với thông tin:");
@@ -63,7 +63,8 @@ namespace Imate.AI.Module.Core.Agents
             InterviewSessionData session,
             List<InterviewResponseData> existingResponses,
             double? estimatedAbility = null,
-            List<string>? selectedGaps = null)
+            List<string>? selectedGaps = null,
+            bool isFirstSession = true)
         {
             var turnNumber = existingResponses.Count + 1;
             var answeredCount = existingResponses.Count(r => !string.IsNullOrEmpty(r.UserAnswer));
@@ -80,15 +81,18 @@ namespace Imate.AI.Module.Core.Agents
             }
 
             // Lấy câu hỏi tham khảo từ DB theo chunk hiện tại
-            // Ưu tiên dùng selectedGaps nếu có (từ Training Journey), nếu không dùng SkillName
+            // Phiên đầu tiên: luôn query DB để dò thêm điểm yếu ngoài gaps
+            // Phiên sau: ưu tiên AI tự gen theo gaps
             var ragQuestions = await GetRagQuestionsForChunkAsync(
                 turnNumber,
                 selectedGaps,
                 session.SkillName ?? "General",
-                session.LevelName ?? "Junior");
+                session.PositionName ?? "",
+                session.LevelName ?? "Junior",
+                isFirstSession);
 
             var userPrompt = BuildQuestionUserPrompt(session, existingResponses, estimatedAbility, ragQuestions);
-
+    
             // Xác định chunk hiện tại cho log
             string chunkName = turnNumber switch
             {
@@ -107,6 +111,24 @@ namespace Imate.AI.Module.Core.Agents
                 "  RAG từ DB: {RagCount} câu tham khảo\n" +
                 "=====================================================",
                 session.Id, turnNumber, MaxQuestionsPerSession, chunkName, ragQuestions?.Count ?? 0);
+
+            // Log chi tiết từng câu hỏi tham chiếu từ DB
+            if (ragQuestions?.Count > 0)
+            {
+                _logger.LogInformation("---------- [RAG] CÂU HỎI THAM CHIẾU TỪ DATABASE ----------");
+                for (int i = 0; i < ragQuestions.Count; i++)
+                {
+                    var q = ragQuestions[i];
+                    _logger.LogInformation(
+                        "[RAG] {Index}. [{Difficulty}] {Content}",
+                        i + 1,
+                        q.Difficulty,
+                        q.Content.Length > 150 ? q.Content[..150] + "..." : q.Content);
+                    if (q.Skills?.Count > 0)
+                        _logger.LogInformation("[RAG]    → Skills: {Skills}", string.Join(", ", q.Skills));
+                }
+                _logger.LogInformation("---------- [RAG] HẾT DANH SÁCH THAM CHIẾU ----------");
+            }
 
             var delay = Random.Shared.Next(800, 1500);
             await Task.Delay(delay);
@@ -185,6 +207,11 @@ Lưu ý:
             var systemPrompt = @"Bạn là một Mentor (người hướng dẫn) và Senior Interviewer dày dạn kinh nghiệm. 
 Nhiệm vụ: Phản hồi lại câu trả lời của ứng viên một cách tự nhiên, mang tính khích lệ và dẫn dắt (Coaching).
 
+QUY TẮC XƯNG HÔ (BẮT BUỘC):
+- Gọi ứng viên là ""bạn"" (KHÔNG dùng: anh, chị, em, chú, cậu, bác, ông, bà)
+- Xưng ""mình"" hoặc không xưng (KHÔNG dùng: anh, tôi, chú, bác)
+- Giữ giọng ngang hàng, thân thiện, chuyên nghiệp
+
 QUY TẮC PHẢN HỒI:
 1. PHONG CÁCH MENTOR: Phản hồi chuyên nghiệp, thân thiện. Hãy coi ứng viên như một đồng nghiệp tiềm năng cần được chỉ dẫn.
 2. TẬP TRUNG VÀO NÂNG CẤP: Nếu ứng viên trả lời tốt, hãy khen ngợi cụ thể. Nếu chưa tốt, hãy đưa ra gợi ý nhẹ nhàng để họ tư duy sâu hơn.
@@ -210,7 +237,7 @@ QUY TẮC PHẢN HỒI:
         }
 
         public async Task<string> AnalyzeGapsAsync(string cvContent, string jobDescriptionText)
-        {
+       {
             var systemPrompt = @"Bạn là chuyên gia phân tích nhân sự và đào tạo IT. 
 Nhiệm vụ: So sánh CV ứng viên với JD (Mô tả công việc) để tìm ra các khoảng trống năng lực (Gaps).
 
@@ -287,6 +314,19 @@ Trả về JSON (LUÔN có cả 5 fields):
 
             sb.AppendLine($"\n**TRẠNG THÁI HIỆN TẠI: Đang ở Câu hỏi thứ {turnNumber}/{MaxQuestionsPerSession}**");
             sb.AppendLine($"**>>> YÊU CẦU: HÃY ĐẶT 1 CÂU HỎI THUỘC CHỦ ĐỀ CỦA [{currentPhase}] <<<**\n");
+
+
+            // Hướng dẫn liên kết logic cho giai đoạn Deep-dive
+            if (turnNumber >= 8 && turnNumber <= 9 && previousResponses.Any())
+            {
+                sb.AppendLine("**QUY TẮC LIÊN KẾT BẮT BUỘC**: Câu hỏi Deep-dive PHẢI đào sâu vào 1 điểm cụ thể từ câu trả lời Situational trước đó.");
+                sb.AppendLine("**CÁCH VIẾT CÂU HỎI**: Bắt đầu bằng việc NHẮC LẠI ngắn gọn nội dung ứng viên đã trả lời, rồi mới xoáy sâu vào.");
+                sb.AppendLine("FORMAT: 'Lúc nãy bạn có đề cập đến [tóm tắt ý ứng viên]... Mình muốn tìm hiểu thêm: [câu hỏi đào sâu]'");
+                sb.AppendLine("Ví dụ: 'Bạn vừa nói sẽ dùng load balancer để xử lý traffic cao — vậy cụ thể bạn sẽ chọn thuật toán nào cho load balancing và tại sao?'");
+                sb.AppendLine("Ví dụ: 'Mình thấy bạn đề cập đến việc rollback database khi deploy lỗi — bạn có thể chia sẻ chi tiết hơn về quy trình rollback bạn đã áp dụng không?'");
+                sb.AppendLine("Tìm điểm ứng viên trả lời chưa rõ, chưa sâu, hoặc có thể khai thác thêm → hỏi tiếp để kiểm tra chiều sâu thực sự.");
+                sb.AppendLine("KHÔNG hỏi chủ đề mới hoàn toàn. Phải bám sát nội dung ứng viên đã nói.\n");
+            }
 
             // Inject câu hỏi tham khảo từ DB (nếu có)
             if (ragQuestions?.Count > 0)
@@ -521,22 +561,33 @@ Trả về JSON (LUÔN có cả 5 fields):
         /// Lấy câu hỏi tham khảo từ DB theo chunk hiện tại.
         /// 60% xác suất dùng DB, 40% để AI tự gen → giảm trùng lặp giữa các phiên.
         /// </summary>
-        private async Task<List<QuestionBankItem>> GetRagQuestionsForChunkAsync(int turnNumber, List<string>? selectedGaps, string field, string level)
+        private async Task<List<QuestionBankItem>> GetRagQuestionsForChunkAsync(int turnNumber, List<string>? selectedGaps, string skillName, string positionName, string level, bool isFirstSession = true)
         {
-            // Nếu có selectedGaps (Training Journey): ưu tiên AI tự gen theo gaps
-            // Không dùng DB vì DB chưa có structure để filter theo gaps
-            if (selectedGaps?.Count > 0)
+            // [TẠM THỜI] Tắt truy vấn DB — 0% lấy câu hỏi từ database, 100% AI tự gen
+            _logger.LogInformation("[RAG] Câu {Turn}: DB query đang TẮT (0%) — AI tự gen 100%", turnNumber);
+            return new List<QuestionBankItem>();
+            // Phiên đầu tiên: luôn query DB dù có gaps → dò thêm điểm yếu ngoài gaps đã biết
+            // Phiên sau: có gaps → skip DB, ưu tiên AI gen theo gaps để luyện tập trọng tâm
+            if (selectedGaps?.Count > 0 && !isFirstSession)
             {
                 _logger.LogInformation(
-                    "[RAG] Câu {Turn}: Training Journey mode - AI tự gen theo gaps ({Gaps}), skip DB",
+                    "[RAG] Câu {Turn}: Phiên luyện tập (không phải phiên đầu) - AI tự gen theo gaps ({Gaps}), skip DB",
                     turnNumber, string.Join(",", selectedGaps));
                 return new List<QuestionBankItem>();
             }
 
-            // 40% xác suất AI tự gen (không query DB) → đa dạng câu hỏi
-            if (Random.Shared.NextDouble() < 0.4)
+            if (selectedGaps?.Count > 0 && isFirstSession)
             {
-                _logger.LogInformation("[RAG] Câu {Turn}: Chọn chế độ AI tự gen (40% random) để tránh trùng lặp", turnNumber);
+                _logger.LogInformation(
+                    "[RAG] Câu {Turn}: Phiên đầu tiên - vẫn query DB để dò thêm điểm yếu ngoài gaps ({Gaps})",
+                    turnNumber, string.Join(",", selectedGaps));
+            }
+
+            // Phiên sau (không phải phiên đầu): 40% xác suất AI tự gen → đa dạng câu hỏi
+            // Phiên đầu tiên: LUÔN query DB (100%) để lấy câu hỏi tham khảo
+            if (!isFirstSession && Random.Shared.NextDouble() < 0.4)
+            {
+                _logger.LogInformation("[RAG] Câu {Turn}: Phiên luyện tập - chọn AI tự gen (40% random) để tránh trùng lặp", turnNumber);
                 return new List<QuestionBankItem>();
             }
 
@@ -561,10 +612,10 @@ Trả về JSON (LUÔN có cả 5 fields):
                     return new List<QuestionBankItem>();
                 }
 
-                var questions = await _questionDataProvider.GetQuestionsAsync(field, level, maxCount);
+                var questions = await _questionDataProvider.GetQuestionsAsync(skillName, positionName, level, maxCount);
                 _logger.LogInformation(
-                    "[RAG] Câu {Turn}: Lấy được {Count}/{Max} câu hỏi từ DB (field={Field}, level={Level})",
-                    turnNumber, questions.Count, maxCount, field, level);
+                    "[RAG] Câu {Turn}: Lấy được {Count}/{Max} câu hỏi từ DB (skill={Skill}, position={Position}, level={Level})",
+                    turnNumber, questions.Count, maxCount, skillName, positionName, level);
 
                 return questions;
             }

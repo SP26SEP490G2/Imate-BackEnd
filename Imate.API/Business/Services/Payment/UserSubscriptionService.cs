@@ -8,6 +8,8 @@ using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using Imate.API.Presentation.ResponseModels.Payment;
 using Microsoft.EntityFrameworkCore;
+using Imate.API.Presentation.SignalR.Events.Transactions;
+using MediatR;
 
 namespace Imate.API.Business.Services.Payment
 {
@@ -16,15 +18,18 @@ namespace Imate.API.Business.Services.Payment
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISystemConfigService _systemConfigService;
         private readonly ISystemNotificationService _systemNotificationService;
+        private readonly IMediator _mediator;
 
         public UserSubscriptionService(
             IUnitOfWork unitOfWork,
             ISystemConfigService systemConfigService,
-            ISystemNotificationService systemNotificationService)
+            ISystemNotificationService systemNotificationService,
+            IMediator mediator)
         {
             _unitOfWork = unitOfWork;
             _systemConfigService = systemConfigService;
             _systemNotificationService = systemNotificationService;
+            _mediator = mediator;
         }
 
         public async Task ActivateNewSubscriptionAsync(int accountId, int newPackageId)
@@ -132,6 +137,13 @@ namespace Imate.API.Business.Services.Payment
                     null);
 
                 await _unitOfWork.CommitTransactionAsync();
+
+                // Phát event SignalR để cập nhật balance và AI Credit
+                int remainingAiCredit = Math.Max(
+                    newUserSubscription.InitialMockLimit - newUserSubscription.MockInterviewUsed,
+                    0);
+                var balanceEvent = new BalanceUpdatedEvent(accountId, userAccount.Balance, remainingAiCredit);
+                await _mediator.Publish(balanceEvent);
             }
             catch (Exception)
             {

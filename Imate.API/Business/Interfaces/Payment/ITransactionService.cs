@@ -1,4 +1,4 @@
-﻿using PayOS.Models.Webhooks;
+using PayOS.Models.Webhooks;
 using Imate.API.Business.Helper;
 using Imate.API.Presentation.RequestModels.Payment;
 using Imate.API.Presentation.ResponseModels.Payment;
@@ -25,5 +25,6 @@ namespace Imate.API.Business.Interfaces.Payment
         Task<PagedList<TransactionResponse>> GetRevenueTransactionsAsync(RevenueTransactionQueryParameters parameters);
         Task<int> GetDepositTimeoutMinutesAsync();
         Task<int> GetWithdrawalAutoRefundHoursAsync();
+        Task<decimal> GetRequiredGuaranteeAmountAsync(int accountId);
     }
 }

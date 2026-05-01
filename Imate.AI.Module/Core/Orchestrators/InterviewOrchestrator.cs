@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Imate.AI.Module.Core.Interfaces;
 using Imate.AI.Module.Models.Requests;
 using Imate.AI.Module.Models.Responses;
@@ -24,6 +25,15 @@ namespace Imate.AI.Module.Core.Orchestrators
         private readonly ILogger<InterviewOrchestrator> _logger;
 
         private const int MaxSessionDurationMinutes = 30;
+
+        /// <summary>
+        /// Per-session lock để ngăn race condition khi 2 tab cùng sessionId gọi đồng thời.
+        /// Mỗi sessionId có 1 SemaphoreSlim(1,1) riêng → serialize tất cả operations trên session đó.
+        /// </summary>
+        private static readonly ConcurrentDictionary<int, SemaphoreSlim> _sessionLocks = new();
+
+        private static SemaphoreSlim GetSessionLock(int sessionId)
+            => _sessionLocks.GetOrAdd(sessionId, _ => new SemaphoreSlim(1, 1));
 
         /// <summary>Level mapping for gap comparison</summary>
         private static readonly Dictionary<string, int> LevelOrder = new(StringComparer.OrdinalIgnoreCase)
@@ -116,7 +126,13 @@ namespace Imate.AI.Module.Core.Orchestrators
                     _logger.LogInformation("[SETUP] Level comparison: CV={CvLevel}({CvIdx}) vs JD={JdLevel}({JdIdx}), Gap={Gap}",
                         cvLevel, cvLevelIdx, jdLevel, jdLevelIdx, gap);
 
-                    if (gap >= 2)
+                    if (gap >= 3)
+                    {
+                        throw new InvalidOperationException(
+                            $"Chênh lệch cấp bậc quá lớn ({gap} bậc). Ứng viên có level {cvLevel} nhưng JD yêu cầu cấp bậc {jdLevel}. " +
+                            "Hệ thống không thể tạo phiên phỏng vấn phù hợp.");
+                    }
+                    else if (gap >= 2)
                     {
                         result.LevelMismatchWarning =
                             $"Ứng viên có level {cvLevel} (từ CV) nhưng JD yêu cầu cấp bậc {jdLevel} — " +
@@ -162,6 +178,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                     if (string.IsNullOrEmpty(cvContent))
                     {
                         cvContent = await _cvDataProvider.GetCvTextAsync(accountId, request.CvId.Value) ?? "";
+                        session.CvContent = cvContent; // Gán CV text vào session để dùng cho prompt
                     }
 
                     // Tìm journey đã có hoặc tạo mới trực tiếp qua DataProvider
@@ -295,6 +312,14 @@ namespace Imate.AI.Module.Core.Orchestrators
         public async Task<GenerateQuestionResult> GenerateQuestionAsync(
             int accountId, int sessionId, double? estimatedAbility, CancellationToken cancellationToken)
         {
+            var sessionLock = GetSessionLock(sessionId);
+            if (!await sessionLock.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    "Phiên phỏng vấn đang xử lý yêu cầu khác. Vui lòng đợi và thử lại.");
+            }
+            try
+            {
             var session = await _dataProvider.GetSessionByIdAsync(sessionId);
             if (session == null)
                 throw new KeyNotFoundException($"Không tìm thấy phiên phỏng vấn {sessionId}");
@@ -338,9 +363,24 @@ namespace Imate.AI.Module.Core.Orchestrators
                     _logger.LogWarning(ex, "[INTERVIEW] Lỗi trích xuất gap từ SessionGapJson, fallback không dùng gaps");
                 }
             }
+            // Xác định đây có phải phiên đầu tiên trong Journey không
+            // Phiên đầu: dò thăm toàn diện bằng câu hỏi DB + gaps
+            // Phiên sau: tập trung luyện tập theo gaps
+            bool isFirstSession = true;
+            if (session.TrainingJourneyId.HasValue)
+            {
+                var allSessions = await _dataProvider.GetSessionsByAccountIdAsync(accountId);
+                var journeySessions = allSessions
+                    .Where(s => s.TrainingJourneyId == session.TrainingJourneyId.Value && s.Id != sessionId)
+                    .ToList();
+                isFirstSession = journeySessions.Count == 0;
+                _logger.LogInformation(
+                    "[INTERVIEW] Session {SessionId} in Journey {JourneyId}: isFirstSession={IsFirst} (previous sessions: {Count})",
+                    sessionId, session.TrainingJourneyId.Value, isFirstSession, journeySessions.Count);
+            }
 
-            // Gọi Agent tạo câu hỏi, truyền selectedGaps để filter RAG questions
-            var result = await _interviewAgent.GenerateQuestionAsync(session, existingResponses, estimatedAbility, selectedGaps);
+            // Gọi Agent tạo câu hỏi, truyền selectedGaps và isFirstSession
+            var result = await _interviewAgent.GenerateQuestionAsync(session, existingResponses, estimatedAbility, selectedGaps, isFirstSession);
 
             if (result.IsTerminated)
             {
@@ -393,11 +433,24 @@ namespace Imate.AI.Module.Core.Orchestrators
             }
 
             return result;
+            }
+            finally
+            {
+                sessionLock.Release();
+            }
         }
 
         public async Task<SubmitAnswerResult> SubmitAnswerAsync(
             int accountId, SubmitAnswerRequest request, CancellationToken cancellationToken)
         {
+            var sessionLock = GetSessionLock(request.InterviewSessionId);
+            if (!await sessionLock.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    "Phiên phỏng vấn đang xử lý yêu cầu khác. Vui lòng đợi và thử lại.");
+            }
+            try
+            {
             var session = await _dataProvider.GetSessionByIdAsync(request.InterviewSessionId);
             if (session == null)
                 throw new KeyNotFoundException($"Không tìm thấy phiên phỏng vấn {request.InterviewSessionId}");
@@ -411,6 +464,17 @@ namespace Imate.AI.Module.Core.Orchestrators
             var response = await _dataProvider.GetResponseByIdAsync(request.InterviewResponseId);
             if (response == null)
                 throw new KeyNotFoundException($"Không tìm thấy câu hỏi {request.InterviewResponseId}");
+
+            // Kiểm tra câu hỏi đã được trả lời chưa (tránh submit trùng từ 2 tab)
+            if (!string.IsNullOrEmpty(response.UserAnswer))
+            {
+                _logger.LogWarning("[INTERVIEW] Câu hỏi {ResponseId} đã được trả lời, bỏ qua submit trùng",
+                    request.InterviewResponseId);
+                return new SubmitAnswerResult
+                {
+                    AiReaction = "Câu trả lời đã được ghi nhận trước đó."
+                };
+            }
 
             // Lưu câu trả lời
             response.UserAnswer = request.UserAnswer;
@@ -449,10 +513,19 @@ namespace Imate.AI.Module.Core.Orchestrators
                 AiReactionAudioBase64 = aiReactionAudioBase64,
                 MimeType = mimeType
             };
+            }
+            finally
+            {
+                sessionLock.Release();
+            }
         }
 
         public async Task EndInterviewAsync(int accountId, int sessionId)
         {
+            var sessionLock = GetSessionLock(sessionId);
+            await sessionLock.WaitAsync(TimeSpan.FromSeconds(60));
+            try
+            {
             var session = await _dataProvider.GetSessionByIdAsync(sessionId);
             if (session == null)
                 throw new KeyNotFoundException($"Không tìm thấy phiên phỏng vấn {sessionId}");
@@ -461,7 +534,9 @@ namespace Imate.AI.Module.Core.Orchestrators
                 throw new UnauthorizedAccessException("Bạn không có quyền truy cập phiên này.");
 
             if (session.Status == "Completed")
+            {
                 return; // Đã hoàn thành rồi
+            }
 
             session.EndTime = DateTimeOffset.UtcNow;
             await _dataProvider.UpdateSessionAsync(session);
@@ -589,6 +664,13 @@ namespace Imate.AI.Module.Core.Orchestrators
                     _logger.LogError(ex, "Background feedback error for session {SessionId}", sessionId);
                 }
             });
+            }
+            finally
+            {
+                sessionLock.Release();
+                // Cleanup lock sau khi session kết thúc (tránh memory leak)
+                _sessionLocks.TryRemove(sessionId, out _);
+            }
         }
 
         public async Task<InterviewResultData> GetInterviewResultAsync(int accountId, int sessionId)
@@ -811,7 +893,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                     {
                         foreach (var item in root.EnumerateArray())
                         {
-                            var name = item.TryGetProperty("gapName", out var gn) ? gn.GetString() : item.GetString();
+                            var name = ExtractGapName(item);
                             if (!string.IsNullOrEmpty(name))
                                 gaps.Add(name.Trim());
                         }
@@ -821,7 +903,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                     {
                         foreach (var item in selectedGapsArr.EnumerateArray())
                         {
-                            var name = item.TryGetProperty("gapName", out var gn) ? gn.GetString() : item.GetString();
+                            var name = ExtractGapName(item);
                             if (!string.IsNullOrEmpty(name))
                                 gaps.Add(name.Trim());
                         }
@@ -848,6 +930,33 @@ namespace Imate.AI.Module.Core.Orchestrators
                 _logger.LogWarning(ex, "[INTERVIEW] Lỗi trích xuất gap names từ SessionGapJson");
                 return gaps;
             }
+        }
+
+        /// <summary>
+        /// Trích xuất tên gap từ một JSON element — hỗ trợ cả string lẫn object.
+        /// </summary>
+        private static string? ExtractGapName(System.Text.Json.JsonElement item)
+        {
+            // Nếu item là string thuần: ["Java", "Docker"]
+            if (item.ValueKind == System.Text.Json.JsonValueKind.String)
+                return item.GetString();
+
+            // Nếu item là object: [{"gapName":"Java","gapType":"hardSkill",...}]
+            if (item.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                if (item.TryGetProperty("gapName", out var gn))
+                    return gn.GetString();
+                if (item.TryGetProperty("GapName", out var gn2))
+                    return gn2.GetString();
+                if (item.TryGetProperty("name", out var n))
+                    return n.GetString();
+                // Fallback: lấy giá trị đầu tiên
+                foreach (var prop in item.EnumerateObject())
+                    if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return prop.Value.GetString();
+            }
+
+            return item.ToString();
         }
 
     }

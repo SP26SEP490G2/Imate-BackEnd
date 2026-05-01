@@ -7,13 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using UglyToad.PdfPig;
 using Imate.API.DataAccess.ApplicationDbContext;
+using Imate.API.Presentation.SignalR.Events.Transactions;
+using MediatR;
 
 namespace Imate.API.Business.Services
 {
-    /// <summary>
-    /// Bridge giữa Imate.API và AI Module
-    /// Cung cấp CV text data cho AI Module mà không cần AI Module phụ thuộc vào Imate.API
-    /// </summary>
     public class CvDataProvider : ICvDataProvider
     {
         private readonly IUserCvRepository _cvRepository;
@@ -21,19 +19,22 @@ namespace Imate.API.Business.Services
         private readonly ILogger<CvDataProvider> _logger;
         private readonly ImateDbContext _context;
         private readonly ISystemConfigService _systemConfigService;
+        private readonly IMediator _mediator;
 
         public CvDataProvider(
             IUserCvRepository cvRepository,
             IAwsS3StorageService s3Storage,
             ILogger<CvDataProvider> logger,
             ImateDbContext context,
-            ISystemConfigService systemConfigService)
+            ISystemConfigService systemConfigService,
+            IMediator mediator)
         {
             _cvRepository = cvRepository;
             _s3Storage = s3Storage;
             _logger = logger;
             _context = context;
             _systemConfigService = systemConfigService;
+            _mediator = mediator;
         }
 
         public async Task<CvAnalysisEligibility> CheckCvAnalysisEligibilityAsync(int accountId)
@@ -269,6 +270,14 @@ namespace Imate.API.Business.Services
                 tokenCost, accountId, activeSub.MockInterviewUsed);
 
             await _context.SaveChangesAsync();
+
+            // Tính AI Credit còn lại
+            int remainingAiCredit = Math.Max(
+                activeSub.InitialMockLimit - activeSub.MockInterviewUsed,
+                0);
+
+            var balanceUpdateEvent = new BalanceUpdatedEvent(accountId, remainingAiCredit);
+            await _mediator.Publish(balanceUpdateEvent);
         }
     }
 }
