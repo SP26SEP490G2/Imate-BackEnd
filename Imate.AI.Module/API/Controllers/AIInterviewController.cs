@@ -54,6 +54,7 @@ namespace Imate.AI.Module.API.Controllers
                     usedMock = status.UsedCount,
                     limit = status.LimitCount,
                     remaining = status.RemainingCount,
+                    cost = status.Cost,
                     canStart = status.CanStart,
                     message = status.Message
                 },

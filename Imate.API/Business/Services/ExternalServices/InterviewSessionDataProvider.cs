@@ -193,6 +193,7 @@ namespace Imate.API.Business.Services.ExternalServices
                 return new InterviewLimitStatus
                 {
                     IsFree = true,
+                    Cost = 1,
                     LimitCount = limit,
                     UsedCount = usedInMonth,
                     RemainingCount = Math.Max(0, limit - usedInMonth),
@@ -218,6 +219,7 @@ namespace Imate.API.Business.Services.ExternalServices
                 return new InterviewLimitStatus
                 {
                     IsFree = false,
+                    Cost = interviewCost,
                     LimitCount = limit,
                     UsedCount = used,
                     RemainingCount = remaining,
