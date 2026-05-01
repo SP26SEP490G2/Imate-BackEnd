@@ -12,6 +12,9 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
+using Imate.API.Business.Interfaces.Notification;
+using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Payment;
 
 namespace Imate.API.Business.Services.Mentors
 {
@@ -21,17 +24,19 @@ namespace Imate.API.Business.Services.Mentors
         private readonly IConfiguration _configuration;
         private readonly ISystemNotificationService _systemNotificationService;
         private readonly ISystemConfigService _systemConfigService;
+        private readonly ITransactionService _transactionService;
         private const int MIN_BOOKING_ADVANCE_HOURS = 6;
         private const int MIN_CANCEL_ADVANCE_HOURS = 6;
         private const string LocalTimeZoneId = "SE Asia Standard Time";
         private readonly IMediator _mediator;
 
-        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration, ISystemNotificationService systemNotificationService, ISystemConfigService systemConfigService, IMediator mediator)
+        public BookingService(IUnitOfWork unitOfWork, IConfiguration configuration, ISystemNotificationService systemNotificationService, ISystemConfigService systemConfigService, ITransactionService transactionService, IMediator mediator)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
             _systemNotificationService = systemNotificationService;
             _systemConfigService = systemConfigService;
+            _transactionService = transactionService;
             _mediator = mediator;
         }
 
@@ -103,6 +108,18 @@ namespace Imate.API.Business.Services.Mentors
 
             // Deduct balance (tracked by EF, will save with SaveChangesAsync below)
             candidateAccount.Balance -= price;
+
+            // 2.5 Check Mentor's Guarantee Balance
+            decimal guaranteeRate = await _systemConfigService.GetGuaranteeDepositRateAsync();
+            decimal requiredForNewBooking = price * guaranteeRate / 100m;
+            decimal existingGuaranteeCommitment = await _transactionService.GetRequiredGuaranteeAmountAsync(request.MentorId);
+
+            if (mentorAccount.Balance < existingGuaranteeCommitment + requiredForNewBooking)
+            {
+                // Refund candidate (since we haven't saved changes yet, this just restores the local state)
+                candidateAccount.Balance += price;
+                throw new BadRequestException("Mentor hiện không đủ số dư đảm bảo để nhận thêm lịch hẹn này. Vui lòng chọn Mentor khác hoặc quay lại sau.");
+            }
 
             // 3. Persistence
             var booking = new Booking
