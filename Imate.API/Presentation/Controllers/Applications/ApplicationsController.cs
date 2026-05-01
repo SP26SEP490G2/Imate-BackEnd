@@ -95,6 +95,27 @@ namespace Imate.API.Presentation.Controllers.Applications
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Không thể tạo đơn report comment.", error = ex.Message });
             }
         }
+        [HttpPost("application/other-application/{userId}")]
+        public async Task<IActionResult> CreateOtherApplication(int userId, [FromForm] CreateTechnicalApplicationRequest request)
+        {
+            try
+            {
+                var applicationDetail = await _applicationService.CreateOtherApplicationAsync(request, userId);
+                return StatusCode(StatusCodes.Status201Created, applicationDetail);
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Không thể tạo đơn báo cáo khác.", error = ex.Message });
+            }
+        }
         [HttpGet("applications")]
         public async Task<IActionResult> GetAllApplications([FromQuery] Application2Params applicationParams)
         {
@@ -151,6 +172,12 @@ namespace Imate.API.Presentation.Controllers.Applications
             var details = await _applicationService.GetTechnicalDetails(applicationId);
             return Ok(details);
 
+        }
+        [HttpGet("application/{applicationId}/other-details")]
+        public async Task<IActionResult> GetOtherDetails(int applicationId)
+        {
+            var details = await _applicationService.GetOtherDetails(applicationId);
+            return Ok(details);
         }
 
         [HttpGet("application/{applicationId}/report-comment-details")]

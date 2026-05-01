@@ -15,6 +15,9 @@ using Imate.API.Presentation.ResponseModels.Applications;
 using Imate.API.Presentation.SignalR.Events.Applications;
 using Imate.API.DataAccess.ApplicationDbContext;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
+using Imate.API.Presentation.SignalR;
+using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.Business.Services.Applications
 {
@@ -28,6 +31,8 @@ namespace Imate.API.Business.Services.Applications
         private readonly IMediator _mediator;
         private readonly ISystemConfigService _systemConfigService;
         private readonly IAuditLogService _auditLogService;
+        private readonly ISystemNotificationService _notificationService;
+        private readonly IHubContext<BalanceHub> _balanceHubContext;
 
         public ApplicationService(
             IUnitOfWork unitOfWork,
@@ -37,7 +42,9 @@ namespace Imate.API.Business.Services.Applications
             ImateDbContext context,
              IMediator mediator,
              ISystemConfigService systemConfigService,
-             IAuditLogService auditLogService)
+             IAuditLogService auditLogService,
+             ISystemNotificationService notificationService,
+             IHubContext<BalanceHub> balanceHubContext)
         {
             _unitOfWork = unitOfWork;
             _awsS3Service = awsS3Service;
@@ -47,6 +54,8 @@ namespace Imate.API.Business.Services.Applications
             _mediator = mediator;
             _systemConfigService = systemConfigService;
             _auditLogService = auditLogService;
+            _notificationService = notificationService;
+            _balanceHubContext = balanceHubContext;
         }
         public async Task<PagedList<ApplicationListResponse>> GetApplicationsByIdAsync(int id, ApplicationParams appParams)
         {
@@ -141,6 +150,65 @@ namespace Imate.API.Business.Services.Applications
                 appParams.PageNumber,
                 appParams.PageSize
             );
+        }
+
+        public async Task<ApplicationDetailResponse> CreateOtherApplicationAsync(CreateTechnicalApplicationRequest request, int userId)
+        {
+            var account = await _unitOfWork.Accounts.GetByIdAsync(userId);
+            if (account == null)
+            {
+                throw new NotFoundException("Không tìm thấy người dùng.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Content))
+            {
+                throw new BadRequestException("Nội dung báo cáo không được để trống.");
+            }
+
+            var evidenceUrls = new List<string>();
+
+            if (request.EvidenceFiles != null && request.EvidenceFiles.Any())
+            {
+                foreach (var file in request.EvidenceFiles)
+                {
+                    if (file != null && file.Length > 0)
+                    {
+                        string url = await _awsS3Service.UploadFileAsync(file, "applications");
+                        evidenceUrls.Add(url);
+                    }
+                }
+            }
+
+            var newApplication = new Application
+            {
+                UserId = userId,
+                ApplicationType = ApplicationType.Other,
+                Status = ApplicationStatus.Pending,
+                Title = request.Title ?? $"Đơn báo cáo khác - {DateTime.UtcNow:yyyy-MM-dd}",
+                Content = request.Content,
+                CreatedAt = DateTime.UtcNow,
+                EvidenceUrls = JsonSerializer.Serialize(evidenceUrls),
+                Response = string.Empty,
+                ReviewerId = null
+            };
+
+            _unitOfWork.Applications.AddApplication(newApplication);
+            await _unitOfWork.SaveChangesAsync();
+            
+            // Có thể thêm event riêng nếu cần, ở đây dùng tạm Technical event hoặc tạo mới
+            // await _mediator.Publish(new OtherApplicationCreateEvent(newApplication));
+
+            var urls = string.IsNullOrEmpty(newApplication.EvidenceUrls)
+                    ? new List<string>()
+                    : JsonSerializer.Deserialize<List<string>>(newApplication.EvidenceUrls);
+            return new ApplicationDetailResponse
+            {
+                Id = newApplication.Id,
+                Content = newApplication.Content,
+                DateSent = DateOnly.FromDateTime(newApplication.CreatedAt.DateTime),
+                Status = newApplication.Status.ToString(),
+                Attachments = urls
+            };
         }
 
         public async Task<ApplicationDetailResponse> CreateTechnicalApplicationAsync(CreateTechnicalApplicationRequest request, int userId)
@@ -716,6 +784,38 @@ namespace Imate.API.Business.Services.Applications
             // 4. Trả về kết quả
             return techDetails;
         }
+        public async Task<object> GetOtherDetails(int applicationId)
+        {
+            var query = _unitOfWork.Applications.GetAllApplications();
+
+            var otherDetails = await query
+                .Where(a => a.Id == applicationId && a.ApplicationType == ApplicationType.Other)
+                .Select(a => new
+                {
+                    Id = a.Id,
+                    UserId = a.UserId,
+                    AvatarUrl = a.User.AvatarUrl,
+                    Email = a.User.Email,
+                    FullName = a.User.FullName,
+                    Status = a.Status.ToString(),
+                    ApplicationType = a.ApplicationType.ToString(),
+                    CreatedAt = DateOnly.FromDateTime(a.CreatedAt.DateTime),
+                    UpdatedAt = a.UpdatedAt,
+                    Title = a.Title,
+                    Content = a.Content,
+                    Response = a.Response,
+                    ReviewerName = a.Reviewer != null ? a.Reviewer.FullName : null,
+                    EvidenceUrls = a.EvidenceUrls,
+                })
+                .FirstOrDefaultAsync();
+
+            if (otherDetails == null)
+            {
+                throw new NotFoundException($"Không tìm thấy đơn báo cáo khác {applicationId}.");
+            }
+
+            return otherDetails;
+        }
 
         public async Task<ApplicationDetailResponse> CreateReportCommentApplicationAsync(CreateReportCommentRequest request, int userId)
         {
@@ -820,6 +920,12 @@ namespace Imate.API.Business.Services.Applications
                 try
                 {
                     // Xử lý theo loại application
+                    string reporterMessage = "Đơn báo cáo của bạn đã được duyệt.";
+                    string affectedMessage = null;
+                    int? affectedUserId = null;
+                    bool notifyBalanceReporter = false;
+                    bool notifyBalanceAffected = false;
+
                     if (application.ApplicationType == ApplicationType.ReportComment && application.CommentId.HasValue)
                     {
                         var commentId = application.CommentId.Value;
@@ -861,9 +967,12 @@ namespace Imate.API.Business.Services.Applications
                             // Save changes để remove tất cả foreign key references
                             await _unitOfWork.SaveChangesAsync();
 
-                            // Sau đó mới xóa Comment
                             await _commentRepository.DeleteCommentAsync(comment);
                             await _commentRepository.SaveChangesAsync();
+
+                            reporterMessage = "Đơn tố cáo bình luận của bạn đã được duyệt. Bình luận vi phạm đã bị xóa.";
+                            affectedMessage = "Một bình luận của bạn đã bị xóa do vi phạm quy tắc cộng đồng.";
+                            affectedUserId = comment.UserId;
                         }
                     }
                     else if (application.ApplicationType == ApplicationType.ReportMentor && application.BookingId.HasValue)
@@ -992,12 +1101,14 @@ namespace Imate.API.Business.Services.Applications
                             await _unitOfWork.SaveChangesAsync(); // Lưu ExternalTransactionCode
                         }
 
-                        // 12. Update escrow transaction status (không còn escrow nữa)
-                        escrowTransaction.Status = TransactionStatus.Completed;
-                        escrowTransaction.ReviewerId = reviewerId;
-                        escrowTransaction.Reason = responseNote ?? $"Đã xử lý report mentor - Refund và penalty đã được thực hiện";
                         escrowTransaction.UpdatedAt = DateTime.UtcNow;
                         await _unitOfWork.Transactions.UpdateAsync(escrowTransaction);
+
+                        reporterMessage = $"Đơn tố cáo Mentor của bạn đã được duyệt. Bạn đã được hoàn tiền {bookingAmount:N0} VNĐ.";
+                        affectedMessage = $"Một đơn tố cáo bạn đã được duyệt. Bạn bị phạt {penaltyAmount:N0} VNĐ và hoàn tiền cho học viên.";
+                        affectedUserId = mentorAccount.Id;
+                        notifyBalanceReporter = true;
+                        notifyBalanceAffected = true;
                     }
 
                     else if (application.ApplicationType == ApplicationType.ReportRating && application.BookingId.HasValue)
@@ -1013,13 +1124,19 @@ namespace Imate.API.Business.Services.Applications
                         if (booking.RatingScore == null && string.IsNullOrEmpty(booking.ReviewText))
                             throw new BadRequestException("Booking này không có rating hoặc rating đã bị xóa.");
 
-                        // Xóa rating
-                        booking.RatingScore = null;
-                        booking.ReviewText = null;
-
                         await _unitOfWork.Bookings.UpdateAsync(booking);
 
-                        // (Optional) trừ điểm hoặc xử lý user vi phạm – nếu có chính sách
+                        reporterMessage = "Đơn tố cáo đánh giá của bạn đã được duyệt. Đánh giá không hợp lệ đã bị xóa.";
+                        affectedMessage = "Một đánh giá của bạn đã bị gỡ bỏ do vi phạm quy định.";
+                        affectedUserId = booking.CandidateId;
+                    }
+                    else if (application.ApplicationType == ApplicationType.TechnicalError)
+                    {
+                        reporterMessage = "Báo cáo lỗi kỹ thuật của bạn đã được duyệt. Chúng tôi đang xử lý vấn đề này.";
+                    }
+                    else if (application.ApplicationType == ApplicationType.Other)
+                    {
+                        reporterMessage = "Đơn báo cáo của bạn đã được duyệt thành công.";
                     }
 
                     // Cập nhật trạng thái application
@@ -1030,6 +1147,23 @@ namespace Imate.API.Business.Services.Applications
 
                     await _unitOfWork.SaveChangesAsync();
                     await transaction.CommitAsync();
+
+                    // Gửi thông báo cho người báo cáo
+                    await _notificationService.CreateAndSendNotificationAsync(application.UserId, reporterMessage, "/applications");
+                    if (notifyBalanceReporter)
+                    {
+                        await _balanceHubContext.Clients.User(application.UserId.ToString()).SendAsync("UpdateBalance");
+                    }
+
+                    // Gửi thông báo cho người bị ảnh hưởng
+                    if (affectedUserId.HasValue && !string.IsNullOrEmpty(affectedMessage))
+                    {
+                        await _notificationService.CreateAndSendNotificationAsync(affectedUserId.Value, affectedMessage, "/notifications");
+                        if (notifyBalanceAffected)
+                        {
+                            await _balanceHubContext.Clients.User(affectedUserId.Value.ToString()).SendAsync("UpdateBalance");
+                        }
+                    }
                     
                     // Create audit log
                     var newValue = new { 
@@ -1085,6 +1219,14 @@ namespace Imate.API.Business.Services.Applications
             application.UpdatedAt = DateTime.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Gửi thông báo từ chối
+            var rejectMessage = $"Đơn báo cáo của bạn (#{application.Id}) đã bị từ chối.";
+            if (!string.IsNullOrWhiteSpace(responseNote))
+            {
+                rejectMessage += $" Lý do: {responseNote}";
+            }
+            await _notificationService.CreateAndSendNotificationAsync(application.UserId, rejectMessage, "/applications");
             
             // Create audit log
             var newValue = new { 
@@ -1113,7 +1255,8 @@ namespace Imate.API.Business.Services.Applications
                     ApplicationType.TechnicalError,
                     ApplicationType.ReportMentor,
                     ApplicationType.ReportRating,
-                    ApplicationType.ReportComment
+                    ApplicationType.ReportComment,
+                    ApplicationType.Other
                 };
             var summaries = await _unitOfWork.Applications
                 .GetAllApplications()

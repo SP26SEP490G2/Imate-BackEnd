@@ -7,6 +7,7 @@ namespace Imate.API.Models.Enums
         ReportMentor,
         ReportRating,
         TechnicalError,
-        ReportComment
+        ReportComment,
+        Other
     }
 }
