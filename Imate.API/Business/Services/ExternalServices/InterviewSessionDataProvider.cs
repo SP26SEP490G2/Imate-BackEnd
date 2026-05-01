@@ -233,6 +233,71 @@ namespace Imate.API.Business.Services.ExternalServices
             }
         }
 
+        public async Task<InterviewLimitStatus> GetPracticeTestLimitStatusAsync(int accountId)
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            var activeSub = await _context.UserSubscriptions
+                .Include(s => s.Package)
+                .Where(s => s.CandidateId == accountId && s.IsActive)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            bool hasValidPaidSub = activeSub != null && activeSub.PackageId != 1;
+            if (hasValidPaidSub && activeSub!.Package.DurationDays.HasValue && activeSub.Package.DurationDays.Value > 0)
+            {
+                var endDateTime = activeSub.CreatedAt.AddDays(activeSub.Package.DurationDays.Value);
+                if (endDateTime <= now) hasValidPaidSub = false;
+            }
+
+            if (!hasValidPaidSub)
+            {
+                // FREE user: dùng cùng hạn mức free mock interview
+                var freeLimitConfig = await _context.SystemConfigs
+                    .FirstOrDefaultAsync(sc => sc.Key == "FREE_INTERVIEW_LIMIT");
+                int limit = freeLimitConfig != null && int.TryParse(freeLimitConfig.Value, out var l) ? l : 3;
+
+                var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Id == accountId);
+                if (account != null) await CheckAndResetFreeMonthlyUsageAsync(account);
+
+                int usedInMonth = account?.FreeUsedMock ?? 0;
+                return new InterviewLimitStatus
+                {
+                    IsFree = true,
+                    LimitCount = limit,
+                    UsedCount = usedInMonth,
+                    RemainingCount = Math.Max(0, limit - usedInMonth),
+                    CanStart = usedInMonth < limit,
+                    Message = usedInMonth < limit
+                        ? $"Bạn còn {limit - usedInMonth} lượt làm bài test miễn phí."
+                        : "Bạn đã hết lượt làm bài test miễn phí. Hãy nâng cấp gói để tiếp tục!"
+                };
+            }
+            else
+            {
+                await CheckAndResetMonthlyUsageAsync(activeSub!);
+
+                // Dùng PRACTICE_QUESTION_COST_POINTS (không phải INTERVIEW_COST_POINTS)
+                int practiceTestCost = await _systemConfigService.GetPracticeQuestionCostPointsAsync();
+
+                int limit = activeSub!.InitialMockLimit;
+                int used = activeSub.MockInterviewUsed;
+                int remaining = Math.Max(0, limit - used);
+
+                return new InterviewLimitStatus
+                {
+                    IsFree = false,
+                    LimitCount = limit,
+                    UsedCount = used,
+                    RemainingCount = remaining,
+                    CanStart = remaining >= practiceTestCost,
+                    Message = remaining >= practiceTestCost
+                        ? $"Bạn còn {remaining} AI Credits (tốn {practiceTestCost} credit/bài test)."
+                        : $"Gói {activeSub.Package.Name} của bạn không đủ AI Credits để làm bài test (cần {practiceTestCost} credit)."
+                };
+            }
+        }
+
         public async Task IncrementMockInterviewUsageAsync(int accountId)
         {
             var now = DateTimeOffset.UtcNow;
@@ -279,6 +344,56 @@ namespace Imate.API.Business.Services.ExternalServices
                     // Kiểm tra reset tháng cho người dùng free
                     await CheckAndResetFreeMonthlyUsageAsync(account);
 
+                    account.FreeUsedMock++;
+                    account.UpdatedAt = DateTimeOffset.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+
+        public async Task ConsumePracticeTestCostAsync(int accountId)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var activeSub = await _context.UserSubscriptions
+                .Include(s => s.Package)
+                .Where(s => s.CandidateId == accountId && s.IsActive && s.PackageId != 1)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (activeSub != null)
+            {
+                // Chỉ trừ nếu sub còn hạn
+                bool isValid = true;
+                if (activeSub.Package.DurationDays.HasValue && activeSub.Package.DurationDays.Value > 0)
+                {
+                    var endDateTime = activeSub.CreatedAt.AddDays(activeSub.Package.DurationDays.Value);
+                    if (endDateTime <= now) isValid = false;
+                }
+
+                if (isValid)
+                {
+                    await CheckAndResetMonthlyUsageAsync(activeSub);
+
+                    // Lấy cost từ PRACTICE_QUESTION_COST_POINTS (khác với INTERVIEW_COST_POINTS của Mock Interview)
+                    int practiceTestCost = await _systemConfigService.GetPracticeQuestionCostPointsAsync();
+
+                    activeSub.MockInterviewUsed += practiceTestCost;
+                    activeSub.UpdatedAt = DateTimeOffset.UtcNow;
+                    await _context.SaveChangesAsync();
+
+                    int remainingAiCredit = Math.Max(activeSub.InitialMockLimit - activeSub.MockInterviewUsed, 0);
+
+                    var balanceUpdateEvent = new BalanceUpdatedEvent(accountId, remainingAiCredit);
+                    await _mediator.Publish(balanceUpdateEvent);
+                }
+            }
+            else
+            {
+                // TRƯỜNG HỢP: FREE — cũng tính lượt như mock interview
+                var account = await _context.Accounts.FirstOrDefaultAsync(a => a.Id == accountId);
+                if (account != null)
+                {
+                    await CheckAndResetFreeMonthlyUsageAsync(account);
                     account.FreeUsedMock++;
                     account.UpdatedAt = DateTimeOffset.UtcNow;
                     await _context.SaveChangesAsync();

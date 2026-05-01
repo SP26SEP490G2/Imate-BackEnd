@@ -22,7 +22,9 @@ namespace Imate.AI.Module.Core.Interfaces
         
         // ── Limits & Usage ──
         Task<InterviewLimitStatus> GetInterviewLimitStatusAsync(int accountId);
+        Task<InterviewLimitStatus> GetPracticeTestLimitStatusAsync(int accountId);
         Task IncrementMockInterviewUsageAsync(int accountId);
+        Task ConsumePracticeTestCostAsync(int accountId);
     }
 
     /// <summary>

@@ -35,7 +35,6 @@ namespace Imate.AI.Module.Core.Agents
             string? cvContext,
             List<QuestionBankItem> ragQuestions)
         {
-            // Build prompts
             var systemPrompt = BuildSystemPrompt(request, cvContext, ragQuestions);
             var userPrompt = BuildUserPrompt(request, cvContext, ragQuestions);
 
@@ -43,14 +42,36 @@ namespace Imate.AI.Module.Core.Agents
                 "Generating practice test: Type={TestType}, Field={Field}, Level={Level}, Questions={Count}, RAG={RagCount}",
                 request.TestType, request.Field, request.Level, request.NumberOfQuestions, ragQuestions.Count);
 
-            // Gọi Gemini
-            var rawResponse = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
-            var result = ParseResponse(rawResponse, request);
+            // Retry tự động nếu AI trả về JSON bị lỗi cú pháp
+            const int maxAttempts = 3;
+            Exception? lastException = null;
 
-            _logger.LogInformation("Practice test generated: {Title}, {Count} questions",
-                result.TestTitle, result.TotalQuestions);
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    var rawResponse = await _geminiService.GenerateContentAsync(systemPrompt, userPrompt);
+                    var result = ParseResponse(rawResponse, request);
 
-            return result;
+                    _logger.LogInformation(
+                        "Practice test generated (attempt {Attempt}): {Title}, {Count} questions",
+                        attempt, result.TestTitle, result.TotalQuestions);
+
+                    return result;
+                }
+                catch (Exception ex) when (ex.InnerException is System.Text.Json.JsonException || ex.Message.Contains("phân tích"))
+                {
+                    lastException = ex;
+                    _logger.LogWarning(
+                        "[PracticeTest] Attempt {Attempt}/{Max} failed to parse AI response. Retrying...",
+                        attempt, maxAttempts);
+
+                    if (attempt < maxAttempts)
+                        await Task.Delay(500); // Đợi 0.5s trước retry
+                }
+            }
+
+            throw new Exception($"AI không thể sinh bài test hợp lệ sau {maxAttempts} lần thử. Vui lòng thử lại.", lastException);
         }
 
         // ── Private helpers ──
@@ -131,22 +152,27 @@ PHẢI trả về ĐÚNG JSON format sau (không markdown, không code block, CH
   ""skill"": ""{request.Skill}"",
   ""level"": ""{request.Level}"",
   ""totalQuestions"": {request.NumberOfQuestions},
-  ""timeLimitMinutes"": <thời gian làm bài tính bằng phút>,
+  ""timeLimitMinutes"": 30,
   ""questions"": [
     {{
       ""id"": 1,
       ""questionText"": ""<nội dung câu hỏi>"",
       ""options"": [
-        {{ ""label"": ""A"", ""text"": ""<đáp án A>"" }},
-        {{ ""label"": ""B"", ""text"": ""<đáp án B>"" }},
-        {{ ""label"": ""C"", ""text"": ""<đáp án C>"" }},
-        {{ ""label"": ""D"", ""text"": ""<đáp án D>"" }}
+        {{ ""label"": ""A"", ""text"": ""<chỉ nội dung đáp án, KHÔNG có chữ A hay dấu chấm đằng đầu>"" }},
+        {{ ""label"": ""B"", ""text"": ""<chỉ nội dung đáp án, KHÔNG có chữ B hay dấu chấm đằng đầu>"" }},
+        {{ ""label"": ""C"", ""text"": ""<chỉ nội dung đáp án, KHÔNG có chữ C hay dấu chấm đằng đầu>"" }},
+        {{ ""label"": ""D"", ""text"": ""<chỉ nội dung đáp án, KHÔNG có chữ D hay dấu chấm đằng đầu>"" }}
       ],
-      ""correctAnswer"": ""<A|B|C|D>"",
-      ""explanation"": ""<giải thích tại sao đáp án đúng>""
+      ""correctAnswer"": ""<A hoặc B hoặc C hoặc D, chỉ 1 ký tự>"",
+      ""explanation"": ""<giải thích ngắn gọn tại sao đáp án đúng>""
     }}
   ]
-}}");
+}}
+
+QUY TẪC BẮT BUỘC:
+- trường ""text"" trong options CHỈ chứa nội dung đáp án, KHÔNG bắt đầu bằng ""A."", ""B."", ""C."", ""D."" hay ""A:"", ""B:""
+- KHÔNG đặt dấu ngoặc kép ("") bên trong giá trị chuỗi — dùng tên thay thế
+- JSON phải hợp lệ 100%, không có trailing comma");
 
             return sb.ToString();
         }
@@ -180,31 +206,53 @@ PHẢI trả về ĐÚNG JSON format sau (không markdown, không code block, CH
 
         private PracticeTestResponse ParseResponse(string responseText, GeneratePracticeTestRequest request)
         {
-            var cleaned = Regex.Replace(responseText.Trim(), @"^```(?:json)?\s*", "", RegexOptions.IgnoreCase);
-            cleaned = Regex.Replace(cleaned, @"\s*```\s*$", "");
-            cleaned = cleaned.Trim();
+            var cleaned = CleanJsonResponse(responseText);
 
             try
             {
                 var result = JsonSerializer.Deserialize<PracticeTestResponse>(cleaned, JsonOptions);
                 if (result == null)
-                    throw new Exception("Parsed result is null");
+                    throw new JsonException("Parsed result is null");
 
-                // Ensure metadata is correct
+                // Ensure metadata is correct — override AI values with known-good values
                 result.TestType = request.TestType;
                 result.Field = request.Field;
                 result.Skill = request.Skill;
                 result.Level = request.Level;
                 result.TotalQuestions = result.Questions.Count;
+                result.TimeLimitMinutes = 30; // Luôn ép 30 phút, không để AI tự quyết
 
                 return result;
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Failed to parse practice test response: {Response}",
-                    cleaned.Substring(0, Math.Min(500, cleaned.Length)));
+                _logger.LogError(ex,
+                    "[PracticeTest] JSON parse failed. Raw AI response (first 1000 chars):\n{Raw}",
+                    cleaned.Substring(0, Math.Min(1000, cleaned.Length)));
                 throw new Exception("Không thể phân tích phản hồi từ AI. Vui lòng thử lại.", ex);
             }
+        }
+
+        /// <summary>
+        /// Làm sạch response từ AI: xóa markdown code block, sau đó tìm đúng boundaries của JSON object.
+        /// </summary>
+        private static string CleanJsonResponse(string raw)
+        {
+            // 1. Xóa markdown code block (```json ... ```)
+            var cleaned = Regex.Replace(raw.Trim(), @"^```(?:json)?\s*", "", RegexOptions.IgnoreCase);
+            cleaned = Regex.Replace(cleaned, @"\s*```\s*$", "").Trim();
+
+            // 2. Tìm vị trí { đầu tiên và } cuối cùng để extract JSON thuần
+            //    Xử lý trường hợp AI thêm text trước/sau JSON object
+            var firstBrace = cleaned.IndexOf('{');
+            var lastBrace = cleaned.LastIndexOf('}');
+
+            if (firstBrace >= 0 && lastBrace > firstBrace)
+            {
+                cleaned = cleaned.Substring(firstBrace, lastBrace - firstBrace + 1);
+            }
+
+            return cleaned;
         }
     }
 }

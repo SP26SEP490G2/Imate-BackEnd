@@ -53,6 +53,11 @@ namespace Imate.AI.Module.API.Controllers
             {
                 return BadRequest(new { success = false, message = ex.Message });
             }
+            catch (InvalidOperationException ex)
+            {
+                // Không đủ AI Credits
+                return StatusCode(403, new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating practice test: {Message}", ex.Message);
