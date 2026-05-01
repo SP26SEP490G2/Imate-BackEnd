@@ -13,7 +13,7 @@ namespace Imate.API.Migrations
             migrationBuilder.DropColumn(
                 name: "Level",
                 table: "ContributedDetails");
-            migrationBuilder.AlterColumn<string>(
+            migrationBuilder.AddColumn<string>(
                 name: "Level",
                 table: "Questions",
                 type: "nvarchar(50)",
