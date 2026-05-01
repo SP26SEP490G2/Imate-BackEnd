@@ -216,10 +216,10 @@ namespace Imate.API.Business.Services.Comunity
                 throw new KeyNotFoundException($"Comment với ID {commentId} không tồn tại.");
             }
 
-            if (comment.UserId == userId && targetIsUpvote == false)
-            {
-                throw new UnauthorizedAccessException("Bạn không thể Downvote bình luận của chính mình.");
-            }
+            //if (comment.UserId == userId && targetIsUpvote == false)
+            //{
+            //    throw new UnauthorizedAccessException("Bạn không thể Downvote bình luận của chính mình.");
+            //}
 
             var existingVote = await _voteRepository.GetVoteByKeysAsync(userId, commentId);
 

@@ -13,13 +13,11 @@ namespace Imate.API.Migrations
             migrationBuilder.DropColumn(
                 name: "Level",
                 table: "ContributedDetails");
-            migrationBuilder.AlterColumn<string>(
+            migrationBuilder.AddColumn<string>(
                 name: "Level",
                 table: "Questions",
                 type: "nvarchar(50)",
-                nullable: true,
-                oldClrType: typeof(int),
-                oldType: "int");
+                nullable: true);
         }
 
         /// <inheritdoc />
@@ -31,15 +29,6 @@ namespace Imate.API.Migrations
                 type: "nvarchar(50)",
                 nullable: false,
                 defaultValue: "");
-            migrationBuilder.AlterColumn<int>(
-                name: "Level",
-                table: "Questions",
-                type: "int",
-                nullable: false,
-                defaultValue: 0,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(50)",
-                oldNullable: true);
         }
     }
 }
