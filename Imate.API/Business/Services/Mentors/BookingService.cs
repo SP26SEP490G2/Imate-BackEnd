@@ -204,8 +204,9 @@ namespace Imate.API.Business.Services.Mentors
         public async Task<List<BookingDetailResponse>> GetCandidateBookingsAsync(int candidateId)
         {
             await AutoCompleteExpiredBookingsAsync();
+            var occupyingStatuses = new[] { BookingStatus.Confirmed, BookingStatus.Completed, BookingStatus.Cancelled, BookingStatus.Refunded };
             var bookings = await _unitOfWork.Bookings.GetAllBookings()
-                .Where(b => b.CandidateId == candidateId && b.Status == BookingStatus.Confirmed)
+                .Where(b => b.CandidateId == candidateId && occupyingStatuses.Contains(b.Status))
                 .Select(b => new
                 {
                     b.Id,
@@ -257,8 +258,9 @@ namespace Imate.API.Business.Services.Mentors
         public async Task<List<BookingDetailResponse>> GetMentorBookingsAsync(int mentorId)
         {
             await AutoCompleteExpiredBookingsAsync();
+            var occupyingStatuses = new[] { BookingStatus.Confirmed, BookingStatus.Completed, BookingStatus.Cancelled, BookingStatus.Refunded };
             var bookings = await _unitOfWork.Bookings.GetAllBookings()
-                .Where(b => b.MentorId == mentorId && b.Status == BookingStatus.Confirmed)
+                .Where(b => b.MentorId == mentorId && occupyingStatuses.Contains(b.Status))
                 .Select(b => new
                 {
                     b.Id,
