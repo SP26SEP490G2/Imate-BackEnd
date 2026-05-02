@@ -408,7 +408,10 @@ namespace Imate.API.Business.Services.Mentors
                 MeetingRoomId = booking.AgoraChannelName,
                 AudioRecordKey = firstMp4Url,
                 RecordingUrls = recordingUrls,
-                Price = booking.PriceAtBooking
+                Price = booking.PriceAtBooking,
+                RatingScore = booking.RatingScore,
+                ReviewText = booking.ReviewText,
+                RatingCreatedAt = booking.RatingCreatedAt
             };
         }
 
@@ -502,7 +505,10 @@ namespace Imate.API.Business.Services.Mentors
                 MeetingRoomId = booking.AgoraChannelName,
                 AudioRecordKey = firstMp4Url,
                 RecordingUrls = recordingUrls,
-                Price = booking.PriceAtBooking
+                Price = booking.PriceAtBooking,
+                RatingScore = booking.RatingScore,
+                ReviewText = booking.ReviewText,
+                RatingCreatedAt = booking.RatingCreatedAt
             };
         }
 

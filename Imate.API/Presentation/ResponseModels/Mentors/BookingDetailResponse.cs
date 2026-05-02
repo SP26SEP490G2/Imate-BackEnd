@@ -18,5 +18,8 @@ namespace Imate.API.Presentation.ResponseModels.Mentors
         public string? AudioRecordKey { get; set; }
         public List<string> RecordingUrls { get; set; } = new List<string>();
         public int Price { get; set; }
+        public int? RatingScore { get; set; }
+        public string? ReviewText { get; set; }
+        public DateTimeOffset? RatingCreatedAt { get; set; }
     }
 }
