@@ -222,23 +222,32 @@ namespace Imate.API.Business.Services.Mentors
         public async Task<List<BookingDetailResponse>> GetCandidateBookingsAsync(int candidateId)
         {
             await AutoCompleteExpiredBookingsAsync();
+            // DEBUG: Get ALL bookings without status filter first to verify data presence on server
+            var bookingsRaw = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.CandidateId == candidateId)
+                .ToListAsync();
+
+            Console.WriteLine($"DEBUG [Candidate {candidateId}]: Found {bookingsRaw.Count} total bookings.");
+            
             var occupyingStatuses = new[] { BookingStatus.Confirmed, BookingStatus.Completed, BookingStatus.Cancelled, BookingStatus.Refunded };
-            var bookings = await _unitOfWork.Bookings.GetAllBookings()
-                .Where(b => b.CandidateId == candidateId && occupyingStatuses.Contains(b.Status))
+            
+            var bookings = bookingsRaw
+                .Where(b => occupyingStatuses.Contains(b.Status))
                 .Select(b => new
                 {
                     b.Id,
                     b.MentorId,
                     b.CandidateId,
-                    ProfileName = b.Mentor.Account.FullName,
-                    ProfileAvatarUrl = b.Mentor.Account.AvatarUrl,
+                    // Use null-safe navigation to prevent entire record from being excluded if Account is missing
+                    ProfileName = b.Mentor?.Account?.FullName ?? "Mentor Not Found",
+                    ProfileAvatarUrl = b.Mentor?.Account?.AvatarUrl,
                     b.StartTime,
                     b.BookDate,
                     b.Status,
                     b.AgoraChannelName,
                     b.PriceAtBooking
                 })
-                .ToListAsync();
+                .ToList();
 
             var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
             TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
@@ -276,23 +285,32 @@ namespace Imate.API.Business.Services.Mentors
         public async Task<List<BookingDetailResponse>> GetMentorBookingsAsync(int mentorId)
         {
             await AutoCompleteExpiredBookingsAsync();
+            // DEBUG: Get ALL bookings without status filter first to verify data presence on server
+            var bookingsRaw = await _unitOfWork.Bookings.GetAllBookings()
+                .Where(b => b.MentorId == mentorId)
+                .ToListAsync();
+
+            Console.WriteLine($"DEBUG [Mentor {mentorId}]: Found {bookingsRaw.Count} total bookings.");
+
             var occupyingStatuses = new[] { BookingStatus.Confirmed, BookingStatus.Completed, BookingStatus.Cancelled, BookingStatus.Refunded };
-            var bookings = await _unitOfWork.Bookings.GetAllBookings()
-                .Where(b => b.MentorId == mentorId && occupyingStatuses.Contains(b.Status))
+            
+            var bookings = bookingsRaw
+                .Where(b => occupyingStatuses.Contains(b.Status))
                 .Select(b => new
                 {
                     b.Id,
                     b.MentorId,
                     b.CandidateId,
-                    ProfileName = b.Candidate.FullName,
-                    ProfileAvatarUrl = b.Candidate.AvatarUrl,
+                    // Use null-safe navigation
+                    ProfileName = b.Candidate?.FullName ?? "Candidate Not Found",
+                    ProfileAvatarUrl = b.Candidate?.AvatarUrl,
                     b.StartTime,
                     b.BookDate,
                     b.Status,
                     b.AgoraChannelName,
                     b.PriceAtBooking
                 })
-                .ToListAsync();
+                .ToList();
 
             var slots = await _unitOfWork.Slots.FindAll(false).ToListAsync();
             TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById(LocalTimeZoneId);
