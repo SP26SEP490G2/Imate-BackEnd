@@ -53,6 +53,11 @@ namespace Imate.API.Business.Services.UserManagement
                 query = query.Where(c => c.Status == accountParams.AccountStatus.Value);
             }
 
+            if (accountParams.RoleName.HasValue)
+            {
+                query = query.Where(c => c.AccountRoles.Any(ar => ar.Role.Name == accountParams.RoleName.Value));
+            }
+
             // 3. Áp dụng sắp xếp (Sorting)
             // Luôn phải có một thứ tự sắp xếp để phân trang hoạt động chính xác
             if (!string.IsNullOrWhiteSpace(accountParams.SortBy))
