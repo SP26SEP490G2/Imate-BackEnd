@@ -52,6 +52,28 @@ namespace Imate.API.Presentation.Controllers.Classification
 
             return Ok(pagedResult);
         }
+
+        /// <summary>
+        /// Lấy danh sách Skill theo Position (qua bảng PositionSkills)
+        /// </summary>
+        [HttpGet("get-skills-by-position")]
+        public async Task<IActionResult> GetSkillsByPosition([FromQuery] string positionName)
+        {
+            if (string.IsNullOrWhiteSpace(positionName))
+                return BadRequest(new { Message = "Vui lòng cung cấp tên vị trí (positionName)" });
+
+            var skills = await _context.PositionSkills
+                .Include(ps => ps.Skill)
+                .Include(ps => ps.Position)
+                .Where(ps => ps.Position.IsActive && ps.Skill.IsActive
+                    && ps.Position.Name.ToLower() == positionName.ToLower().Trim())
+                .Select(ps => new { ps.Skill.Id, ps.Skill.Name })
+                .Distinct()
+                .OrderBy(s => s.Name)
+                .ToListAsync();
+
+            return Ok(skills);
+        }
         [HttpPut("skills/{skillId}")]
         public async Task<IActionResult> UpdateSkills(int skillId, [FromBody] SkillUpdateRequest skill)
         {
