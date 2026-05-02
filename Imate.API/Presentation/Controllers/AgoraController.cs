@@ -17,15 +17,18 @@ namespace Imate.API.Presentation.Controllers
         private readonly AgoraRecordingService _agoraRecordingService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISystemConfigService _systemConfigService;
+        private readonly IAuditLogService _auditLogService;
 
         public AgoraController(
             IConfiguration configuration,
             IUnitOfWork unitOfWork,
-            ISystemConfigService systemConfigService)
+            ISystemConfigService systemConfigService,
+            IAuditLogService auditLogService)
         {
             _configuration = configuration;
             _unitOfWork = unitOfWork;
             _systemConfigService = systemConfigService;
+            _auditLogService = auditLogService;
 
             var appId = _configuration["Agora:AppId"];
             var appCertificate = _configuration["Agora:AppCertificate"];
@@ -245,7 +248,26 @@ namespace Imate.API.Presentation.Controllers
                 // 7. Calculate token expiration: configured hours after booking start time
                 var expirationHours = await _systemConfigService.GetAgoraTokenExpirationHoursAsync();
                 var bookingStartTimeOffset = booking.StartTime.ToUniversalTime();
-                var tokenExpirationTime = bookingStartTimeOffset.AddHours(expirationHours); // Token expires after configured hours
+                var tokenExpirationTime = bookingStartTimeOffset.AddHours(expirationHours); 
+                
+                // 8. Log Audit Action: User joining a meeting
+                try
+                {
+                    await _auditLogService.CreateAuditLogAsync(
+                        userId, 
+                        AuditAction.JoinMeeting, 
+                        "Booking", 
+                        bookingId, 
+                        null, 
+                        new { ChannelName = channelName, Uid = userAccountId }
+                    );
+                }
+                catch (Exception logEx)
+                {
+                    // Non-blocking log error
+                    Console.WriteLine($"? AUDIT LOG ERROR in GetTokenForBooking: {logEx.Message}");
+                }
+
                 var currentTime = DateTimeOffset.UtcNow;
 
                 // Calculate seconds until expiration
