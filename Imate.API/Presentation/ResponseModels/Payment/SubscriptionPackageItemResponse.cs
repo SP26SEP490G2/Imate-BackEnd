@@ -7,6 +7,7 @@ namespace Imate.API.Presentation.ResponseModels.Payment
         string Duration,
         List<string> Benefits,
         bool IsRecommended,
-        int Rank
+        int Rank,
+        int? TotalInterviewLimit
     );
 }

@@ -33,7 +33,8 @@ namespace Imate.API.Business.Services.Payment
                 FormatDuration(package.DurationDays),
                 ParseBenefits(package.Benefits),
                 package.IsRecommended,
-                package.Rank
+                package.Rank,
+                package.TotalInterviewLimit
             ));
         }
 
@@ -156,7 +157,8 @@ namespace Imate.API.Business.Services.Payment
                 FormatDuration(newPackage.DurationDays),
                 benefits,
                 newPackage.IsRecommended,
-                newPackage.Rank
+                newPackage.Rank,
+                newPackage.TotalInterviewLimit
             );
         }
 
