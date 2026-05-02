@@ -152,8 +152,26 @@ namespace Imate.API.Business.Services.Mentors
 
             await _unitOfWork.Bookings.AddAsync(booking);
             
-            await _unitOfWork.SaveChangesAsync();
+            try
+            {
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // RACE CONDITION: If another user booked this slot at the exact same millisecond
+                // The Filtered Unique Index in BookingConfiguration will trigger this exception.
+                
+                // Refund candidate since the booking failed
+                candidateAccount.Balance += price;
+                // No need to explicitly save here if we're throwing, 
+                // but since we're in a transaction/scoped context, we should be careful.
+                
+                throw new BadRequestException("Rất tiếc, lịch phỏng vấn này vừa có người khác đặt nhanh hơn bạn một chút. Vui lòng chọn khung giờ khác.");
+            }
 
+            // Update Agora Channel Name and Transaction BookingId with the real ID
+            booking.AgoraChannelName = booking.Id.ToString();
+            transaction.BookingId = booking.Id;
             await _unitOfWork.SaveChangesAsync();
 
             // 4. Notifications
