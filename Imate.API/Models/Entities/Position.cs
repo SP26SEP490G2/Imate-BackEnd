@@ -12,5 +12,6 @@ namespace Imate.API.Models.Entities
         public ICollection<MentorPosition> MentorPositions { get; set; } = new List<MentorPosition>();
         public ICollection<QuestionPosition> QuestionPositions { get; set; } = new List<QuestionPosition>();
         public ICollection<JobPosition> JobPositions { get; set; } = new List<JobPosition>();
+        public ICollection<PositionSkill> PositionSkills { get; set; } = new List<PositionSkill>();
     }
 }

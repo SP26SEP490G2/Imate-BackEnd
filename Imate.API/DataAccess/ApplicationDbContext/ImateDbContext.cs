@@ -48,6 +48,7 @@ namespace Imate.API.DataAccess.ApplicationDbContext
         public DbSet<QuestionCategory> QuestionCategories { get; set; }
         public DbSet<QuestionSkill> QuestionSkills { get; set; }
         public DbSet<QuestionPosition> QuestionPositions { get; set; }
+        public DbSet<PositionSkill> PositionSkills { get; set; }
 
         // ─── Community ────────────────────────────────────────────────────────────
         public DbSet<Comment> Comments { get; set; }
