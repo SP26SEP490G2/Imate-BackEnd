@@ -55,6 +55,20 @@ namespace Imate.API.Business.Services
 
             // 4. Lưu vào DB
             var displayName = !string.IsNullOrWhiteSpace(fileName) ? fileName : file.FileName;
+            
+            // Xử lý trùng tên file
+            var baseName = System.IO.Path.GetFileNameWithoutExtension(displayName);
+            var extension = System.IO.Path.GetExtension(displayName);
+            int counter = 1;
+            
+            var uniqueName = displayName;
+            while (existingCvs.Any(c => c.FileName == uniqueName))
+            {
+                uniqueName = $"{baseName} ({counter}){extension}";
+                counter++;
+            }
+            displayName = uniqueName;
+
             var userCv = new UserCv
             {
                 AccountId = accountId,
