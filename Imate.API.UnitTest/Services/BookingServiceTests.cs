@@ -16,6 +16,9 @@ using Imate.API.DataAccess.Interfaces.Recruiters;
 using Imate.API.DataAccess.Interfaces.Payment;
 using Microsoft.EntityFrameworkCore;
 using Imate.API.Business.Interfaces.Notification;
+using Imate.API.Business.Interfaces;
+using Imate.API.Business.Interfaces.Payment;
+using MediatR;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -24,6 +27,9 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
+        private readonly Mock<ISystemConfigService> _mockSystemConfigService;
+        private readonly Mock<ITransactionService> _mockTransactionService;
+        private readonly Mock<IMediator> _mockMediator;
         private readonly BookingService _service;
 
         private readonly Mock<IBookingRepository> _mockBookingRepo;
@@ -50,8 +56,18 @@ namespace Imate.API.UnitTest.Services
             _mockUnitOfWork.Setup(u => u.Transactions).Returns(_mockTransactionRepo.Object);
 
             _mockSystemNotificationService = new Mock<ISystemNotificationService>();
+            _mockSystemConfigService = new Mock<ISystemConfigService>();
+            _mockTransactionService = new Mock<ITransactionService>();
+            _mockMediator = new Mock<IMediator>();
 
-            _service = new BookingService(_mockUnitOfWork.Object, _mockConfiguration.Object, _mockSystemNotificationService.Object);
+            _service = new BookingService(
+                _mockUnitOfWork.Object, 
+                _mockConfiguration.Object, 
+                _mockSystemNotificationService.Object,
+                _mockSystemConfigService.Object,
+                _mockTransactionService.Object,
+                _mockMediator.Object
+            );
         }
 
         #region CreateBookingAsync
@@ -242,9 +258,10 @@ namespace Imate.API.UnitTest.Services
 
             var result = await _service.GetMentorBookingsAsync(1);
 
-            // Only the future/confirmed booking should remain in the active schedule
-            result.Should().HaveCount(1);
-            result[0].BookingId.Should().Be(1);
+            // Both future and auto-completed bookings are returned in the schedule
+            result.Should().HaveCount(2);
+            result.Any(b => b.Status == BookingStatus.Confirmed).Should().BeTrue();
+            result.Any(b => b.Status == BookingStatus.Completed).Should().BeTrue();
             _mockUnitOfWork.Verify(u => u.SaveChangesAsync(), Times.AtLeastOnce); // Due to auto-complete of booking 2
         }
 
@@ -366,7 +383,7 @@ namespace Imate.API.UnitTest.Services
         public async Task GetMentorSessionDetailAsync_SessionNotFound()
         {
             _mockMentorRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new Mentor());
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync((Booking?)null);
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync((Booking)null!);
             await Assert.ThrowsAsync<NotFoundException>(() => _service.GetMentorSessionDetailAsync(1, 1));
         }
 
@@ -526,7 +543,7 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task CancelBookingAsync_NotFound()
         {
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync((Booking?)null);
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(1)).ReturnsAsync((Booking)null!);
             await Assert.ThrowsAsync<NotFoundException>(() => _service.CancelBookingAsync(1, 1));
         }
 

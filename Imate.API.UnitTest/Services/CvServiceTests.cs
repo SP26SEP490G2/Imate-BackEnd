@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using MediatR;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -31,6 +32,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<ILogger<CvAnalysisOrchestrator>> _mockOrchestratorLogger;
         private readonly Mock<ILogger<CvDataProvider>> _mockDataProviderLogger;
         private readonly Mock<ISystemConfigService> _mockSystemConfigService;
+        private readonly Mock<IMediator> _mockMediator;
         
         private readonly CvService _cvService;
         private readonly CvAnalysisOrchestrator _orchestrator;
@@ -48,6 +50,7 @@ namespace Imate.API.UnitTest.Services
             _mockOrchestratorLogger = new Mock<ILogger<CvAnalysisOrchestrator>>();
             _mockDataProviderLogger = new Mock<ILogger<CvDataProvider>>();
             _mockSystemConfigService = new Mock<ISystemConfigService>();
+            _mockMediator = new Mock<IMediator>();
 
             _cvService = new CvService(
                 _mockCvRepo.Object, 
@@ -67,8 +70,9 @@ namespace Imate.API.UnitTest.Services
                 _mockCvRepo.Object, 
                 _mockS3Storage.Object, 
                 _mockDataProviderLogger.Object,
-                null,
-                _mockSystemConfigService.Object
+                null!,
+                _mockSystemConfigService.Object,
+                _mockMediator.Object
             );
         }
 
@@ -271,6 +275,8 @@ namespace Imate.API.UnitTest.Services
         {
             var accountId = 1;
             var cvId = 10;
+            _mockCvDataProvider.Setup(p => p.CheckCvAnalysisEligibilityAsync(accountId))
+                .ReturnsAsync(new CvAnalysisEligibility { IsEligible = true });
             _mockCvDataProvider.Setup(p => p.GetCvTextAsync(accountId, cvId)).ReturnsAsync("Text");
             _mockCvAnalysisAgent.Setup(a => a.AnalyseCvAsync(It.IsAny<string>())).ReturnsAsync(new CvAnalysisResponse());
 

@@ -139,7 +139,7 @@ namespace Imate.API.UnitTest.Services
         public async Task SubmitRecruiterProfileAsync_ShouldThrowNotFound_WhenAccountDoesNotExist()
         {
             // Arrange
-            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(It.IsAny<int>())).ReturnsAsync((Account?)null);
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(It.IsAny<int>())).ReturnsAsync((Account)null!);
 
             // Act
             var act = () => _service.SubmitRecruiterProfileAsync(1, new SubmitRecruiterProfileRequest());
@@ -199,7 +199,7 @@ namespace Imate.API.UnitTest.Services
         public async Task CreateJobPostAsync_ShouldThrowNotFound_WhenAccountNotFound()
         {
             var request = new CreateUpdateJobRequest { ApplicationDeadline = DateTime.UtcNow.AddDays(10), MinSalary = 100, MaxSalary = 200 };
-            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(1)).ReturnsAsync((Account?)null);
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(1)).ReturnsAsync((Account)null!);
             var act = () => _service.CreateJobPostAsync(1, request);
             await act.Should().ThrowAsync<Exception>().WithMessage("Không tìm thấy tài khoản.");
         }
@@ -245,7 +245,7 @@ namespace Imate.API.UnitTest.Services
         public async Task UpdateJobPostAsync_ShouldThrowNotFound_WhenJobNotFound()
         {
             var request = new CreateUpdateJobRequest { Id = 1, MinSalary = 100, MaxSalary = 200 };
-            _mockUnitOfWork.Setup(u => u.Recruiters.GetPostedJobByIdAsync(1)).ReturnsAsync((Job?)null);
+            _mockUnitOfWork.Setup(u => u.Recruiters.GetPostedJobByIdAsync(1)).ReturnsAsync((Job)null!);
             var act = () => _service.UpdateJobPostAsync(1, request);
             await act.Should().ThrowAsync<Exception>().WithMessage("Job with Id 1 not found");
         }
@@ -266,7 +266,7 @@ namespace Imate.API.UnitTest.Services
             var existingJob = new Job { Id = 1, JobSkills = new List<JobSkill> { new JobSkill { SkillId = 1, Skill = new Skill { Name = "C#" } } }, JobPositions = new List<JobPosition> { new JobPosition { PositionId = 1, Position = new Position { Name = "Developer" } } } };
             var request = new CreateUpdateJobRequest { Id = 1, MinSalary = 100, MaxSalary = 200 };
             _mockUnitOfWork.Setup(u => u.Recruiters.GetPostedJobByIdAsync(1)).ReturnsAsync(existingJob);
-            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(1)).ReturnsAsync((Account?)null);
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(1)).ReturnsAsync((Account)null!);
             
             var act = () => _service.UpdateJobPostAsync(1, request);
             await act.Should().ThrowAsync<Exception>().WithMessage("Không tìm thấy tài khoản.");
@@ -313,7 +313,7 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task CloseJobPostAsync_ShouldThrowNotFound_WhenJobNotFound()
         {
-            _mockUnitOfWork.Setup(u => u.Recruiters.GetPostedJobByIdAsync(1)).ReturnsAsync((Job?)null);
+            _mockUnitOfWork.Setup(u => u.Recruiters.GetPostedJobByIdAsync(1)).ReturnsAsync((Job)null!);
             var act = () => _service.CloseJobPostAsync(1, 1);
             await act.Should().ThrowAsync<Exception>().WithMessage("Job with Id 1 not found");
         }
@@ -323,7 +323,7 @@ namespace Imate.API.UnitTest.Services
         {
             var existingJob = new Job { Id = 1 };
             _mockUnitOfWork.Setup(u => u.Recruiters.GetPostedJobByIdAsync(1)).ReturnsAsync(existingJob);
-            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(1)).ReturnsAsync((Account?)null);
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(1)).ReturnsAsync((Account)null!);
             var act = () => _service.CloseJobPostAsync(1, 1);
             await act.Should().ThrowAsync<Exception>().WithMessage("Không tìm thấy tài khoản.");
         }
@@ -442,7 +442,7 @@ namespace Imate.API.UnitTest.Services
         {
             // Arrange
             var request = new Presentation.RequestModels.JobApplications.CreateJobApplicationRequest { JobId = 1, CVId = 1 };
-            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdAsync(1)).ReturnsAsync((Account?)null);
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdAsync(1)).ReturnsAsync((Account)null!);
 
             // Act
             var act = () => _service.CreateJobApplication(1, request);
@@ -459,7 +459,7 @@ namespace Imate.API.UnitTest.Services
             var account = new Account { Id = 1 };
 
             _mockUnitOfWork.Setup(u => u.Accounts.GetByIdAsync(1)).ReturnsAsync(account);
-            _mockUnitOfWork.Setup(u => u.Recruiters.GetPostedJobByIdAsync(1)).ReturnsAsync((Job?)null);
+            _mockUnitOfWork.Setup(u => u.Recruiters.GetPostedJobByIdAsync(1)).ReturnsAsync((Job)null!);
 
             // Act
             var act = () => _service.CreateJobApplication(1, request);
@@ -742,7 +742,7 @@ namespace Imate.API.UnitTest.Services
         public async Task UpdateJobApplication_ShouldThrowNotFound_WhenApplicationDoesNotExist()
         {
             // Arrange
-            _mockUnitOfWork.Setup(u => u.Recruiters.GetJobApplicationByIdAsync(1)).ReturnsAsync((JobApplication?)null);
+            _mockUnitOfWork.Setup(u => u.Recruiters.GetJobApplicationByIdAsync(1)).ReturnsAsync((JobApplication)null!);
             var req = new UpdateJobApplicationRequest { Id = 1, Status = JobApplicationStatus.Approved };
 
             // Act
@@ -758,7 +758,7 @@ namespace Imate.API.UnitTest.Services
             // Arrange
             var app = new JobApplication { Id = 1 };
             _mockUnitOfWork.Setup(u => u.Recruiters.GetJobApplicationByIdAsync(1)).ReturnsAsync(app);
-            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(1)).ReturnsAsync((Account?)null);
+            _mockUnitOfWork.Setup(u => u.Accounts.GetByIdRecruiter(1)).ReturnsAsync((Account)null!);
 
             var req = new UpdateJobApplicationRequest { Id = 1, Status = JobApplicationStatus.Approved };
 
@@ -800,7 +800,7 @@ namespace Imate.API.UnitTest.Services
                 Id = 1, 
                 Status = JobApplicationStatus.Waiting, 
                 RecruiterFeedback = null,
-                Candidate = new Account { FullName = "Hieu Candidate" },
+                Candidate = new Account { FullName = "Hieu Candidate", Email = "startingimate@gmail.com" },
                 Job = new Job { Title = "Software Engineer" }
             };
 
@@ -834,7 +834,7 @@ namespace Imate.API.UnitTest.Services
                 Id = 1, 
                 Status = JobApplicationStatus.Waiting, 
                 RecruiterFeedback = "Chưa đủ kinh nghiệm",
-                Candidate = new Account { FullName = "John" },
+                Candidate = new Account { FullName = "John", Email = "startingimate@gmail.com" },
                 Job = new Job { Title = "PM" }
             };
 
@@ -864,7 +864,7 @@ namespace Imate.API.UnitTest.Services
                 Id = 1, 
                 Status = JobApplicationStatus.Approved, 
                 RecruiterFeedback = null,
-                Candidate = new Account { FullName = "Jane" },
+                Candidate = new Account { FullName = "Jane", Email = "startingimate@gmail.com" },
                 Job = new Job { Title = "Tester" }
             };
 

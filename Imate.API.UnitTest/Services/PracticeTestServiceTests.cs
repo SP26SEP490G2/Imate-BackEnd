@@ -108,7 +108,7 @@ namespace Imate.API.UnitTest.Services
 
             await _orchestrator.GenerateTestAsync(1, request);
 
-            request.NumberOfQuestions.Should().Be(10);
+            request.NumberOfQuestions.Should().Be(15);
         }
 
         [Fact]
@@ -118,7 +118,7 @@ namespace Imate.API.UnitTest.Services
             _dbContext.Questions.Add(new Question { IsActive = true, IsFromSystem = true, Difficulty = DifficultyLevel.Easy, QuestionPositions = new[] { new QuestionPosition { Position = pos } } });
             await _dbContext.SaveChangesAsync();
 
-            var result = await _questionProvider.GetQuestionsAsync("Frontend", "Intern", 5);
+            var result = await _questionProvider.GetQuestionsAsync("Frontend", null!, "Intern", 5);
 
             result.Should().HaveCount(1);
         }
@@ -129,7 +129,7 @@ namespace Imate.API.UnitTest.Services
             var pos = new Position { Name = "DevOps" };
             _dbContext.Questions.Add(new Question { IsActive = true, IsFromSystem = true, Difficulty = DifficultyLevel.Hard, QuestionPositions = new[] { new QuestionPosition { Position = pos } } });
             await _dbContext.SaveChangesAsync();
-            var result = await _questionProvider.GetQuestionsAsync("DevOps", "Intern", 5);
+            var result = await _questionProvider.GetQuestionsAsync("DevOps", null!, "Intern", 5);
 
             result.Should().HaveCount(1);
         }

@@ -69,9 +69,8 @@ namespace Imate.API.UnitTest.Services
             _mockConfiguration.Setup(c => c["PayOS:ApiKey"]).Returns("api-key");
             _mockConfiguration.Setup(c => c["PayOS:ChecksumKey"]).Returns("checksum-key");
 
-            _mockSystemConfigService
-                .Setup(s => s.GetMinDepositAmountAsync())
-                .ReturnsAsync(1000);
+            _mockSystemConfigService.Setup(s => s.GetMinDepositAmountAsync()).ReturnsAsync(0);
+            _mockSystemConfigService.Setup(s => s.GetMaxDepositAmountAsync()).ReturnsAsync(100000000);
         }
 
         private TransactionService CreateService()
@@ -263,7 +262,7 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task GetBalanceSummaryAsync_ShouldThrowKeyNotFound_WhenAccountDoesNotExist()
         {
-            _mockAccountRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Account?)null);
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Account)null!);
 
             var service = CreateService();
             var act = () => service.GetBalanceSummaryAsync(999);
@@ -297,7 +296,7 @@ namespace Imate.API.UnitTest.Services
             result.Items[0].TransactionId.Should().Be(1);
             result.Items[0].Amount.Should().Be(10000);
             result.Items[1].WithdrawalDetail.Should().NotBeNull();
-            result.Items[1].WithdrawalDetail.BankAccountNumber.Should().Be("XXXXXX7890");
+            result.Items[1].WithdrawalDetail!.BankAccountNumber.Should().Be("XXXXXX7890");
         }
 
         [Fact]
@@ -449,7 +448,7 @@ namespace Imate.API.UnitTest.Services
 
             result.Should().NotBeNull();
             result.Amount.Should().Be(20000);
-            result.WithdrawalDetail.BankCode.Should().Be("TCB");
+            result.WithdrawalDetail!.BankCode.Should().Be("TCB");
         }
 
         [Fact]
@@ -475,7 +474,7 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task CreateWithdrawalAsync_ShouldThrowKeyNotFound_WhenAccountDoesNotExist()
         {
-            _mockAccountRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Account?)null);
+            _mockAccountRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Account)null!);
             _mockUnitOfWork.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
             _mockUnitOfWork.Setup(u => u.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
@@ -542,7 +541,7 @@ namespace Imate.API.UnitTest.Services
             _mockAccountRepo.Setup(r => r.GetByIdAsync(1))
                 .ReturnsAsync(new Account { Id = 1, Balance = 50000 });
             _mockMentorRepo.Setup(r => r.GetMentorByIdAsync(1))
-                .ReturnsAsync(new Mentor { AccountId = 1, BankCode = null, BankAccountNumber = null, BankAccountHolderName = null });
+                .ReturnsAsync(new Mentor { AccountId = 1, BankCode = null!, BankAccountNumber = null!, BankAccountHolderName = null! });
             _mockUnitOfWork.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
             _mockUnitOfWork.Setup(u => u.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
@@ -651,7 +650,7 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task CancelTransactionAsync_ShouldThrowKeyNotFound_WhenTransactionDoesNotExist()
         {
-            _mockTransactionRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Transaction?)null);
+            _mockTransactionRepo.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Transaction)null!);
 
             var service = CreateService();
             var act = () => service.CancelTransactionAsync(999, 1);

@@ -19,6 +19,7 @@ namespace Imate.API.UnitTest.Controllers
         private readonly Mock<IConfiguration> _mockConfig;
         private readonly Mock<IUnitOfWork> _mockUow;
         private readonly Mock<ISystemConfigService> _mockSysConfig;
+        private readonly Mock<IAuditLogService> _mockAuditLog;
         private readonly AgoraController _controller;
 
         public AgoraControllerTests()
@@ -26,13 +27,14 @@ namespace Imate.API.UnitTest.Controllers
             _mockConfig = new Mock<IConfiguration>();
             _mockUow = new Mock<IUnitOfWork>();
             _mockSysConfig = new Mock<ISystemConfigService>();
+            _mockAuditLog = new Mock<IAuditLogService>();
 
             // Setup default config (must be 32 hex chars for Agora SDK)
             _mockConfig.Setup(c => c["Agora:AppId"]).Returns("0123456789abcdef0123456789abcdef"); 
             _mockConfig.Setup(c => c["Agora:AppCertificate"]).Returns("abcdef0123456789abcdef0123456789");
             _mockSysConfig.Setup(s => s.GetAgoraTokenExpirationHoursAsync()).ReturnsAsync(1);
 
-            _controller = new AgoraController(_mockConfig.Object, _mockUow.Object, _mockSysConfig.Object);
+            _controller = new AgoraController(_mockConfig.Object, _mockUow.Object, _mockSysConfig.Object, _mockAuditLog.Object);
         }
 
         private void SetupUser(int userId)
