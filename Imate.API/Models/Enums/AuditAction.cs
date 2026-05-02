@@ -12,6 +12,7 @@ namespace Imate.API.Models.Enums
         ApproveQuestion,
         RejectQuestion,
         ApproveApplication,
-        RejectApplication
+        RejectApplication,
+        JoinMeeting
     }
 }
