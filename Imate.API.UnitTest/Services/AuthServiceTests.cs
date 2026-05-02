@@ -1,4 +1,4 @@
-﻿using DocumentFormat.OpenXml.Office2010.Excel;
+using DocumentFormat.OpenXml.Office2010.Excel;
 using DocumentFormat.OpenXml.Spreadsheet;
 using FirebaseAdmin.Auth;
 using FluentAssertions;
@@ -63,6 +63,7 @@ namespace Imate.API.UnitTest.Services
             _mockConfiguration = new Mock<IConfiguration>();
             _mockConfiguration.SetupGet(c => c["FrontendSettings:BaseUrl"]).Returns("http://imate.vn");
             _jwtOptions = Options.Create(new JwtSettings { RefreshTokenExpiryDays = 7 });
+            _authService = CreateServiceInstance()!;
         }
 
         #region Register Account

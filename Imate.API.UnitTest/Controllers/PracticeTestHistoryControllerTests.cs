@@ -15,12 +15,14 @@ namespace Imate.API.UnitTest.Controllers
     public class PracticeTestHistoryControllerTests
     {
         private readonly Mock<IPracticeTestHistoryService> _mockHistoryService;
+        private readonly Mock<ISystemConfigService> _mockConfigService;
         private readonly PracticeTestHistoryController _controller;
 
         public PracticeTestHistoryControllerTests()
         {
             _mockHistoryService = new Mock<IPracticeTestHistoryService>();
-            _controller = new PracticeTestHistoryController(_mockHistoryService.Object);
+            _mockConfigService = new Mock<ISystemConfigService>();
+            _controller = new PracticeTestHistoryController(_mockHistoryService.Object, _mockConfigService.Object);
         }
 
         private void SetupUser(int userId, string role = "Candidate")

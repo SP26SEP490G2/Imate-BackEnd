@@ -12,6 +12,7 @@ using Imate.API.Models.Entities;
 using Imate.API.Models.Enums;
 using MockQueryable;
 using MockQueryable.Moq;
+using MediatR;
 using Imate.API.Business.Interfaces.Notification;
 
 namespace Imate.API.UnitTest.Services
@@ -25,6 +26,7 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<ITransactionRepository> _mockTransactionRepo;
         private readonly Mock<ISystemConfigService> _mockSystemConfigService;
         private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
+        private readonly Mock<IMediator> _mockMediator;
         private readonly UserSubscriptionService _service;
 
         public UserSubscriptionServiceTests()
@@ -36,6 +38,7 @@ namespace Imate.API.UnitTest.Services
             _mockTransactionRepo = new Mock<ITransactionRepository>();
             _mockSystemConfigService = new Mock<ISystemConfigService>();
             _mockSystemNotificationService = new Mock<ISystemNotificationService>();
+            _mockMediator = new Mock<IMediator>();
 
             _mockUnitOfWork.Setup(u => u.Accounts).Returns(_mockAccountRepo.Object);
             _mockUnitOfWork.Setup(u => u.UserSubscriptions).Returns(_mockUserSubRepo.Object);
@@ -45,7 +48,8 @@ namespace Imate.API.UnitTest.Services
             _service = new UserSubscriptionService(
                 _mockUnitOfWork.Object,
                 _mockSystemConfigService.Object,
-                _mockSystemNotificationService.Object
+                _mockSystemNotificationService.Object,
+                _mockMediator.Object
             );
         }
 
@@ -65,7 +69,8 @@ namespace Imate.API.UnitTest.Services
                 Price = 100000,
                 Rank = 2,
                 DurationDays = 30,
-                TotalInterviewLimit = 50
+                TotalInterviewLimit = 50,
+                IsActive = true
             };
             var account = new Account { Id = accountId, Balance = 200000 };
 
@@ -102,9 +107,9 @@ namespace Imate.API.UnitTest.Services
             _mockUnitOfWork.Verify(u => u.CommitTransactionAsync(), Times.Once);
         }
 
-        // UTC_SUB_02: Nâng cấp gói thành công với proration → trừ chênh lệch giá
+        // UTC_SUB_02: Nâng cấp gói thành công → trừ full giá gói mới (không còn proration)
         [Fact]
-        public async Task ActivateNewSubscriptionAsync_ShouldApplyProration_WhenUpgrading()
+        public async Task ActivateNewSubscriptionAsync_ShouldChargeFullPrice_WhenUpgrading()
         {
             // Arrange
             var accountId = 1;
@@ -113,19 +118,20 @@ namespace Imate.API.UnitTest.Services
 
             var oldPackage = new SubscriptionPackage
             {
-                Id = 2, Name = "Basic", Price = 60000, Rank = 1, DurationDays = 30
+                Id = 2, Name = "Basic", Price = 60000, Rank = 1, DurationDays = 30, IsActive = true
             };
             var newPackage = new SubscriptionPackage
             {
                 Id = newPackageId, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30,
-                TotalInterviewLimit = 100
+                TotalInterviewLimit = 100, IsActive = true
             };
 
             var existingSub = new UserSubscription
             {
                 Id = 1, CandidateId = accountId, PackageId = 2, IsActive = true,
                 StartDate = today.AddDays(-15),
-                EndDate = today.AddDays(15) // Còn 15 ngày
+                EndDate = today.AddDays(15),
+                Package = oldPackage
             };
 
             var account = new Account { Id = accountId, Balance = 200000 };
@@ -147,14 +153,14 @@ namespace Imate.API.UnitTest.Services
             // Act
             await _service.ActivateNewSubscriptionAsync(accountId, newPackageId);
 
-            // Assert - Proration: remainingValue = (60000/30) * 15 = 30000, charge = 100000 - 30000 = 70000
-            account.Balance.Should().Be(130000); // 200000 - 70000
+            // Assert - Luôn charge full price: 200000 - 100000 = 100000
+            account.Balance.Should().Be(100000);
             _mockUnitOfWork.Verify(u => u.CommitTransactionAsync(), Times.Once);
         }
 
-        // UTC_SUB_03: Nâng cấp khi remainingValue > newPrice → charge = 0
+        // UTC_SUB_03: Nâng cấp gói thành công → trừ full giá gói mới (kể cả khi gói cũ còn giá trị)
         [Fact]
-        public async Task ActivateNewSubscriptionAsync_ShouldChargeZero_WhenRemainingValueExceedsNewPrice()
+        public async Task ActivateNewSubscriptionAsync_ShouldChargeFullPrice_WhenUpgradingEvenIfRemainingValueExists()
         {
             // Arrange
             var accountId = 1;
@@ -164,19 +170,20 @@ namespace Imate.API.UnitTest.Services
             // Gói cũ rất đắt, còn nhiều ngày
             var oldPackage = new SubscriptionPackage
             {
-                Id = 2, Name = "Enterprise", Price = 300000, Rank = 1, DurationDays = 30
+                Id = 2, Name = "Enterprise", Price = 300000, Rank = 1, DurationDays = 30, IsActive = true
             };
             // Gói mới rẻ hơn nhưng rank cao hơn
             var newPackage = new SubscriptionPackage
             {
-                Id = newPackageId, Name = "Premium Plus", Price = 50000, Rank = 2, DurationDays = 30
+                Id = newPackageId, Name = "Premium Plus", Price = 50000, Rank = 2, DurationDays = 30, IsActive = true
             };
 
             var existingSub = new UserSubscription
             {
                 Id = 1, CandidateId = accountId, PackageId = 2, IsActive = true,
                 StartDate = today.AddDays(-5),
-                EndDate = today.AddDays(25) // Còn 25 ngày → remainingValue = 250k > 50k
+                EndDate = today.AddDays(25), // Còn 25 ngày → remainingValue = 250k
+                Package = oldPackage
             };
 
             var account = new Account { Id = accountId, Balance = 200000 };
@@ -197,10 +204,10 @@ namespace Imate.API.UnitTest.Services
             // Act
             await _service.ActivateNewSubscriptionAsync(accountId, newPackageId);
 
-            // Assert - amountToCharge = max(0, 50000 - 250000) = 0
-            account.Balance.Should().Be(200000); // Không bị trừ
+            // Assert - Luôn charge full price: 200000 - 50000 = 150000
+            account.Balance.Should().Be(150000);
             _mockTransactionRepo.Verify(r => r.AddAsync(It.Is<Transaction>(
-                t => t.Amount == 0
+                t => t.Amount == 50000
             )), Times.Once);
         }
 
@@ -218,7 +225,7 @@ namespace Imate.API.UnitTest.Services
 
             // Assert
             await act.Should().ThrowAsync<NotFoundException>()
-                .WithMessage("Không tìm thấy gói đăng ký mới.");
+                .WithMessage("Không tìm thấy gói đăng ký.");
         }
 
         // UTC_SUB_05: Throw NotFoundException khi accountId không tồn tại
@@ -226,7 +233,7 @@ namespace Imate.API.UnitTest.Services
         public async Task ActivateNewSubscriptionAsync_ShouldThrowNotFoundException_WhenAccountNotFound()
         {
             // Arrange
-            var package = new SubscriptionPackage { Id = 2, Name = "Premium", Price = 100000, Rank = 2 };
+            var package = new SubscriptionPackage { Id = 2, Name = "Premium", Price = 100000, Rank = 2, IsActive = true };
             _mockPackageRepo.Setup(r => r.GetSubscriptionPackageByIdAsync(2)).ReturnsAsync(package);
             _mockAccountRepo.Setup(r => r.GetByIdAsync(999)).ReturnsAsync((Account?)null);
             _mockUnitOfWork.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
@@ -248,13 +255,14 @@ namespace Imate.API.UnitTest.Services
             var accountId = 1;
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-            var oldPackage = new SubscriptionPackage { Id = 2, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30 };
-            var newPackage = new SubscriptionPackage { Id = 1, Name = "Basic", Price = 50000, Rank = 1, DurationDays = 30 };
+            var oldPackage = new SubscriptionPackage { Id = 2, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30, IsActive = true };
+            var newPackage = new SubscriptionPackage { Id = 1, Name = "Basic", Price = 50000, Rank = 1, DurationDays = 30, IsActive = true };
 
             var existingSub = new UserSubscription
             {
                 Id = 1, CandidateId = accountId, PackageId = 2, IsActive = true,
-                StartDate = today.AddDays(-10), EndDate = today.AddDays(20)
+                StartDate = today.AddDays(-10), EndDate = today.AddDays(20),
+                Package = oldPackage
             };
 
             _mockPackageRepo.Setup(r => r.GetSubscriptionPackageByIdAsync(1)).ReturnsAsync(newPackage);
@@ -272,7 +280,7 @@ namespace Imate.API.UnitTest.Services
 
             // Assert
             await act.Should().ThrowAsync<BadRequestException>()
-                .WithMessage("*Không thể hạ cấp*");
+                .WithMessage("*Vui lòng chọn gói cao cấp hơn.*");
         }
 
         // UTC_SUB_07: Throw BadRequestException khi số dư không đủ
@@ -284,7 +292,7 @@ namespace Imate.API.UnitTest.Services
             var packageId = 2;
             var newPackage = new SubscriptionPackage
             {
-                Id = packageId, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30
+                Id = packageId, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30, IsActive = true
             };
             var account = new Account { Id = accountId, Balance = 10000 }; // Không đủ
 
@@ -314,7 +322,7 @@ namespace Imate.API.UnitTest.Services
             var packageId = 2;
             var newPackage = new SubscriptionPackage
             {
-                Id = packageId, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30
+                Id = packageId, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30, IsActive = true
             };
             var account = new Account { Id = accountId, Balance = 200000 };
 
@@ -349,7 +357,7 @@ namespace Imate.API.UnitTest.Services
             var newPackage = new SubscriptionPackage
             {
                 Id = packageId, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30,
-                TotalInterviewLimit = 50
+                TotalInterviewLimit = 50, IsActive = true
             };
             var account = new Account { Id = accountId, Balance = 200000 };
 
@@ -384,7 +392,7 @@ namespace Imate.API.UnitTest.Services
             var newPackage = new SubscriptionPackage
             {
                 Id = packageId, Name = "Unlimited", Price = 200000, Rank = 3, DurationDays = 30,
-                TotalInterviewLimit = null
+                TotalInterviewLimit = null, IsActive = true
             };
             var account = new Account { Id = accountId, Balance = 300000 };
 
@@ -422,7 +430,7 @@ namespace Imate.API.UnitTest.Services
             var packageId = 2;
             var newPackage = new SubscriptionPackage
             {
-                Id = packageId, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30
+                Id = packageId, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30, IsActive = true
             };
 
             _mockPackageRepo.Setup(r => r.GetSubscriptionPackageByIdAsync(packageId)).ReturnsAsync(newPackage);
@@ -436,15 +444,12 @@ namespace Imate.API.UnitTest.Services
             // Assert
             result.NewPackageName.Should().Be("Premium");
             result.NewPackagePrice.Should().Be(100000);
-            result.AmountToCharge.Should().Be(100000);
-            result.HasActiveSubscription.Should().BeFalse();
             result.IsEligible.Should().BeTrue();
-            result.RemainingValue.Should().Be(0);
         }
 
-        // UTC_SUB_12: Preview nâng cấp với proration
+        // UTC_SUB_12: Preview nâng cấp (không còn proration)
         [Fact]
-        public async Task GetUpgradePreviewAsync_ShouldCalculateProration_WhenUpgrading()
+        public async Task GetUpgradePreviewAsync_ShouldReturnFullPrice_WhenUpgrading()
         {
             // Arrange
             var accountId = 1;
@@ -463,7 +468,8 @@ namespace Imate.API.UnitTest.Services
             var existingSub = new UserSubscription
             {
                 Id = 1, CandidateId = accountId, PackageId = 2, IsActive = true,
-                StartDate = today.AddDays(-15), EndDate = today.AddDays(15)
+                StartDate = today.AddDays(-15), EndDate = today.AddDays(15),
+                Package = oldPackage
             };
 
             _mockPackageRepo.Setup(r => r.GetSubscriptionPackageByIdAsync(newPackageId)).ReturnsAsync(newPackage);
@@ -475,11 +481,10 @@ namespace Imate.API.UnitTest.Services
             // Act
             var result = await _service.GetUpgradePreviewAsync(accountId, newPackageId);
 
-            // Assert - remainingValue = (60000/30)*15 = 30000
-            result.HasActiveSubscription.Should().BeTrue();
-            result.OldPackageName.Should().Be("Basic");
-            result.RemainingValue.Should().Be(30000);
-            result.AmountToCharge.Should().Be(70000); // 100000 - 30000
+            // Assert - Luôn trả về full price
+            result.NewPackageName.Should().Be("Premium");
+            result.NewPackagePrice.Should().Be(100000);
+            result.IsEligible.Should().BeTrue();
         }
 
         // UTC_SUB_13: Throw NotFoundException khi package không tồn tại
@@ -494,7 +499,7 @@ namespace Imate.API.UnitTest.Services
 
             // Assert
             await act.Should().ThrowAsync<NotFoundException>()
-                .WithMessage("Không tìm thấy gói đăng ký mới.");
+                .WithMessage("Không tìm thấy gói đăng ký.");
         }
 
         // UTC_SUB_14: Throw BadRequestException khi hạ cấp
@@ -505,13 +510,14 @@ namespace Imate.API.UnitTest.Services
             var accountId = 1;
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-            var oldPackage = new SubscriptionPackage { Id = 2, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30 };
-            var newPackage = new SubscriptionPackage { Id = 1, Name = "Basic", Price = 50000, Rank = 1, DurationDays = 30 };
+            var oldPackage = new SubscriptionPackage { Id = 2, Name = "Premium", Price = 100000, Rank = 2, DurationDays = 30, IsActive = true };
+            var newPackage = new SubscriptionPackage { Id = 1, Name = "Basic", Price = 50000, Rank = 1, DurationDays = 30, IsActive = true };
 
             var existingSub = new UserSubscription
             {
                 Id = 1, CandidateId = accountId, PackageId = 2, IsActive = true,
-                StartDate = today.AddDays(-10), EndDate = today.AddDays(20)
+                StartDate = today.AddDays(-10), EndDate = today.AddDays(20),
+                Package = oldPackage
             };
 
             _mockPackageRepo.Setup(r => r.GetSubscriptionPackageByIdAsync(1)).ReturnsAsync(newPackage);
@@ -525,185 +531,11 @@ namespace Imate.API.UnitTest.Services
 
             // Assert
             await act.Should().ThrowAsync<BadRequestException>()
-                .WithMessage("*Không thể hạ cấp*");
+                .WithMessage("*Vui lòng chọn gói cao cấp hơn.*");
         }
 
         #endregion
 
-        #region UC-4: CancelSubscriptionAsync
 
-        // UTC_SUB_15: Hủy gói thành công với hoàn tiền prorated
-        [Fact]
-        public async Task CancelSubscriptionAsync_ShouldRefundAndDeactivate_WhenValidSubscription()
-        {
-            // Arrange
-            var accountId = 1;
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-            var package = new SubscriptionPackage
-            {
-                Id = 2, Name = "Premium", Price = 60000, Rank = 2, DurationDays = 30
-            };
-            var lowestPackage = new SubscriptionPackage { Id = 1, Name = "Gói Thường", Rank = 0, Price = 0 };
-
-            var activeSub = new UserSubscription
-            {
-                Id = 1, CandidateId = accountId, PackageId = 2, IsActive = true,
-                StartDate = today.AddDays(-15), EndDate = today.AddDays(15),
-                Package = package
-            };
-            var account = new Account { Id = accountId, Balance = 50000 };
-
-            // Mock GetCurrentPackageAsync dependencies
-            var activeSubsForCurrent = new List<UserSubscription> { activeSub }.AsQueryable().BuildMock();
-            _mockUserSubRepo.Setup(r => r.GetUserSubscriptions()).Returns(activeSubsForCurrent);
-            _mockPackageRepo.Setup(r => r.GetLowestRankPackageAsync()).ReturnsAsync(lowestPackage);
-            _mockPackageRepo.Setup(r => r.GetSubscriptionPackageByIdAsync(2)).ReturnsAsync(package);
-            _mockAccountRepo.Setup(r => r.GetByIdAsync(accountId)).ReturnsAsync(account);
-
-            _mockUnitOfWork.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
-            _mockUnitOfWork.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
-            _mockUnitOfWork.Setup(u => u.CommitTransactionAsync()).Returns(Task.CompletedTask);
-            _mockTransactionRepo.Setup(r => r.AddAsync(It.IsAny<Transaction>()))
-                .ReturnsAsync((Transaction t) => { t.Id = 200; return t; });
-
-            // Act
-            await _service.CancelSubscriptionAsync(accountId);
-
-            // Assert - refundAmount = (60000/30)*15 = 30000
-            activeSub.IsActive.Should().BeFalse();
-            account.Balance.Should().Be(80000); // 50000 + 30000
-            _mockTransactionRepo.Verify(r => r.AddAsync(It.Is<Transaction>(
-                t => t.TransactionType == TransactionType.Refund &&
-                     t.Status == TransactionStatus.Completed &&
-                     t.Amount == 30000
-            )), Times.Once);
-            _mockUnitOfWork.Verify(u => u.CommitTransactionAsync(), Times.Once);
-        }
-
-        // UTC_SUB_16: Throw BadRequestException khi đang dùng gói thấp nhất
-        [Fact]
-        public async Task CancelSubscriptionAsync_ShouldThrowBadRequest_WhenUsingLowestPackage()
-        {
-            // Arrange
-            var accountId = 1;
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-            var lowestPackage = new SubscriptionPackage { Id = 1, Name = "Gói Thường", Rank = 0, Price = 0 };
-
-            var activeSub = new UserSubscription
-            {
-                Id = 1, CandidateId = accountId, PackageId = 1, IsActive = true,
-                StartDate = today, EndDate = null,
-                Package = lowestPackage
-            };
-
-            var activeSubsQuery = new List<UserSubscription> { activeSub }.AsQueryable().BuildMock();
-            _mockUserSubRepo.Setup(r => r.GetUserSubscriptions()).Returns(activeSubsQuery);
-            _mockPackageRepo.Setup(r => r.GetLowestRankPackageAsync()).ReturnsAsync(lowestPackage);
-            _mockPackageRepo.Setup(r => r.GetSubscriptionPackageByIdAsync(1)).ReturnsAsync(lowestPackage);
-
-            _mockUnitOfWork.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
-            _mockUnitOfWork.Setup(u => u.RollbackTransactionAsync()).Returns(Task.CompletedTask);
-
-            // Act
-            var act = () => _service.CancelSubscriptionAsync(accountId);
-
-            // Assert
-            await act.Should().ThrowAsync<BadRequestException>()
-                .WithMessage("*Gói Thường*không thể hủy*");
-        }
-
-        // UTC_SUB_17: Rollback khi exception xảy ra trong CancelSubscription
-        [Fact]
-        public async Task CancelSubscriptionAsync_ShouldRollback_WhenExceptionOccurs()
-        {
-            // Arrange
-            var accountId = 1;
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-            var package = new SubscriptionPackage { Id = 2, Name = "Premium", Price = 60000, Rank = 2, DurationDays = 30 };
-            var lowestPackage = new SubscriptionPackage { Id = 1, Name = "Gói Thường", Rank = 0 };
-
-            var activeSub = new UserSubscription
-            {
-                Id = 1, CandidateId = accountId, PackageId = 2, IsActive = true,
-                StartDate = today.AddDays(-15), EndDate = today.AddDays(15),
-                Package = package
-            };
-
-            var activeSubsQuery = new List<UserSubscription> { activeSub }.AsQueryable().BuildMock();
-            _mockUserSubRepo.Setup(r => r.GetUserSubscriptions()).Returns(activeSubsQuery);
-            _mockPackageRepo.Setup(r => r.GetLowestRankPackageAsync()).ReturnsAsync(lowestPackage);
-            _mockPackageRepo.Setup(r => r.GetSubscriptionPackageByIdAsync(2)).ReturnsAsync(package);
-            _mockAccountRepo.Setup(r => r.GetByIdAsync(accountId)).ReturnsAsync((Account?)null); // Sẽ throw
-
-            _mockUnitOfWork.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
-            _mockUnitOfWork.Setup(u => u.RollbackTransactionAsync()).Returns(Task.CompletedTask);
-
-            // Act
-            var act = () => _service.CancelSubscriptionAsync(accountId);
-
-            // Assert
-            await act.Should().ThrowAsync<NotFoundException>();
-            _mockUnitOfWork.Verify(u => u.RollbackTransactionAsync(), Times.Once);
-            _mockUnitOfWork.Verify(u => u.CommitTransactionAsync(), Times.Never);
-        }
-
-        #endregion
-
-        #region UC-4: GetCancelPreviewAsync
-
-        // UTC_SUB_18: Preview hủy gói với refund prorated
-        [Fact]
-        public async Task GetCancelPreviewAsync_ShouldReturnRefundPreview_WhenActiveSubscriptionExists()
-        {
-            // Arrange
-            var accountId = 1;
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-            var package = new SubscriptionPackage
-            {
-                Id = 2, Name = "Premium", Price = 60000, DurationDays = 30, Rank = 2
-            };
-
-            var activeSub = new UserSubscription
-            {
-                Id = 1, CandidateId = accountId, PackageId = 2, IsActive = true,
-                StartDate = today.AddDays(-15), EndDate = today.AddDays(15),
-                Package = package
-            };
-
-            var activeSubsQuery = new List<UserSubscription> { activeSub }.AsQueryable().BuildMock();
-            _mockUserSubRepo.Setup(r => r.GetUserSubscriptions()).Returns(activeSubsQuery);
-
-            // Act
-            var result = await _service.GetCancelPreviewAsync(accountId);
-
-            // Assert
-            result.PackageToCancel.Should().Be("Premium");
-            result.RemainingDays.Should().Be(15);
-            result.RefundAmount.Should().Be(30000); // (60000/30)*15
-        }
-
-        // UTC_SUB_19: Throw BadRequestException khi không có gói trả phí active
-        [Fact]
-        public async Task GetCancelPreviewAsync_ShouldThrowBadRequest_WhenNoActiveSubscription()
-        {
-            // Arrange
-            var accountId = 1;
-
-            var emptySubs = new List<UserSubscription>().AsQueryable().BuildMock();
-            _mockUserSubRepo.Setup(r => r.GetUserSubscriptions()).Returns(emptySubs);
-
-            // Act
-            var act = () => _service.GetCancelPreviewAsync(accountId);
-
-            // Assert
-            await act.Should().ThrowAsync<BadRequestException>()
-                .WithMessage("*không có gói trả phí nào*");
-        }
-
-        #endregion
     }
 }

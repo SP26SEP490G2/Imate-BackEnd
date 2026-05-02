@@ -20,6 +20,9 @@ using Microsoft.EntityFrameworkCore;
 using MockQueryable;
 using MockQueryable.Moq;
 using Xunit;
+using Imate.API.Business.Interfaces.Notification;
+using Microsoft.AspNetCore.SignalR;
+using Imate.API.Presentation.SignalR;
 
 namespace Imate.API.UnitTest.Services
 {
@@ -35,6 +38,8 @@ namespace Imate.API.UnitTest.Services
         private readonly Mock<IApplicationRepository> _mockApplicationRepo;
         private readonly Mock<IAccountRepository> _mockAccountRepo;
         private readonly Mock<IBookingRepository> _mockBookingRepo;
+        private readonly Mock<ISystemNotificationService> _mockSystemNotificationService;
+        private readonly Mock<IHubContext<BalanceHub>> _mockHubContext;
         private readonly ApplicationService _service;
 
         public ApplicationServiceTests()
@@ -50,10 +55,14 @@ namespace Imate.API.UnitTest.Services
             _mockApplicationRepo = new Mock<IApplicationRepository>();
             _mockAccountRepo = new Mock<IAccountRepository>();
             _mockBookingRepo = new Mock<IBookingRepository>();
+            _mockSystemNotificationService = new Mock<ISystemNotificationService>();
+            _mockHubContext = new Mock<IHubContext<BalanceHub>>();
 
             _mockUnitOfWork.Setup(u => u.Applications).Returns(_mockApplicationRepo.Object);
             _mockUnitOfWork.Setup(u => u.Accounts).Returns(_mockAccountRepo.Object);
             _mockUnitOfWork.Setup(u => u.Bookings).Returns(_mockBookingRepo.Object);
+
+            _mockSystemConfigService.Setup(s => s.GetReportDeadlineHoursAsync()).ReturnsAsync(24);
 
             // ImateDbContext mock – chỉ cần cho constructor, các test không dùng DbContext trực tiếp
             var options = new DbContextOptionsBuilder<ImateDbContext>().Options;
@@ -67,7 +76,9 @@ namespace Imate.API.UnitTest.Services
                 mockContext.Object,
                 _mockMediator.Object,
                 _mockSystemConfigService.Object,
-                _mockAuditLogService.Object
+                _mockAuditLogService.Object,
+                _mockSystemNotificationService.Object,
+                _mockHubContext.Object
             );
         }
 
@@ -483,7 +494,7 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepo.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(account);
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow });
             _mockUnitOfWork.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
 
             // Không có đơn trùng lặp
@@ -527,7 +538,7 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepo.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(account);
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow });
             _mockUnitOfWork.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
 
             var emptyApps = new List<Application>().AsQueryable().BuildMock();
@@ -626,7 +637,7 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepo.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(account);
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow });
 
             // Đã có đơn Pending cho cùng booking
             var existingApps = new List<Application>
@@ -636,7 +647,8 @@ namespace Imate.API.UnitTest.Services
                     UserId = userId,
                     BookingId = bookingId,
                     ApplicationType = ApplicationType.ReportMentor,
-                    Status = ApplicationStatus.Pending
+                    Status = ApplicationStatus.Pending,
+                    Booking = new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow }
                 }
             }.AsQueryable().BuildMock();
             _mockApplicationRepo.Setup(r => r.GetAllApplications()).Returns(existingApps);
@@ -673,7 +685,7 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepo.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(account);
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow });
 
             // Đang InReview
             var existingApps = new List<Application>
@@ -715,7 +727,7 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepo.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(account);
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow });
 
             // Đã được duyệt trước đó
             var existingApps = new List<Application>
@@ -758,7 +770,7 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepo.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(account);
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow });
 
             // Đã bị từ chối
             var existingApps = new List<Application>
@@ -801,7 +813,7 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepo.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(account);
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow });
             _mockUnitOfWork.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
 
             var emptyApps = new List<Application>().AsQueryable().BuildMock();
@@ -845,7 +857,7 @@ namespace Imate.API.UnitTest.Services
             };
 
             _mockAccountRepo.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(account);
-            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId });
+            _mockBookingRepo.Setup(r => r.GetBookingByIdAsync(bookingId)).ReturnsAsync(new Booking { Id = bookingId, StartTime = DateTimeOffset.UtcNow });
             _mockUnitOfWork.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
 
             var emptyApps = new List<Application>().AsQueryable().BuildMock();
