@@ -211,5 +211,106 @@ namespace Imate.API.Presentation.Controllers.Classification
                 updatedPosition
             });
         }
+
+        /// <summary>
+        /// Lấy danh sách Skill đã được map vào Position
+        /// </summary>
+        [HttpGet("positions/{id}/skills")]
+        public async Task<IActionResult> GetPositionSkills(int id)
+        {
+            var positionExists = await _context.Positions.AnyAsync(p => p.Id == id);
+            if (!positionExists)
+            {
+                return NotFound(new { Message = "Không tìm thấy vị trí" });
+            }
+
+            var skills = await _context.PositionSkills
+                .Where(ps => ps.PositionId == id)
+                .Include(ps => ps.Skill)
+                .Select(ps => new
+                {
+                    ps.Skill.Id,
+                    ps.Skill.Name,
+                    ps.Skill.IsActive
+                })
+                .OrderBy(s => s.Name)
+                .ToListAsync();
+
+            return Ok(skills);
+        }
+
+        /// <summary>
+        /// Cập nhật danh sách Skill cho Position (diff strategy: chỉ thêm/xóa khác biệt)
+        /// </summary>
+        [HttpPut("positions/{id}/skills")]
+        public async Task<IActionResult> UpdatePositionSkills(int id, [FromBody] UpdatePositionSkillsRequest request)
+        {
+            var position = await _context.Positions.FindAsync(id);
+            if (position == null)
+            {
+                return NotFound(new { Message = "Không tìm thấy vị trí" });
+            }
+
+            // Validate skill IDs (chỉ validate nếu có skillIds)
+            if (request.SkillIds.Any())
+            {
+                var validSkillIds = await _context.Skills
+                    .Where(s => request.SkillIds.Contains(s.Id))
+                    .Select(s => s.Id)
+                    .ToListAsync();
+
+                var invalidIds = request.SkillIds.Except(validSkillIds).ToList();
+                if (invalidIds.Any())
+                {
+                    return BadRequest(new { Message = $"Không tìm thấy Skill với Id: {string.Join(", ", invalidIds)}" });
+                }
+            }
+
+            // Load existing mappings
+            var existingMappings = await _context.PositionSkills
+                .Where(ps => ps.PositionId == id)
+                .ToListAsync();
+
+            var existingSkillIds = existingMappings.Select(ps => ps.SkillId).ToHashSet();
+            var newSkillIds = request.SkillIds.ToHashSet();
+
+            var oldSkillIdsList = existingSkillIds.OrderBy(x => x).ToList();
+
+            // Diff: chỉ xóa những mapping không còn trong danh sách mới
+            var toRemove = existingMappings.Where(ps => !newSkillIds.Contains(ps.SkillId)).ToList();
+
+            // Diff: chỉ thêm những mapping chưa tồn tại
+            var toAdd = newSkillIds.Where(skillId => !existingSkillIds.Contains(skillId))
+                .Select(skillId => new PositionSkill
+                {
+                    PositionId = id,
+                    SkillId = skillId
+                })
+                .ToList();
+
+            if (toRemove.Any())
+                _context.PositionSkills.RemoveRange(toRemove);
+
+            if (toAdd.Any())
+                _context.PositionSkills.AddRange(toAdd);
+
+            await _context.SaveChangesAsync();
+
+            // Audit log
+            var userId = GetCurrentUserId();
+            if (userId.HasValue)
+            {
+                await _auditLogService.CreateAuditLogAsync(
+                    userId.Value,
+                    AuditAction.Update,
+                    "PositionSkill",
+                    id,
+                    new { SkillIds = oldSkillIdsList },
+                    new { SkillIds = request.SkillIds.OrderBy(x => x).ToList() }
+                );
+            }
+
+            return Ok(new { Message = "Cập nhật kĩ năng cho vị trí thành công" });
+        }
     }
 }
