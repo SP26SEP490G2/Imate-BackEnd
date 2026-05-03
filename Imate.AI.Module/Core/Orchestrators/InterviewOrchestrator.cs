@@ -169,7 +169,7 @@ namespace Imate.AI.Module.Core.Orchestrators
                 SessionGapJson = "[]"  // Will be populated if JD + CV are available
             };
 
-            // Tự động tạo hoặc tìm Journey nếu có đủ CV và JD
+            // Tự động tạo Journey nếu có đủ CV và JD (Luôn tạo mới theo yêu cầu)
             if (request.CvId.HasValue && !string.IsNullOrEmpty(request.JobDescriptionText))
             {
                 try
@@ -178,67 +178,36 @@ namespace Imate.AI.Module.Core.Orchestrators
                     if (string.IsNullOrEmpty(cvContent))
                     {
                         cvContent = await _cvDataProvider.GetCvTextAsync(accountId, request.CvId.Value) ?? "";
-                        session.CvContent = cvContent; // Gán CV text vào session để dùng cho prompt
+                        session.CvContent = cvContent;
                     }
 
-                    // Tìm journey đã có hoặc tạo mới trực tiếp qua DataProvider
-                    var existing = await _journeyDataProvider.FindJourneyAsync(
-                        accountId, request.CvId.Value, request.JobDescriptionText);
+                    // Phân tích gap CV vs JD
+                    var gapJson = await _interviewAgent.AnalyzeGapsAsync(cvContent, request.JobDescriptionText);
+                    var gaps = ParseGapsFromAnalysis(gapJson);
+                    var profileGaps = ParseProfileGaps(gapJson);
 
-                    int journeyId;
-                    if (existing != null)
+                    var newJourney = new Interfaces.TrainingJourneyData
                     {
-                        journeyId = existing.Id;
-                        // Update existing journey with latest metadata if missing
-                        if (string.IsNullOrEmpty(existing.SkillName))
-                        {
-                            existing.SkillName = request.SkillName ?? (request.SkillNames != null ? string.Join(", ", request.SkillNames) : null);
-                            existing.LevelName = request.LevelName;
-                            existing.CompanyName = request.CompanyName;
-                            existing.UpdatedAt = DateTimeOffset.UtcNow;
-                            await _journeyDataProvider.UpdateJourneyAsync(existing);
-                        }
-                    }
-                    else
-                    {
-                        // Phân tích gap CV vs JD
-                        var gapJson = await _interviewAgent.AnalyzeGapsAsync(cvContent, request.JobDescriptionText);
-                        var gaps = ParseGapsFromAnalysis(gapJson);
-                        var profileGaps = ParseProfileGaps(gapJson);
+                        AccountId = accountId,
+                        UserCvId = request.CvId.Value,
+                        JobDescriptionText = request.JobDescriptionText,
+                        Name = request.PositionName ?? "Lộ trình không tên",
+                        PositionName = request.PositionName,
+                        SkillName = request.SkillName ?? (request.SkillNames != null ? string.Join(", ", request.SkillNames) : null),
+                        LevelName = request.LevelName,
+                        CompanyName = request.CompanyName,
+                        GapsJson = System.Text.Json.JsonSerializer.Serialize(gaps),
+                        ProfileGapsJson = System.Text.Json.JsonSerializer.Serialize(profileGaps),
+                        Status = "Pending",
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
 
-                        var newJourney = new Interfaces.TrainingJourneyData
-                        {
-                            AccountId = accountId,
-                            UserCvId = request.CvId.Value,
-                            JobDescriptionText = request.JobDescriptionText,
-                            Name = request.PositionName ?? "Lộ trình không tên",
-                            PositionName = request.PositionName,
-                            SkillName = request.SkillName ?? (request.SkillNames != null ? string.Join(", ", request.SkillNames) : null),
-                            LevelName = request.LevelName,
-                            CompanyName = request.CompanyName,
-                            GapsJson = System.Text.Json.JsonSerializer.Serialize(gaps),
-                            ProfileGapsJson = System.Text.Json.JsonSerializer.Serialize(profileGaps),
-                            Status = "Pending",
-                            CreatedAt = DateTimeOffset.UtcNow,
-                            UpdatedAt = DateTimeOffset.UtcNow
-                        };
-                        journeyId = await _journeyDataProvider.CreateJourneyAsync(newJourney);
-                        _logger.LogInformation("[JOURNEY] Auto-created journey {Id} with {Count} gaps", journeyId, gaps.Count);
-                    }
+                    int journeyId = await _journeyDataProvider.CreateJourneyAsync(newJourney);
                     session.TrainingJourneyId = journeyId;
+                    session.SessionGapJson = System.Text.Json.JsonSerializer.Serialize(gaps);
 
-                    // Populate SessionGapJson for gap-focused questions
-                    if (existing != null)
-                    {
-                        session.SessionGapJson = existing.GapsJson;
-                    }
-                    else
-                    {
-                        // Use the gaps from the newly created journey
-                        var gapJson = await _interviewAgent.AnalyzeGapsAsync(cvContent, request.JobDescriptionText);
-                        var gaps = ParseGapsFromAnalysis(gapJson);
-                        session.SessionGapJson = System.Text.Json.JsonSerializer.Serialize(gaps);
-                    }
+                    _logger.LogInformation("[JOURNEY] Created NEW journey {Id} for session", journeyId);
                 }
                 catch (Exception ex)
                 {

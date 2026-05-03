@@ -33,19 +33,6 @@ namespace Imate.AI.Module.Core.Orchestrators
         public async Task<CreateJourneyResult> CreateJourneyAsync(
             int accountId, int cvId, string cvContent, string jobDescriptionText, string? name = null)
         {
-            var existing = await _journeyProvider.FindJourneyAsync(accountId, cvId, jobDescriptionText);
-            if (existing != null)
-            {
-                var existingGaps = DeserializeGaps(existing.GapsJson);
-                return new CreateJourneyResult
-                {
-                    JourneyId = existing.Id,
-                    GapNames = existingGaps.Select(g => g.GapName).ToList(),
-                    TotalGaps = existingGaps.Count,
-                    Message = "Journey đã tồn tại, tiếp tục luyện tập"
-                };
-            }
-
             var gapJson = await _interviewAgent.AnalyzeGapsAsync(cvContent, jobDescriptionText);
             var gaps = ParseGapsFromAnalysis(gapJson);
 
@@ -190,7 +177,7 @@ namespace Imate.AI.Module.Core.Orchestrators
             }
 
             // Cập nhật điểm các gap đã được hỏi trong phiên này
-            var gapScores = ComputeGapScores(allGaps, responses);
+            var gapScores = ComputeGapScores(allGaps, responses, sessionId);
             HandleResolvedGapsDowngrade(allGaps, gapScores);
             _gapSelector.UpdateGapStatuses(allGaps, gapScores, sessionId);
 
@@ -403,9 +390,14 @@ namespace Imate.AI.Module.Core.Orchestrators
 
         private static List<Services.GapScoreResult> ComputeGapScores(
             List<JourneyGapItem> allGaps,
-            List<InterviewResponseData> responses)
+            List<InterviewResponseData> responses,
+            int sessionId)
         {
-            var sessionGaps = allGaps.Where(g => g.LastAskedSessionId != null).ToList();
+            // Chỉ lấy các gap được hỏi trong phiên này (hoặc mới được tạo chưa có SessionId - trường hợp phiên đầu)
+            var sessionGaps = allGaps
+                .Where(g => g.LastAskedSessionId == sessionId || g.LastAskedSessionId == null)
+                .ToList();
+
             if (!sessionGaps.Any()) return new();
 
             var chunkMappings = new[]
@@ -427,31 +419,28 @@ namespace Imate.AI.Module.Core.Orchestrators
                     r.TurnNumber >= mapping.TurnMin &&
                     r.TurnNumber <= mapping.TurnMax &&
                     !string.IsNullOrEmpty(r.UserAnswer) &&
-                    r.BloomScore.HasValue).ToList();  // ← Chỉ lấy responses có BloomScore
+                    r.BloomScore.HasValue).ToList();
 
-                // FIX: BloomScore là 0-6 scale, cần normalize về 0-1
-                // BloomScore 0-6 → divide by 6 để lấy normalized score (0-1)
-                // Tuy nhiên: BloomScore có thể đã là 0-1 từ LLM (phụ thuộc vào implementation)
-                // Safe approach: Nếu BloomScore > 1, coi như là 0-6 scale
-                var avgScore = chunkResponses.Any()
-                    ? chunkResponses.Average(r =>
+                // FIX: Chỉ tính điểm và cập nhật trạng thái nếu gap này thực sự đã được trả lời ít nhất 1 câu
+                // Nếu người dùng end session sớm và chưa tới lượt gap này, bỏ qua để không bị downgrade/reset
+                if (chunkResponses.Any())
+                {
+                    var avgScore = chunkResponses.Average(r =>
                     {
                         var score = r.BloomScore ?? 0.5;
                         // Normalize: Nếu score > 1, coi như 0-6 scale, chia cho 6
-                        // Nếu score <= 1, coi như đã là 0-1 scale
                         return score > 1.0 ? score / 6.0 : score;
-                    })
-                    : 0.5;
+                    });
 
-                result.Add(new Services.GapScoreResult
-                {
-                    GapName = sessionGaps[i].GapName,
-                    Score = Math.Round(Math.Clamp(avgScore, 0, 1), 2)
-                });
+                    result.Add(new Services.GapScoreResult
+                    {
+                        GapName = gap.GapName,
+                        Score = Math.Round(Math.Clamp(avgScore, 0, 1), 2)
+                    });
 
-                Console.WriteLine($"[JOURNEY-SCORE] Gap {i} '{gap.GapName}' ({mapping.ChunkName}, turns {mapping.TurnMin}-{mapping.TurnMax}): " +
-                    $"{chunkResponses.Count} responses, BloomScores: [{string.Join(", ", chunkResponses.Select(r => r.BloomScore?.ToString("F1") ?? "null"))}], " +
-                    $"Normalized: {Math.Round(avgScore, 2)} → {(avgScore >= 0.7 ? "✓ GOOD" : "✗ WEAK")}");
+                    Console.WriteLine($"[JOURNEY-SCORE] Gap {i} '{gap.GapName}' ({mapping.ChunkName}): " +
+                        $"{chunkResponses.Count} responses, Avg Normalized: {Math.Round(avgScore, 2)}");
+                }
             }
 
             return result;
