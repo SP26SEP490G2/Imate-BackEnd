@@ -241,6 +241,7 @@ namespace Imate.API.DataAccess.Repositories.Mentors
         {
             return _context.Bookings.AsQueryable()
                 .Include(a => a.Mentor)
+                    .ThenInclude(m => m.Account)
                 .Include(a => a.Applications)
                 .Include(a => a.Candidate);
         }
