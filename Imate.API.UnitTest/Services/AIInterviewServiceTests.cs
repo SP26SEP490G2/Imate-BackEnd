@@ -175,7 +175,7 @@ namespace Imate.API.UnitTest.Services
             _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(session, It.IsAny<List<InterviewResponseData>>(), null, null, It.IsAny<bool>()))
                 .ReturnsAsync(new GenerateQuestionResult { IsTerminated = true, TerminationReason = "MaxQuestionsReached" });
             _mockSpeechService.Setup(s => s.SynthesizeToBase64Async(It.IsAny<string>(), It.IsAny<string>(), null, null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new AzureSynthesizedSpeechResult { AudioBase64 = "", MimeType = "audio/wav", Text = "", Voice = "", Language = "" });
+                .ReturnsAsync(new AzureSynthesizedSpeechResult { AudioBase64 = "", MimeType = "audio/wav", Text = "", Voice = "", Language = "", AudioUrl = "" });
 
             var result = await _orchestrator.GenerateQuestionAsync(1, 100, null, CancellationToken.None);
 
