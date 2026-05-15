@@ -12,8 +12,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
-using Imate.API.Business.Interfaces.Notification;
-using Imate.API.Business.Interfaces;
 using Imate.API.Business.Interfaces.Payment;
 
 namespace Imate.API.Business.Services.Mentors

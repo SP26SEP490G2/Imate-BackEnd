@@ -171,6 +171,7 @@ namespace Imate.API.UnitTest.Services
         {
             var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = DateTimeOffset.UtcNow };
             _mockDataProvider.Setup(p => p.GetSessionByIdAsync(100)).ReturnsAsync(session);
+            _mockDataProvider.Setup(p => p.GetResponsesBySessionIdAsync(100)).ReturnsAsync(new List<InterviewResponseData>());
             _mockInterviewAgent.Setup(a => a.GenerateQuestionAsync(session, It.IsAny<List<InterviewResponseData>>(), null, null, It.IsAny<bool>()))
                 .ReturnsAsync(new GenerateQuestionResult { IsTerminated = true, TerminationReason = "MaxQuestionsReached" });
 
@@ -186,6 +187,7 @@ namespace Imate.API.UnitTest.Services
             var oldStartTime = DateTimeOffset.UtcNow.AddMinutes(-31);
             var session = new InterviewSessionData { Id = 100, AccountId = 1, Status = "InProgress", StartTime = oldStartTime };
             _mockDataProvider.Setup(p => p.GetSessionByIdAsync(100)).ReturnsAsync(session);
+            _mockDataProvider.Setup(p => p.GetResponsesBySessionIdAsync(100)).ReturnsAsync(new List<InterviewResponseData>());
 
             var result = await _orchestrator.GenerateQuestionAsync(1, 100, null, CancellationToken.None);
 
