@@ -35,7 +35,7 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Run Unit Tests
-        run: dotnet test --no-build --configuration Release --verbosity normal --project Imate.API.UnitTest
+        run: dotnet test Imate.API.UnitTest --no-build --configuration Release --verbosity normal
 
   # ───────────────────────────────────────────
   # Job 2: Docker Build & Push (chỉ chạy khi push vào main/master)
