@@ -1,11 +1,13 @@
 using Imate.API.Business.Services.Payment;
 using Imate.API.Business.Services.Recruiters;
 using Imate.API.Configurations;
+using Imate.API.DataAccess.ApplicationDbContext;
 using Imate.API.Infrastructure.Configurations;
 using Imate.API.Middleware;
 using Imate.API.Presentation.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using PayOS;
 using System.Text;
 
@@ -45,6 +47,12 @@ builder.Services.AddEndpointsApiExplorer();
 // builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ImateDbContext>();
+    db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

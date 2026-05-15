@@ -1,0 +1,13 @@
+**/.dockerignore
+**/.git
+**/.github
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/publish
+.dockerignore
+Dockerfile
+node_modules
+*.sln.DotSettings.user
+*.user

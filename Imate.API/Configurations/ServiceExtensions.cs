@@ -49,7 +49,15 @@ namespace Imate.API.Configurations
 
         public static void ConfigureSqlContext(this IServiceCollection services, IConfiguration configuration) =>
             services.AddDbContext<ImateDbContext>(opts =>
-                opts.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+                opts.UseSqlServer(
+                    configuration.GetConnectionString("DefaultConnection"),
+                    sqlServerOptionsAction: sqlOptions =>
+                    {
+                        sqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 10,
+                            maxRetryDelay: TimeSpan.FromSeconds(30),
+                            errorNumbersToAdd: null);
+                    }));
 
         public static void ConfigureExternalServices(this IServiceCollection services)
         {

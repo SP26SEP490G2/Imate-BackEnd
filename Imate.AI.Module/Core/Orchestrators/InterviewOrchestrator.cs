@@ -351,6 +351,25 @@ namespace Imate.AI.Module.Core.Orchestrators
             // Gọi Agent tạo câu hỏi, truyền selectedGaps và isFirstSession
             var result = await _interviewAgent.GenerateQuestionAsync(session, existingResponses, estimatedAbility, selectedGaps, isFirstSession);
 
+            // Gán giai đoạn phỏng vấn để frontend hiển thị label
+            var turnNumber = existingResponses.Count + 1;
+            result.ChunkIndex = turnNumber switch
+            {
+                <= 2 => 1,
+                <= 4 => 2,
+                <= 7 => 3,
+                <= 9 => 4,
+                _    => 5
+            };
+            result.ChunkLabel = result.ChunkIndex switch
+            {
+                1 => "Giới thiệu bản thân",
+                2 => "Kỹ thuật chuyên môn",
+                3 => "Tình huống giả định",
+                4 => "Đào sâu kiến thức",
+                _ => "Văn hóa & phù hợp"
+            };
+
             if (result.IsTerminated)
             {
                 // TTS cho thông báo kết thúc
