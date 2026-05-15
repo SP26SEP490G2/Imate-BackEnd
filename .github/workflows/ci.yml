@@ -16,6 +16,8 @@ jobs:
   build-and-test:
     name: Build & Test (.NET)
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout code
@@ -33,7 +35,7 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Run Unit Tests
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        run: dotnet test --no-build --configuration Release --verbosity normal --project Imate.API.UnitTest
 
   # ───────────────────────────────────────────
   # Job 2: Docker Build & Push (chỉ chạy khi push vào main/master)
@@ -41,6 +43,8 @@ jobs:
   docker-push:
     name: Docker Build & Push
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     needs: build-and-test
     if: github.event_name == 'push'
 
