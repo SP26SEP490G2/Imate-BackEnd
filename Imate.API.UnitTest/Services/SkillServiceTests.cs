@@ -108,7 +108,7 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task UpdateSkillsAsync_ShouldThrowNotFoundException_WhenSkillNotFound()
         {
-            _mockSkillRepo.Setup(r => r.GetSkillByIdAsync(It.IsAny<int>())).ReturnsAsync((Skill?)null);
+            _mockSkillRepo.Setup(r => r.GetSkillByIdAsync(It.IsAny<int>())).ReturnsAsync(null as Skill);
             var request = new SkillUpdateRequest { Name = "Test", IsActive = true };
 
             var act = () => _service.UpdateSkillsAsync(999, request);
@@ -200,7 +200,7 @@ namespace Imate.API.UnitTest.Services
         [Fact]
         public async Task SetSkillStatusAsync_ShouldReturnNull_WhenSkillNotFound()
         {
-            _mockSkillRepo.Setup(r => r.GetSkillByIdAsync(It.IsAny<int>())).ReturnsAsync((Skill?)null);
+            _mockSkillRepo.Setup(r => r.GetSkillByIdAsync(It.IsAny<int>())).ReturnsAsync(null as Skill);
 
             var result = await _service.SetSkillStatusAsync(999, true);
 

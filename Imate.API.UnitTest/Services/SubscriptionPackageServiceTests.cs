@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+ï»¿using Microsoft.EntityFrameworkCore;
 using Moq;
 using FluentAssertions;
 using Imate.API.Business.Services.Payment;
@@ -76,7 +76,7 @@ namespace Imate.API.UnitTest.Services
 
             var item = result.First();
             item.Name.Should().Be("Premium");
-            item.Duration.Should().Be("1 tháng");
+            item.Duration.Should().Be("1 th\u00e1ng");
             item.Benefits.Should().HaveCount(2);
         }
         #endregion

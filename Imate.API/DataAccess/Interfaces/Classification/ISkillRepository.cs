@@ -1,4 +1,4 @@
-﻿using Imate.API.Models.Entities;
+using Imate.API.Models.Entities;
 
 namespace Imate.API.DataAccess.Interfaces.Classification
 {
@@ -8,7 +8,7 @@ namespace Imate.API.DataAccess.Interfaces.Classification
         Task<List<string>> GetNonExistingSkillNames(IEnumerable<string> skillNames);
         Task<List<Skill>> FindSkillsByNamesAsync(IEnumerable<string> names);
         IQueryable<Skill> GetAllSkills();
-        Task<Skill> GetSkillByIdAsync(int id);
+        Task<Skill?> GetSkillByIdAsync(int id);
         Task<Skill> AddSkillAsync(Skill Skill);
         Task<Skill> UpdateSkillAsync(Skill Skill);
         void SaveChangeAsync();
